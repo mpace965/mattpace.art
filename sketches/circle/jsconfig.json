@@ -1,12 +1,11 @@
 {
   "compilerOptions": {
-    "target": "es6"
+    "target": "es6",
+    "checkJs": true
   },
   "include": [
     "*.js",
     "**/*.js",
-    "*.ts",
-    "**/*.ts",
     "../../vendor/p5@2.0.5/types/global.d.ts",
   ]
 }
