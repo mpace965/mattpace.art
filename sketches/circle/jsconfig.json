@@ -6,6 +6,6 @@
   "include": [
     "*.js",
     "**/*.js",
-    "../../vendor/p5@2.0.5/types/global.d.ts",
+    "../../vendor/p5@1.11.11/types/global.d.ts",
   ]
 }
