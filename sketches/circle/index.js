@@ -1,10 +1,13 @@
 import { mountSketch } from './sketch.js'
 import { getPresetManager } from './params.js';
+import { mountTweakpane } from './tweakpane.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const presetManager = getPresetManager();
   const presetName = presetManager.getPresetName();
   const params = presetManager.getParamsForPresetName(presetName);
+
+  mountTweakpane(presetManager, presetName, params);
 
   mountSketch(params);
 })
