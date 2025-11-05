@@ -4,6 +4,7 @@
  * @typedef Params
  * @prop {number} scale
  * @prop {number} segments
+ * @prop {number} seed
  */
 
 /**
@@ -15,7 +16,7 @@
 
 /** @type {Record<string, Params>} */
 const PRESETS = {
-  default: { scale: 3 / 4, segments: 80 },
+  default: { scale: 3 / 4, segments: 13, seed: 0 },
 };
 
 const DEFAULT_PRESET_NAME = "default";
@@ -147,6 +148,9 @@ pane.addBinding(params, "scale", { min: 0, max: 1 });
 pane
   .addBinding(params, "segments", { step: 1, min: 1, max: 200 })
   .on("change", (e) => (derivedParams = computeDerivedParams(e.value)));
+pane
+  .addBinding(params, "seed", { step: 1 })
+  .on("change", (e) => (derivedParams = computeDerivedParams(params.segments)));
 
 addSelectPresetDropdown(pane);
 addExportPresetButton(pane, params);
@@ -166,6 +170,7 @@ let derivedParams;
  * @returns {DerivedParams}
  */
 function computeDerivedParams(segments) {
+  randomSeed(params.seed);
   const values = [];
 
   for (let x = 0; x < segments; x++) {
