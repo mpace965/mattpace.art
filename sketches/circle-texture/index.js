@@ -2,9 +2,12 @@
 
 /**
  * @typedef Params
- * @prop {number} scale
+ * @prop {number} circleScale
  * @prop {number} segments
  * @prop {number} seed
+ * @prop {number} noiseScale
+ * @prop {number} noiseLod
+ * @prop {number} noiseFalloff
  */
 
 /**
@@ -16,7 +19,22 @@
 
 /** @type {Record<string, Params>} */
 const PRESETS = {
-  default: { scale: 3 / 4, segments: 13, seed: 0 },
+  default: {
+    circleScale: 3 / 4,
+    segments: 13,
+    seed: 0,
+    noiseScale: 1,
+    noiseLod: 4,
+    noiseFalloff: 0.5,
+  },
+  terrain: {
+    circleScale: 0.75,
+    segments: 64,
+    seed: 0,
+    noiseScale: -0.06521739130434767,
+    noiseLod: 4,
+    noiseFalloff: 0.29347826086956524,
+  },
 };
 
 const DEFAULT_PRESET_NAME = "default";
@@ -144,13 +162,22 @@ function addExportPresetButton(pane, params) {
 const pane = new Pane({ title: `Circle texture ${presetName}` });
 listenForHidePaneEvent(pane.element);
 
-pane.addBinding(params, "scale", { min: 0, max: 1 });
+pane.addBinding(params, "circleScale", { min: 0, max: 1 });
 pane
   .addBinding(params, "segments", { step: 1, min: 1, max: 200 })
-  .on("change", (e) => (derivedParams = computeDerivedParams(e.value)));
+  .on("change", () => (derivedParams = computeDerivedParams()));
 pane
   .addBinding(params, "seed", { step: 1 })
-  .on("change", (e) => (derivedParams = computeDerivedParams(params.segments)));
+  .on("change", () => (derivedParams = computeDerivedParams()));
+pane
+  .addBinding(params, "noiseScale", { min: -3, max: 3 })
+  .on("change", () => (derivedParams = computeDerivedParams()));
+pane
+  .addBinding(params, "noiseLod", { step: 1, min: 0 })
+  .on("change", () => (derivedParams = computeDerivedParams()));
+pane
+  .addBinding(params, "noiseFalloff", { min: 0, max: 1 })
+  .on("change", () => (derivedParams = computeDerivedParams()));
 
 addSelectPresetDropdown(pane);
 addExportPresetButton(pane, params);
@@ -165,23 +192,22 @@ const CANVAS_SIZE = 800;
 let derivedParams;
 
 /**
- *
- * @param {number} segments
  * @returns {DerivedParams}
  */
-function computeDerivedParams(segments) {
-  randomSeed(params.seed);
+function computeDerivedParams() {
+  noiseSeed(params.seed);
+  noiseDetail(params.noiseLod, params.noiseFalloff);
   const values = [];
 
-  for (let x = 0; x < segments; x++) {
+  for (let x = 0; x < params.segments; x++) {
     const row = [];
-    for (let y = 0; y < segments; y++) {
-      row.push(random(0, 10));
+    for (let y = 0; y < params.segments; y++) {
+      row.push(9 * noise(params.noiseScale * x, params.noiseScale * y));
     }
     values.push(row);
   }
 
-  const segmentSize = CANVAS_SIZE / segments;
+  const segmentSize = CANVAS_SIZE / params.segments;
   const segmentOffset = segmentSize / 2;
 
   return { values, segmentSize, segmentOffset };
@@ -190,7 +216,7 @@ function computeDerivedParams(segments) {
 globalThis.setup = function () {
   createCanvas(CANVAS_SIZE, CANVAS_SIZE);
 
-  derivedParams = computeDerivedParams(params.segments);
+  derivedParams = computeDerivedParams();
 };
 
 globalThis.draw = function () {
@@ -204,7 +230,7 @@ globalThis.draw = function () {
         y * derivedParams.segmentSize + derivedParams.segmentOffset,
         derivedParams.segmentSize,
         derivedParams.values[x][y],
-        params.scale,
+        params.circleScale,
         circle
       );
     }
