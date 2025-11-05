@@ -2,13 +2,20 @@
 
 /**
  * @typedef Params
- * @prop {number} value
  * @prop {number} scale
+ * @prop {number} segments
+ */
+
+/**
+ * @typedef DerivedParams
+ * @prop {number} segmentSize
+ * @prop {number} segmentOffset
+ * @prop {Array<Array<number>>} values
  */
 
 /** @type {Record<string, Params>} */
 const PRESETS = {
-  default: { value: 1, scale: 3 / 4 },
+  default: { scale: 3 / 4, segments: 80 },
 };
 
 const DEFAULT_PRESET_NAME = "default";
@@ -136,8 +143,10 @@ function addExportPresetButton(pane, params) {
 const pane = new Pane({ title: `Circle texture ${presetName}` });
 listenForHidePaneEvent(pane.element);
 
-pane.addBinding(params, "value", { step: 1, min: 0, max: 9 });
 pane.addBinding(params, "scale", { min: 0, max: 1 });
+pane
+  .addBinding(params, "segments", { step: 1, min: 1, max: 200 })
+  .on("change", (e) => (derivedParams = computeDerivedParams(e.value)));
 
 addSelectPresetDropdown(pane);
 addExportPresetButton(pane, params);
@@ -148,15 +157,53 @@ addExportPresetButton(pane, params);
 
 const CANVAS_SIZE = 800;
 
+/** @type {DerivedParams} */
+let derivedParams;
+
+/**
+ *
+ * @param {number} segments
+ * @returns {DerivedParams}
+ */
+function computeDerivedParams(segments) {
+  const values = [];
+
+  for (let x = 0; x < segments; x++) {
+    const row = [];
+    for (let y = 0; y < segments; y++) {
+      row.push(random(0, 10));
+    }
+    values.push(row);
+  }
+
+  const segmentSize = CANVAS_SIZE / segments;
+  const segmentOffset = segmentSize / 2;
+
+  return { values, segmentSize, segmentOffset };
+}
+
 globalThis.setup = function () {
   createCanvas(CANVAS_SIZE, CANVAS_SIZE);
+
+  derivedParams = computeDerivedParams(params.segments);
 };
 
 globalThis.draw = function () {
   background(220);
   fill(0);
 
-  diceTexture(400, 400, CANVAS_SIZE, params.value, params.scale, circle);
+  for (let x = 0; x < params.segments; x++) {
+    for (let y = 0; y < params.segments; y++) {
+      diceTexture(
+        x * derivedParams.segmentSize + derivedParams.segmentOffset,
+        y * derivedParams.segmentSize + derivedParams.segmentOffset,
+        derivedParams.segmentSize,
+        derivedParams.values[x][y],
+        params.scale,
+        circle
+      );
+    }
+  }
 };
 
 function diceTexture(x, y, areaSize, value, scale, callback) {
