@@ -35,6 +35,14 @@ const PRESETS = {
     noiseLod: 4,
     noiseFalloff: 0.29347826086956524,
   },
+  face: {
+    circleScale: 0.75,
+    segments: 100,
+    seed: 0,
+    noiseScale: 0.01630434782608703,
+    noiseLod: 3,
+    noiseFalloff: 0.2717391304347826,
+  },
 };
 
 const DEFAULT_PRESET_NAME = "default";
@@ -170,7 +178,7 @@ pane
   .addBinding(params, "seed", { step: 1 })
   .on("change", () => (derivedParams = computeDerivedParams()));
 pane
-  .addBinding(params, "noiseScale", { min: -3, max: 3 })
+  .addBinding(params, "noiseScale", { min: -0.75, max: 0.75 })
   .on("change", () => (derivedParams = computeDerivedParams()));
 pane
   .addBinding(params, "noiseLod", { step: 1, min: 0 })
