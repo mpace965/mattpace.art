@@ -69,7 +69,7 @@ function bindParamsToPane(pane, params) {
 /**
  * @param {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<Params>} params
  */
-function sketch(params) {
+function mountSketch(params) {
   const diceSize = computed(
     () => params.value.canvasSize / params.value.gridLength
   );
@@ -246,7 +246,7 @@ function diceTexture(x, y, size, value, pipScale, callback) {
 
 const PRESET_SEARCH_PARAM = "preset";
 
-function getPresetNameFromSearchParamOrDefault() {
+function getPresetNameOrDefault() {
   const url = new URL(window.location.href);
   const preset = url.searchParams.get(PRESET_SEARCH_PARAM);
 
@@ -295,6 +295,19 @@ function getPresetNames() {
 // #endregion
 
 // #region lib: tweakpane
+
+/**
+ * @param {string} title
+ */
+function mountTweakpane(title) {
+  const PANE = new Pane({ title });
+  listenForHidePaneEvent(PANE.element);
+
+  bindParamsToPane(PANE, PARAMS.value);
+
+  addSelectPresetDropdown(PANE);
+  addExportPresetButton(PANE, PARAMS.value);
+}
 
 /**
  * @param {HTMLElement} paneElement
@@ -359,21 +372,18 @@ function addExportPresetButton(pane, params) {
   );
 }
 
+function getTitleOrDefault() {
+  return document.querySelector("title").textContent || "sketch";
+}
+
 // #endregion
 
 // #region bootstrap
 
-const PRESET_NAME = getPresetNameFromSearchParamOrDefault();
+const PRESET_NAME = getPresetNameOrDefault();
 const PARAMS = ref(getParamsForPresetName(PRESET_NAME));
 
-const PANE = new Pane({ title: `dice texture (${PRESET_NAME})` });
-listenForHidePaneEvent(PANE.element);
-
-bindParamsToPane(PANE, PARAMS.value);
-
-addSelectPresetDropdown(PANE);
-addExportPresetButton(PANE, PARAMS.value);
-
-sketch(PARAMS);
+mountTweakpane(`${getTitleOrDefault()} (${PRESET_NAME})`);
+mountSketch(PARAMS);
 
 // #endregion
