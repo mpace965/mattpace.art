@@ -1,7 +1,15 @@
+import {
+  ref,
+  computed,
+} from "../../vendor/@vue/reactivity@3.5.23/reactivity.js";
+
+import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
+
 // #region sketch
 
 /**
  * @typedef Params
+ * @prop {number} canvasSize
  * @prop {number} circleScale
  * @prop {number} segments
  * @prop {number} seed
@@ -10,16 +18,10 @@
  * @prop {number} noiseFalloff
  */
 
-/**
- * @typedef DerivedParams
- * @prop {number} segmentSize
- * @prop {number} segmentOffset
- * @prop {Array<Array<number>>} values
- */
-
 /** @type {Record<string, Params>} */
 const PRESETS = {
   default: {
+    canvasSize: 800,
     circleScale: 3 / 4,
     segments: 13,
     seed: 0,
@@ -28,6 +30,7 @@ const PRESETS = {
     noiseFalloff: 0.5,
   },
   terrain: {
+    canvasSize: 800,
     circleScale: 0.75,
     segments: 64,
     seed: 0,
@@ -36,6 +39,7 @@ const PRESETS = {
     noiseFalloff: 0.29347826086956524,
   },
   face: {
+    canvasSize: 800,
     circleScale: 0.75,
     segments: 100,
     seed: 0,
@@ -47,86 +51,53 @@ const PRESETS = {
 
 const DEFAULT_PRESET_NAME = "default";
 
-function bindParamsToPane(pane, canvasSize, params) {
+/**
+ * @param {Pane} pane
+ * @param {Params} params
+ */
+function bindParamsToPane(pane, params) {
   pane.addBinding(params, "circleScale", { min: 0, max: 1 });
-  pane
-    .addBinding(params, "segments", { step: 1, min: 1, max: 200 })
-    .on(
-      "change",
-      () => (DERIVED_PARAMS = computeDerivedParams(canvasSize, params))
-    );
-  pane
-    .addBinding(params, "seed", { step: 1 })
-    .on(
-      "change",
-      () => (DERIVED_PARAMS = computeDerivedParams(canvasSize, params))
-    );
-  pane
-    .addBinding(params, "noiseScale", { min: -0.75, max: 0.75 })
-    .on(
-      "change",
-      () => (DERIVED_PARAMS = computeDerivedParams(canvasSize, params))
-    );
-  pane
-    .addBinding(params, "noiseLod", { step: 1, min: 0 })
-    .on(
-      "change",
-      () => (DERIVED_PARAMS = computeDerivedParams(canvasSize, params))
-    );
-  pane
-    .addBinding(params, "noiseFalloff", { min: 0, max: 1 })
-    .on(
-      "change",
-      () => (DERIVED_PARAMS = computeDerivedParams(canvasSize, params))
-    );
+  pane.addBinding(params, "segments", { step: 1, min: 1, max: 200 });
+  pane.addBinding(params, "seed", { step: 1 });
+  pane.addBinding(params, "noiseScale", { min: -0.75, max: 0.75 });
+  pane.addBinding(params, "noiseLod", { step: 1, min: 0 });
+  pane.addBinding(params, "noiseFalloff", { min: 0, max: 1 });
 }
-
-const CANVAS_SIZE = 800;
-
-/** @type {DerivedParams} */
-let DERIVED_PARAMS;
 
 /**
- * @returns {DerivedParams}
+ * @param {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<Params>} params
  */
-function computeDerivedParams(canvasSize, params) {
-  noiseSeed(params.seed);
-  noiseDetail(params.noiseLod, params.noiseFalloff);
-  const values = [];
+function sketch(params) {
+  const segmentSize = computed(
+    () => params.value.canvasSize / params.value.segments
+  );
+  const segmentOffset = computed(() => segmentSize.value / 2);
+  const diceValues = computed(() =>
+    sampleNoiseForValues(
+      params.value.segments,
+      params.value.seed,
+      params.value.noiseLod,
+      params.value.noiseFalloff,
+      params.value.noiseScale
+    )
+  );
 
-  for (let x = 0; x < params.segments; x++) {
-    const row = [];
-    for (let y = 0; y < params.segments; y++) {
-      row.push(9 * noise(params.noiseScale * x, params.noiseScale * y));
-    }
-    values.push(row);
-  }
-
-  const segmentSize = canvasSize / params.segments;
-  const segmentOffset = segmentSize / 2;
-
-  return { values, segmentSize, segmentOffset };
-}
-
-function sketch(canvasSize, params) {
   globalThis.setup = function () {
-    createCanvas(canvasSize, canvasSize);
-
-    DERIVED_PARAMS = computeDerivedParams(canvasSize, params);
+    createCanvas(params.value.canvasSize, params.value.canvasSize);
   };
 
   globalThis.draw = function () {
     background(220);
     fill(0);
 
-    for (let x = 0; x < params.segments; x++) {
-      for (let y = 0; y < params.segments; y++) {
+    for (let x = 0; x < params.value.segments; x++) {
+      for (let y = 0; y < params.value.segments; y++) {
         diceTexture(
-          x * DERIVED_PARAMS.segmentSize + DERIVED_PARAMS.segmentOffset,
-          y * DERIVED_PARAMS.segmentSize + DERIVED_PARAMS.segmentOffset,
-          DERIVED_PARAMS.segmentSize,
-          DERIVED_PARAMS.values[x][y],
-          params.circleScale,
+          x * segmentSize.value + segmentOffset.value,
+          y * segmentSize.value + segmentOffset.value,
+          segmentSize.value,
+          diceValues.value[x][y],
+          params.value.circleScale,
           circle
         );
       }
@@ -138,11 +109,47 @@ function sketch(canvasSize, params) {
 
 // #region lib: sketch
 
-function diceTexture(x, y, areaSize, value, scale, callback) {
+/**
+ * Sample an n x n grid of values using noise configured with the given parameters.
+ *
+ * @param {number} n
+ * @param {number} seed
+ * @param {number} lod
+ * @param {number} falloff
+ * @param {number} scale
+ * @returns {Array<Array<number>>}
+ */
+function sampleNoiseForValues(n, seed, lod, falloff, scale) {
+  noiseSeed(seed);
+  noiseDetail(lod, falloff);
+  const values = [];
+
+  for (let x = 0; x < n; x++) {
+    const row = [];
+    for (let y = 0; y < n; y++) {
+      row.push(9 * noise(scale * x, scale * y));
+    }
+    values.push(row);
+  }
+
+  return values;
+}
+
+/**
+ * Draw the face of a dice at the given size and coordinates.
+ *
+ * @param {number} x
+ * @param {number} y
+ * @param {number} size
+ * @param {number} value [0, 9] the dice value
+ * @param {number} pipScale [0, 1] the ratio of a pip's 'full size'. 0 - no pip, 1 - pips are touching
+ * @param {function(number, number, number): void} callback callback for drawing the pip at (x, y, size)
+ */
+function diceTexture(x, y, size, value, pipScale, callback) {
   value = Math.round(constrain(value, 0, 9));
 
-  const marginSize = (areaSize / 3) * (1 - scale);
-  const pipSize = areaSize / 3 - marginSize;
+  const marginSize = (size / 3) * (1 - pipScale);
+  const pipSize = size / 3 - marginSize;
   const gridLength = marginSize + pipSize;
 
   let points = [];
@@ -246,7 +253,7 @@ function diceTexture(x, y, areaSize, value, scale, callback) {
 
 const PRESET_SEARCH_PARAM = "preset";
 
-function getPresetName() {
+function getPresetNameFromSearchParamOrDefault() {
   const url = new URL(window.location.href);
   const preset = url.searchParams.get(PRESET_SEARCH_PARAM);
 
@@ -295,8 +302,6 @@ function getPresetNames() {
 // #endregion
 
 // #region lib: tweakpane
-
-import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
 
 /**
  * @param {HTMLElement} paneElement
@@ -365,17 +370,17 @@ function addExportPresetButton(pane, params) {
 
 // #region bootstrap
 
-const PRESET_NAME = getPresetName();
-const PARAMS = getParamsForPresetName(PRESET_NAME);
+const PRESET_NAME = getPresetNameFromSearchParamOrDefault();
+const PARAMS = ref(getParamsForPresetName(PRESET_NAME));
 
 const PANE = new Pane({ title: `Circle texture ${PRESET_NAME}` });
 listenForHidePaneEvent(PANE.element);
 
-bindParamsToPane(PANE, CANVAS_SIZE, PARAMS);
+bindParamsToPane(PANE, PARAMS.value);
 
 addSelectPresetDropdown(PANE);
-addExportPresetButton(PANE, PARAMS);
+addExportPresetButton(PANE, PARAMS.value);
 
-sketch(CANVAS_SIZE, PARAMS);
+sketch(PARAMS);
 
 // #endregion
