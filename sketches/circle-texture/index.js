@@ -47,23 +47,38 @@ const PRESETS = {
 
 const DEFAULT_PRESET_NAME = "default";
 
-function bindParamsToPane(pane, params) {
+function bindParamsToPane(pane, canvasSize, params) {
   pane.addBinding(params, "circleScale", { min: 0, max: 1 });
   pane
     .addBinding(params, "segments", { step: 1, min: 1, max: 200 })
-    .on("change", () => (DERIVED_PARAMS = computeDerivedParams()));
+    .on(
+      "change",
+      () => (DERIVED_PARAMS = computeDerivedParams(canvasSize, params))
+    );
   pane
     .addBinding(params, "seed", { step: 1 })
-    .on("change", () => (DERIVED_PARAMS = computeDerivedParams()));
+    .on(
+      "change",
+      () => (DERIVED_PARAMS = computeDerivedParams(canvasSize, params))
+    );
   pane
     .addBinding(params, "noiseScale", { min: -0.75, max: 0.75 })
-    .on("change", () => (DERIVED_PARAMS = computeDerivedParams()));
+    .on(
+      "change",
+      () => (DERIVED_PARAMS = computeDerivedParams(canvasSize, params))
+    );
   pane
     .addBinding(params, "noiseLod", { step: 1, min: 0 })
-    .on("change", () => (DERIVED_PARAMS = computeDerivedParams()));
+    .on(
+      "change",
+      () => (DERIVED_PARAMS = computeDerivedParams(canvasSize, params))
+    );
   pane
     .addBinding(params, "noiseFalloff", { min: 0, max: 1 })
-    .on("change", () => (DERIVED_PARAMS = computeDerivedParams()));
+    .on(
+      "change",
+      () => (DERIVED_PARAMS = computeDerivedParams(canvasSize, params))
+    );
 }
 
 const CANVAS_SIZE = 800;
@@ -74,44 +89,44 @@ let DERIVED_PARAMS;
 /**
  * @returns {DerivedParams}
  */
-function computeDerivedParams() {
-  noiseSeed(PARAMS.seed);
-  noiseDetail(PARAMS.noiseLod, PARAMS.noiseFalloff);
+function computeDerivedParams(canvasSize, params) {
+  noiseSeed(params.seed);
+  noiseDetail(params.noiseLod, params.noiseFalloff);
   const values = [];
 
-  for (let x = 0; x < PARAMS.segments; x++) {
+  for (let x = 0; x < params.segments; x++) {
     const row = [];
-    for (let y = 0; y < PARAMS.segments; y++) {
-      row.push(9 * noise(PARAMS.noiseScale * x, PARAMS.noiseScale * y));
+    for (let y = 0; y < params.segments; y++) {
+      row.push(9 * noise(params.noiseScale * x, params.noiseScale * y));
     }
     values.push(row);
   }
 
-  const segmentSize = CANVAS_SIZE / PARAMS.segments;
+  const segmentSize = canvasSize / params.segments;
   const segmentOffset = segmentSize / 2;
 
   return { values, segmentSize, segmentOffset };
 }
 
-function sketch() {
+function sketch(canvasSize, params) {
   globalThis.setup = function () {
-    createCanvas(CANVAS_SIZE, CANVAS_SIZE);
+    createCanvas(canvasSize, canvasSize);
 
-    DERIVED_PARAMS = computeDerivedParams();
+    DERIVED_PARAMS = computeDerivedParams(canvasSize, params);
   };
 
   globalThis.draw = function () {
     background(220);
     fill(0);
 
-    for (let x = 0; x < PARAMS.segments; x++) {
-      for (let y = 0; y < PARAMS.segments; y++) {
+    for (let x = 0; x < params.segments; x++) {
+      for (let y = 0; y < params.segments; y++) {
         diceTexture(
           x * DERIVED_PARAMS.segmentSize + DERIVED_PARAMS.segmentOffset,
           y * DERIVED_PARAMS.segmentSize + DERIVED_PARAMS.segmentOffset,
           DERIVED_PARAMS.segmentSize,
           DERIVED_PARAMS.values[x][y],
-          PARAMS.circleScale,
+          params.circleScale,
           circle
         );
       }
@@ -356,11 +371,11 @@ const PARAMS = getParamsForPresetName(PRESET_NAME);
 const PANE = new Pane({ title: `Circle texture ${PRESET_NAME}` });
 listenForHidePaneEvent(PANE.element);
 
-bindParamsToPane(PANE, PARAMS);
+bindParamsToPane(PANE, CANVAS_SIZE, PARAMS);
 
 addSelectPresetDropdown(PANE);
 addExportPresetButton(PANE, PARAMS);
 
-sketch();
+sketch(CANVAS_SIZE, PARAMS);
 
 // #endregion
