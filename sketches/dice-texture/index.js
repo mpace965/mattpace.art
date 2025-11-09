@@ -10,8 +10,8 @@ import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
 /**
  * @typedef Params
  * @prop {number} canvasSize
- * @prop {number} circleScale
- * @prop {number} segments
+ * @prop {number} pipScale
+ * @prop {number} gridLength
  * @prop {NoiseParams} noise
  */
 
@@ -25,21 +25,10 @@ import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
 
 /** @type {Record<string, Params>} */
 const PRESETS = {
-  default: {
-    canvasSize: 800,
-    circleScale: 3 / 4,
-    segments: 13,
-    noise: {
-      seed: 0,
-      scale: 1,
-      lod: 4,
-      falloff: 0.5,
-    },
-  },
   terrain: {
     canvasSize: 800,
-    circleScale: 0.75,
-    segments: 64,
+    pipScale: 0.75,
+    gridLength: 64,
     noise: {
       seed: 0,
       scale: -0.06521739130434767,
@@ -49,8 +38,8 @@ const PRESETS = {
   },
   face: {
     canvasSize: 800,
-    circleScale: 0.75,
-    segments: 100,
+    pipScale: 0.75,
+    gridLength: 100,
     noise: {
       seed: 0,
       scale: 0.01630434782608703,
@@ -60,15 +49,15 @@ const PRESETS = {
   },
 };
 
-const DEFAULT_PRESET_NAME = "default";
+const DEFAULT_PRESET_NAME = "face";
 
 /**
  * @param {Pane} pane
  * @param {Params} params
  */
 function bindParamsToPane(pane, params) {
-  pane.addBinding(params, "circleScale", { min: 0, max: 1 });
-  pane.addBinding(params, "segments", { step: 1, min: 1, max: 200 });
+  pane.addBinding(params, "pipScale", { min: 0, max: 1 });
+  pane.addBinding(params, "gridLength", { step: 1, min: 1, max: 200 });
 
   const noiseFolder = pane.addFolder({ title: "noise" });
   noiseFolder.addBinding(params.noise, "seed", { step: 1 });
@@ -81,12 +70,12 @@ function bindParamsToPane(pane, params) {
  * @param {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<Params>} params
  */
 function sketch(params) {
-  const segmentSize = computed(
-    () => params.value.canvasSize / params.value.segments
+  const diceSize = computed(
+    () => params.value.canvasSize / params.value.gridLength
   );
-  const segmentOffset = computed(() => segmentSize.value / 2);
-  const diceValues = computed(() =>
-    sampleNoiseForValues(params.value.noise, params.value.segments)
+  const diceOffset = computed(() => diceSize.value / 2);
+  const diceValueGrid = computed(() =>
+    sampleDiceValueGridFromNoise(params.value.noise, params.value.gridLength)
   );
 
   globalThis.setup = function () {
@@ -97,14 +86,14 @@ function sketch(params) {
     background(220);
     fill(0);
 
-    for (let x = 0; x < params.value.segments; x++) {
-      for (let y = 0; y < params.value.segments; y++) {
+    for (let x = 0; x < params.value.gridLength; x++) {
+      for (let y = 0; y < params.value.gridLength; y++) {
         diceTexture(
-          x * segmentSize.value + segmentOffset.value,
-          y * segmentSize.value + segmentOffset.value,
-          segmentSize.value,
-          diceValues.value[x][y],
-          params.value.circleScale,
+          x * diceSize.value + diceOffset.value,
+          y * diceSize.value + diceOffset.value,
+          diceSize.value,
+          diceValueGrid.value[x][y],
+          params.value.pipScale,
           circle
         );
       }
@@ -117,13 +106,13 @@ function sketch(params) {
 // #region lib: sketch
 
 /**
- * Sample an n x n grid of values using noise configured with the given parameters.
+ * Sample an n x n grid of dice values using noise configured with the given parameters.
  *
  * @param {NoiseParams} noiseParams
  * @param {number} n
  * @returns {Array<Array<number>>}
  */
-function sampleNoiseForValues({ seed, lod, falloff, scale }, n) {
+function sampleDiceValueGridFromNoise({ seed, lod, falloff, scale }, n) {
   noiseSeed(seed);
   noiseDetail(lod, falloff);
   const values = [];
@@ -377,7 +366,7 @@ function addExportPresetButton(pane, params) {
 const PRESET_NAME = getPresetNameFromSearchParamOrDefault();
 const PARAMS = ref(getParamsForPresetName(PRESET_NAME));
 
-const PANE = new Pane({ title: `Circle texture ${PRESET_NAME}` });
+const PANE = new Pane({ title: `dice texture (${PRESET_NAME})` });
 listenForHidePaneEvent(PANE.element);
 
 bindParamsToPane(PANE, PARAMS.value);
