@@ -12,10 +12,15 @@ import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
  * @prop {number} canvasSize
  * @prop {number} circleScale
  * @prop {number} segments
+ * @prop {NoiseParams} noise
+ */
+
+/**
+ * @typedef NoiseParams
  * @prop {number} seed
- * @prop {number} noiseScale
- * @prop {number} noiseLod
- * @prop {number} noiseFalloff
+ * @prop {number} scale
+ * @prop {number} lod
+ * @prop {number} falloff
  */
 
 /** @type {Record<string, Params>} */
@@ -24,28 +29,34 @@ const PRESETS = {
     canvasSize: 800,
     circleScale: 3 / 4,
     segments: 13,
-    seed: 0,
-    noiseScale: 1,
-    noiseLod: 4,
-    noiseFalloff: 0.5,
+    noise: {
+      seed: 0,
+      scale: 1,
+      lod: 4,
+      falloff: 0.5,
+    },
   },
   terrain: {
     canvasSize: 800,
     circleScale: 0.75,
     segments: 64,
-    seed: 0,
-    noiseScale: -0.06521739130434767,
-    noiseLod: 4,
-    noiseFalloff: 0.29347826086956524,
+    noise: {
+      seed: 0,
+      scale: -0.06521739130434767,
+      lod: 4,
+      falloff: 0.29347826086956524,
+    },
   },
   face: {
     canvasSize: 800,
     circleScale: 0.75,
     segments: 100,
-    seed: 0,
-    noiseScale: 0.01630434782608703,
-    noiseLod: 3,
-    noiseFalloff: 0.2717391304347826,
+    noise: {
+      seed: 0,
+      scale: 0.01630434782608703,
+      lod: 3,
+      falloff: 0.2717391304347826,
+    },
   },
 };
 
@@ -58,10 +69,12 @@ const DEFAULT_PRESET_NAME = "default";
 function bindParamsToPane(pane, params) {
   pane.addBinding(params, "circleScale", { min: 0, max: 1 });
   pane.addBinding(params, "segments", { step: 1, min: 1, max: 200 });
-  pane.addBinding(params, "seed", { step: 1 });
-  pane.addBinding(params, "noiseScale", { min: -0.75, max: 0.75 });
-  pane.addBinding(params, "noiseLod", { step: 1, min: 0 });
-  pane.addBinding(params, "noiseFalloff", { min: 0, max: 1 });
+
+  const noiseFolder = pane.addFolder({ title: "noise" });
+  noiseFolder.addBinding(params.noise, "seed", { step: 1 });
+  noiseFolder.addBinding(params.noise, "scale", { min: -0.75, max: 0.75 });
+  noiseFolder.addBinding(params.noise, "lod", { step: 1, min: 0 });
+  noiseFolder.addBinding(params.noise, "falloff", { min: 0, max: 1 });
 }
 
 /**
@@ -73,13 +86,7 @@ function sketch(params) {
   );
   const segmentOffset = computed(() => segmentSize.value / 2);
   const diceValues = computed(() =>
-    sampleNoiseForValues(
-      params.value.segments,
-      params.value.seed,
-      params.value.noiseLod,
-      params.value.noiseFalloff,
-      params.value.noiseScale
-    )
+    sampleNoiseForValues(params.value.noise, params.value.segments)
   );
 
   globalThis.setup = function () {
@@ -112,14 +119,11 @@ function sketch(params) {
 /**
  * Sample an n x n grid of values using noise configured with the given parameters.
  *
+ * @param {NoiseParams} noiseParams
  * @param {number} n
- * @param {number} seed
- * @param {number} lod
- * @param {number} falloff
- * @param {number} scale
  * @returns {Array<Array<number>>}
  */
-function sampleNoiseForValues(n, seed, lod, falloff, scale) {
+function sampleNoiseForValues({ seed, lod, falloff, scale }, n) {
   noiseSeed(seed);
   noiseDetail(lod, falloff);
   const values = [];
