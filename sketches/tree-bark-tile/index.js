@@ -22,10 +22,16 @@ const DEFAULT_PRESET_NAME = "default";
  */
 function bindParamsToPane(pane, params) {}
 
+const IMG_SIZE = 2048;
+const IMG_SEGMENTS = 128;
+const IMG_SEGMENT_SIZE = IMG_SIZE / IMG_SEGMENTS;
+const CANVAS_SIZE = 800;
+
 /**
  * @param {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<Params>} params
  */
 function mountSketch(params) {
+  /** @type {import("../../vendor/p5@1.11.11/types/index.js").Image} */
   let img;
 
   globalThis.preload = function () {
@@ -33,10 +39,36 @@ function mountSketch(params) {
   };
 
   globalThis.setup = function () {
-    createCanvas(800, 800);
+    const CANVAS_SEGMENT_SIZE = map(
+      IMG_SEGMENT_SIZE,
+      0,
+      IMG_SIZE,
+      0,
+      CANVAS_SIZE
+    );
 
-    // Draw the image.
-    image(img, 0, 0, 800, 800);
+    createCanvas(CANVAS_SIZE, CANVAS_SIZE);
+
+    // image(img, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+    img.loadPixels();
+
+    noStroke();
+
+    for (let y = 0; y < IMG_SEGMENTS; y++) {
+      for (let x = 0; x < IMG_SEGMENTS; x++) {
+        const indexX = x * IMG_SEGMENT_SIZE * 4;
+        const indexY = y * IMG_SEGMENT_SIZE * 4 * IMG_SIZE;
+
+        const value = img.pixels[indexY + indexX];
+
+        const drawX = map(x, 0, IMG_SEGMENTS, 0, CANVAS_SIZE);
+        const drawY = map(y, 0, IMG_SEGMENTS, 0, CANVAS_SIZE);
+
+        fill(value);
+        circle(drawX, drawY, CANVAS_SEGMENT_SIZE);
+      }
+    }
   };
 
   globalThis.draw = function () {};
