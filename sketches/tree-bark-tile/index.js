@@ -62,11 +62,16 @@ function mountSketch(params) {
 
         const value = img.pixels[indexY + indexX];
 
-        const drawX = map(x, 0, IMG_SEGMENTS, 0, CANVAS_SIZE);
-        const drawY = map(y, 0, IMG_SEGMENTS, 0, CANVAS_SIZE);
+        const drawX = map(x, 0, IMG_SEGMENTS, 0, CANVAS_SIZE / 2);
+        const drawX2 = map(x, 0, IMG_SEGMENTS, CANVAS_SIZE / 2, CANVAS_SIZE);
+        const drawY = map(y, 0, IMG_SEGMENTS, 0, CANVAS_SIZE / 2);
+        const drawY2 = map(y, 0, IMG_SEGMENTS, CANVAS_SIZE / 2, CANVAS_SIZE);
 
         fill(value);
         circle(drawX, drawY, CANVAS_SEGMENT_SIZE);
+        circle(drawX2, drawY, CANVAS_SEGMENT_SIZE);
+        circle(drawX, drawY2, CANVAS_SEGMENT_SIZE);
+        circle(drawX2, drawY2, CANVAS_SEGMENT_SIZE);
       }
     }
   };
