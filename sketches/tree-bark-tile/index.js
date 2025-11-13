@@ -23,9 +23,10 @@ const DEFAULT_PRESET_NAME = "default";
 function bindParamsToPane(pane, params) {}
 
 const IMG_SIZE = 2048;
-const IMG_SEGMENTS = 128;
-const IMG_SEGMENT_SIZE = IMG_SIZE / IMG_SEGMENTS;
+const IMG_SEGMENTS = 256;
+const IMG_SEGMENT_SIZE = Math.round(IMG_SIZE / IMG_SEGMENTS);
 const CANVAS_SIZE = 800;
+const CANVAS_SEGMENT_SIZE = (IMG_SEGMENT_SIZE / IMG_SIZE) * CANVAS_SIZE;
 
 /**
  * @param {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<Params>} params
@@ -35,45 +36,42 @@ function mountSketch(params) {
   let img;
 
   globalThis.preload = function () {
-    img = loadImage("assets/tile.jpg");
+    img = loadImage("assets/tile2.jpg");
   };
 
   globalThis.setup = function () {
-    const CANVAS_SEGMENT_SIZE = map(
-      IMG_SEGMENT_SIZE,
-      0,
-      IMG_SIZE,
-      0,
-      CANVAS_SIZE
-    );
-
     createCanvas(CANVAS_SIZE, CANVAS_SIZE);
 
-    // image(img, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+    // tree texture
 
     img.loadPixels();
 
+    background("lightgray");
+
     noStroke();
+    fill(0);
 
     for (let y = 0; y < IMG_SEGMENTS; y++) {
       for (let x = 0; x < IMG_SEGMENTS; x++) {
         const indexX = x * IMG_SEGMENT_SIZE * 4;
         const indexY = y * IMG_SEGMENT_SIZE * 4 * IMG_SIZE;
 
-        const value = img.pixels[indexY + indexX];
+        const value = map(img.pixels[indexY + indexX], 0, 255, 0, 9);
 
-        const drawX = map(x, 0, IMG_SEGMENTS, 0, CANVAS_SIZE / 2);
-        const drawX2 = map(x, 0, IMG_SEGMENTS, CANVAS_SIZE / 2, CANVAS_SIZE);
-        const drawY = map(y, 0, IMG_SEGMENTS, 0, CANVAS_SIZE / 2);
-        const drawY2 = map(y, 0, IMG_SEGMENTS, CANVAS_SIZE / 2, CANVAS_SIZE);
+        const drawX = map(x, 0, IMG_SEGMENTS, 0, CANVAS_SIZE);
+        const drawY = map(y, 0, IMG_SEGMENTS, 0, CANVAS_SIZE);
 
-        fill(value);
-        circle(drawX, drawY, CANVAS_SEGMENT_SIZE);
-        circle(drawX2, drawY, CANVAS_SEGMENT_SIZE);
-        circle(drawX, drawY2, CANVAS_SEGMENT_SIZE);
-        circle(drawX2, drawY2, CANVAS_SEGMENT_SIZE);
+        diceTexture(drawX, drawY, CANVAS_SEGMENT_SIZE, value, 0.9, circle);
       }
     }
+
+    // frame
+
+    stroke(0);
+    noFill();
+    strokeWeight(50);
+
+    rect(0, 0, 800, 800);
   };
 
   globalThis.draw = function () {};
@@ -82,6 +80,118 @@ function mountSketch(params) {
 // #endregion
 
 // #region lib: sketch
+
+/**
+ * Draw the face of a dice at the given size and coordinates.
+ *
+ * @param {number} x
+ * @param {number} y
+ * @param {number} size
+ * @param {number} value [0, 9] the dice value
+ * @param {number} pipScale [0, 1] the ratio of a pip's 'full size'. 0 - no pip, 1 - pips are touching
+ * @param {function(number, number, number): void} callback callback for drawing the pip at (x, y, size)
+ */
+function diceTexture(x, y, size, value, pipScale, callback) {
+  value = Math.round(constrain(value, 0, 9));
+
+  const marginSize = (size / 3) * (1 - pipScale);
+  const pipSize = size / 3 - marginSize;
+  const gridLength = marginSize + pipSize;
+
+  let points = [];
+
+  if (value === 1) {
+    points = [[x, y]];
+  }
+
+  if (value === 2) {
+    points = [
+      [x - gridLength, y - gridLength],
+      [x + gridLength, y + gridLength],
+    ];
+  }
+
+  if (value === 3) {
+    points = [
+      [x - gridLength, y - gridLength],
+      [x, y],
+      [x + gridLength, y + gridLength],
+    ];
+  }
+
+  if (value === 4) {
+    points = [
+      [x - gridLength, y - gridLength],
+      [x + gridLength, y - gridLength],
+      [x - gridLength, y + gridLength],
+      [x + gridLength, y + gridLength],
+    ];
+  }
+
+  if (value === 5) {
+    points = [
+      [x - gridLength, y - gridLength],
+      [x + gridLength, y - gridLength],
+      [x, y],
+      [x - gridLength, y + gridLength],
+      [x + gridLength, y + gridLength],
+    ];
+  }
+
+  if (value === 6) {
+    points = [
+      [x - gridLength, y - gridLength],
+      [x + gridLength, y - gridLength],
+      [x - gridLength, y],
+      [x + gridLength, y],
+      [x - gridLength, y + gridLength],
+      [x + gridLength, y + gridLength],
+    ];
+  }
+
+  if (value === 7) {
+    points = [
+      [x - gridLength, y - gridLength],
+      [x + gridLength, y - gridLength],
+      [x - gridLength, y],
+      [x + gridLength, y],
+      [x - gridLength, y + gridLength],
+      [x + gridLength, y + gridLength],
+      [x, y],
+    ];
+  }
+
+  if (value === 8) {
+    points = [
+      [x - gridLength, y - gridLength],
+      [x, y - gridLength],
+      [x + gridLength, y - gridLength],
+      [x - gridLength, y],
+      [x + gridLength, y],
+      [x - gridLength, y + gridLength],
+      [x, y + gridLength],
+      [x + gridLength, y + gridLength],
+    ];
+  }
+
+  if (value === 9) {
+    points = [
+      [x - gridLength, y - gridLength],
+      [x, y - gridLength],
+      [x + gridLength, y - gridLength],
+      [x - gridLength, y],
+      [x, y],
+      [x + gridLength, y],
+      [x - gridLength, y + gridLength],
+      [x, y + gridLength],
+      [x + gridLength, y + gridLength],
+    ];
+  }
+
+  for (const [x, y] of points) {
+    callback(x, y, pipSize);
+  }
+}
 
 // #endregion
 
