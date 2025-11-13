@@ -247,7 +247,7 @@ function getPresetNames() {
 
 // #endregion
 
-// #region lib: tweakpane
+// #region lib: controls
 
 /**
  * @param {string} title
@@ -329,6 +329,22 @@ function getTitleOrDefault() {
   return document.querySelector("title").textContent || "sketch";
 }
 
+function listenForFullscreenEvent() {
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "f" || event.key === "F") {
+      toggleFullscreen();
+    }
+  });
+}
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+  } else {
+    document.exitFullscreen();
+  }
+}
+
 // #endregion
 
 // #region bootstrap
@@ -337,6 +353,7 @@ const PRESET_NAME = getPresetNameOrDefault();
 const PARAMS = ref(getParamsForPresetName(PRESET_NAME));
 
 mountTweakpane(`${getTitleOrDefault()} (${PRESET_NAME})`);
+listenForFullscreenEvent();
 mountSketch(PARAMS);
 
 // #endregion
