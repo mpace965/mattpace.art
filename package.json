@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "eleventy --serve",
-    "build": "eleventy"
+    "build": "eleventy",
+    "new": "node scripts/new-sketch.js"
   },
   "keywords": [],
   "author": "",
