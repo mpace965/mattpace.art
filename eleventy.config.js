@@ -1,4 +1,8 @@
 export default function (eleventyConfig) {
+  eleventyConfig.ignores.add("sketches/_template");
+  eleventyConfig.ignores.add("CLAUDE.md");
+
+
   eleventyConfig.addPassthroughCopy("vendor", {
     filter: ["**", "!**/types", "!**/types/**"],
   });
@@ -10,6 +14,7 @@ export default function (eleventyConfig) {
       "!**/jsconfig.json",
       "!_template",
       "!_template/*",
+      "!**/*.html",
     ],
   });
 }

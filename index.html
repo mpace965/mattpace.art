@@ -1,0 +1,76 @@
+---
+title: Sketchbook
+---
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sketchbook</title>
+    <style>
+      body {
+        font-family: monospace;
+        max-width: 600px;
+        margin: 4rem auto;
+        padding: 0 1.5rem;
+      }
+
+      h1 {
+        font-size: 1rem;
+        margin-bottom: 2rem;
+      }
+
+      ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      li {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 1rem;
+        align-items: baseline;
+      }
+
+      .date {
+        color: #888;
+        flex-shrink: 0;
+      }
+
+      .info {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+      }
+
+      a {
+        color: inherit;
+      }
+
+      .description {
+        font-size: 0.85rem;
+        color: #888;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>sketchbook</h1>
+    <ul>
+      {%- assign sketches = collections.all | sort: "date" | reverse %}
+      {%- for sketch in sketches %}
+        {%- unless sketch.url == "/" or sketch.url contains "/_template/" %}
+        <li>
+          <span class="date">{{ sketch.date | date: "%Y-%m-%d" }}</span>
+          <div class="info">
+            <a href="{{ sketch.url }}">{{ sketch.data.title }}</a>
+            {%- if sketch.data.description %}
+            <span class="description">{{ sketch.data.description }}</span>
+            {%- endif %}
+          </div>
+        </li>
+        {%- endunless %}
+      {%- endfor %}
+    </ul>
+  </body>
+</html>
