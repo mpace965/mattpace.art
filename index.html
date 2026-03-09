@@ -57,9 +57,8 @@ title: Sketchbook
   <body>
     <h1>sketchbook</h1>
     <ul>
-      {%- assign sketches = collections.all | sort: "date" | reverse %}
+      {%- assign sketches = collections.sketch | sort: "date" | reverse %}
       {%- for sketch in sketches %}
-        {%- unless sketch.url == "/" or sketch.url contains "/_template/" %}
         <li>
           <span class="date">{{ sketch.date | date: "%Y-%m-%d" }}</span>
           <div class="info">
@@ -69,7 +68,6 @@ title: Sketchbook
             {%- endif %}
           </div>
         </li>
-        {%- endunless %}
       {%- endfor %}
     </ul>
   </body>
