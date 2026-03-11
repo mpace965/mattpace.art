@@ -35,6 +35,25 @@ function mountSketch(params) {
 
 // #region lib: sketch
 
+/**
+ * Returns a ref holding the side length of the largest square that fits the
+ * viewport. The value updates automatically on window resize.
+ *
+ * Usage in mountSketch:
+ *   const size = squareCanvasSize();
+ *   // setup:        createCanvas(size.value, size.value)
+ *   // windowResized: resizeCanvas(size.value, size.value); redraw();
+ *
+ * @returns {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<number>}
+ */
+function squareCanvasSize() {
+  const size = ref(Math.min(window.innerWidth, window.innerHeight));
+  window.addEventListener("resize", () => {
+    size.value = Math.min(window.innerWidth, window.innerHeight);
+  });
+  return size;
+}
+
 // #endregion
 
 // #region lib: parameters and presets

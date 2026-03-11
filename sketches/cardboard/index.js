@@ -22,12 +22,12 @@ const DEFAULT_PRESET_NAME = "default";
  */
 function bindParamsToPane(pane, params) { }
 
-const CANVAS_SIZE = 800;
-
 /**
  * @param {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<Params>} params
  */
 function mountSketch(params) {
+  const size = squareCanvasSize();
+
   /** @type {import("../../vendor/p5@1.11.11/types/index.js").Image} */
   let img;
   /** @type {import("../../vendor/p5@1.11.11/types/index.js").Graphics} */
@@ -38,15 +38,21 @@ function mountSketch(params) {
   };
 
   globalThis.setup = function () {
-    createCanvas(CANVAS_SIZE, CANVAS_SIZE);
-    mask = createGraphics(CANVAS_SIZE, CANVAS_SIZE)
+    createCanvas(size.value, size.value);
+    mask = createGraphics(size.value, size.value);
     noLoop();
   }
 
-  globalThis.draw = function () {
-    image(img, 0, 0, CANVAS_SIZE, CANVAS_SIZE);
+  globalThis.windowResized = function () {
+    resizeCanvas(size.value, size.value);
+    mask.resizeCanvas(size.value, size.value);
+    redraw();
+  };
 
-    drawMask(mask)
+  globalThis.draw = function () {
+    image(img, 0, 0, size.value, size.value);
+
+    drawMask(mask, size.value);
 
     blendMode(DIFFERENCE);
     image(mask, 0, 0);
@@ -61,11 +67,32 @@ function mountSketch(params) {
 /**
  * Draw the mask used to invert the image.
  *
- * @param {import("../../vendor/p5@1.11.11/types/index.js").Graphics} mask  */
-function drawMask(mask) {
+ * @param {import("../../vendor/p5@1.11.11/types/index.js").Graphics} mask
+ * @param {number} size
+ */
+function drawMask(mask, size) {
   mask.noStroke();
   mask.fill(255);
-  mask.circle(400, 400, 400);
+  mask.circle(size / 2, size / 2, size / 2);
+}
+
+/**
+ * Returns a ref holding the side length of the largest square that fits the
+ * viewport. The value updates automatically on window resize.
+ *
+ * Usage in mountSketch:
+ *   const size = squareCanvasSize();
+ *   // createCanvas(size.value, size.value)
+ *   // windowResized: resizeCanvas(size.value, size.value)
+ *
+ * @returns {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<number>}
+ */
+function squareCanvasSize() {
+  const size = ref(Math.min(window.innerWidth, window.innerHeight));
+  window.addEventListener("resize", () => {
+    size.value = Math.min(window.innerWidth, window.innerHeight);
+  });
+  return size;
 }
 
 // #endregion
