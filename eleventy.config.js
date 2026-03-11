@@ -7,6 +7,8 @@ export default function (eleventyConfig) {
   });
 
 
+  eleventyConfig.addPassthroughCopy("CNAME");
+
   eleventyConfig.addPassthroughCopy("vendor", {
     filter: ["**", "!**/types", "!**/types/**"],
   });
