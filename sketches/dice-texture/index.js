@@ -317,6 +317,8 @@ function getPresetNames() {
  */
 function mountTweakpane(title) {
   const PANE = new Pane({ title });
+  const isProd = window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1";
+  if (isProd) toggleVisibility(PANE.element);
   listenForHidePaneEvent(PANE.element);
 
   bindParamsToPane(PANE, PARAMS.value);
@@ -333,6 +335,13 @@ function listenForHidePaneEvent(paneElement) {
     if (e.key === "h") {
       toggleVisibility(paneElement);
     }
+  });
+
+  let lastTap = 0;
+  document.addEventListener("touchend", () => {
+    const now = Date.now();
+    if (now - lastTap < 300) toggleVisibility(paneElement);
+    lastTap = now;
   });
 }
 
