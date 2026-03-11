@@ -13,6 +13,9 @@ title: matt's pixel library
         max-width: 800px;
         margin: 4rem auto;
         padding: 0 1.5rem;
+        min-height: calc(100vh - 8rem);
+        display: flex;
+        flex-direction: column;
       }
 
       h1 {
@@ -67,6 +70,13 @@ title: matt's pixel library
         font-size: 0.85rem;
         color: #888;
       }
+
+      footer {
+        margin-top: auto;
+        padding-top: 4rem;
+        font-size: 0.8rem;
+        color: #888;
+      }
     </style>
   </head>
   <body>
@@ -92,5 +102,8 @@ title: matt's pixel library
         </li>
       {%- endfor %}
     </ul>
+    <footer>
+      <a href="https://mattpace.art">matt's pixel library</a> © 2026 by <a href="https://github.com/mpace965">Matt Pace</a>, all art and assets are licensed under <a href="https://creativecommons.org/licenses/by-nc/4.0/">CC BY-NC 4.0</a><img src="https://mirrors.creativecommons.org/presskit/icons/cc.svg" alt="" style="max-width: 1em;max-height:1em;margin-left: .2em;"><img src="https://mirrors.creativecommons.org/presskit/icons/by.svg" alt="" style="max-width: 1em;max-height:1em;margin-left: .2em;"><img src="https://mirrors.creativecommons.org/presskit/icons/nc.svg" alt="" style="max-width: 1em;max-height:1em;margin-left: .2em;">
+    </footer>
   </body>
 </html>
