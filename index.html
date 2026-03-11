@@ -48,6 +48,16 @@ title: matt's pixel library
         color: inherit;
       }
 
+      .preset-link {
+        font-size: 0.85rem;
+        color: #7ec8e3;
+        text-decoration: none;
+      }
+
+      .preset-link:hover {
+        text-decoration: underline;
+      }
+
       .description {
         font-size: 0.85rem;
         color: #888;
@@ -62,7 +72,14 @@ title: matt's pixel library
         <li>
           <span class="date">{{ sketch.date | date: "%Y-%m-%d" }}</span>
           <div class="info">
-            <a href="{{ sketch.url }}">{{ sketch.data.title }}</a>
+            <span>
+              <a href="{{ sketch.url }}">{{ sketch.data.title }}</a>
+              {%- if sketch.data.presets %}
+                <span style="margin-left: 0.75rem;">{%- for preset in sketch.data.presets %}
+                <a class="preset-link" href="{{ sketch.url }}?preset={{ preset }}">{{ preset }}</a>
+                {%- endfor %}</span>
+              {%- endif %}
+            </span>
             {%- if sketch.data.description %}
             <span class="description">{{ sketch.data.description }}</span>
             {%- endif %}
