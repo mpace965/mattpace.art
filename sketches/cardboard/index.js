@@ -6,12 +6,13 @@ import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
 
 /**
  * @typedef Params
- * @property {number} foo
+ * @property {number} count
+ * @property {number} radius
  */
 
 /** @type {Record<string, Params>} */
 const PRESETS = {
-  default: { foo: 0 },
+  default: { count: 8, radius: 1 },
 };
 
 const DEFAULT_PRESET_NAME = "default";
@@ -20,7 +21,10 @@ const DEFAULT_PRESET_NAME = "default";
  * @param {Pane} pane
  * @param {Params} params
  */
-function bindParamsToPane(pane, params) { }
+function bindParamsToPane(pane, params) {
+  pane.addBinding(params, "count", { min: 1, max: 20, step: 1 });
+  pane.addBinding(params, "radius", { min: 0, max: 1, step: 0.01 });
+}
 
 /**
  * @param {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<Params>} params
@@ -40,7 +44,6 @@ function mountSketch(params) {
   globalThis.setup = function () {
     createCanvas(size.value, size.value);
     mask = createGraphics(size.value, size.value);
-    noLoop();
   }
 
   globalThis.windowResized = function () {
@@ -52,7 +55,7 @@ function mountSketch(params) {
   globalThis.draw = function () {
     image(img, 0, 0, size.value, size.value);
 
-    drawMask(mask, size.value);
+    drawMask(mask, size.value, params.value.count, params.value.radius);
 
     blendMode(DIFFERENCE);
     image(mask, 0, 0);
@@ -69,11 +72,23 @@ function mountSketch(params) {
  *
  * @param {import("../../vendor/p5@1.11.11/types/index.js").Graphics} mask
  * @param {number} size
+ * @param {number} count
+ * @param {number} radius
  */
-function drawMask(mask, size) {
+function drawMask(mask, size, count, radius) {
+  mask.clear();
   mask.noStroke();
   mask.fill(255);
-  mask.circle(size / 2, size / 2, size / 2);
+
+  const cell = size / count;
+
+  for (let row = 0; row < count; row++) {
+    for (let col = 0; col < count; col++) {
+      const cx = (col + 0.5) * cell;
+      const cy = (row + 0.5) * cell;
+      mask.circle(cx, cy, cell * radius);
+    }
+  }
 }
 
 /**
