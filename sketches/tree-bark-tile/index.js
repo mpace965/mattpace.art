@@ -25,13 +25,13 @@ function bindParamsToPane(pane, params) {}
 const IMG_SIZE = 2048;
 const IMG_SEGMENTS = 256;
 const IMG_SEGMENT_SIZE = Math.round(IMG_SIZE / IMG_SEGMENTS);
-const CANVAS_SIZE = 800;
-const CANVAS_SEGMENT_SIZE = (IMG_SEGMENT_SIZE / IMG_SIZE) * CANVAS_SIZE;
 
 /**
  * @param {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<Params>} params
  */
 function mountSketch(params) {
+  const size = squareCanvasSize();
+
   /** @type {import("../../vendor/p5@1.11.11/types/index.js").Image} */
   let img;
 
@@ -40,7 +40,8 @@ function mountSketch(params) {
   };
 
   globalThis.setup = function () {
-    createCanvas(CANVAS_SIZE, CANVAS_SIZE);
+    const canvasSegmentSize = (IMG_SEGMENT_SIZE / IMG_SIZE) * size.value;
+    createCanvas(size.value, size.value);
 
     // tree texture
 
@@ -58,10 +59,10 @@ function mountSketch(params) {
 
         const value = map(img.pixels[indexY + indexX], 0, 255, 0, 9);
 
-        const drawX = map(x, 0, IMG_SEGMENTS, 0, CANVAS_SIZE);
-        const drawY = map(y, 0, IMG_SEGMENTS, 0, CANVAS_SIZE);
+        const drawX = map(x, 0, IMG_SEGMENTS, 0, size.value);
+        const drawY = map(y, 0, IMG_SEGMENTS, 0, size.value);
 
-        diceTexture(drawX, drawY, CANVAS_SEGMENT_SIZE, value, 0.9, circle);
+        diceTexture(drawX, drawY, canvasSegmentSize, value, 0.9, circle);
       }
     }
 
@@ -71,7 +72,7 @@ function mountSketch(params) {
     noFill();
     strokeWeight(50);
 
-    rect(0, 0, 800, 800);
+    rect(0, 0, size.value, size.value);
   };
 
   globalThis.draw = function () {};
@@ -80,6 +81,20 @@ function mountSketch(params) {
 // #endregion
 
 // #region lib: sketch
+
+/**
+ * Returns a ref holding the side length of the largest square that fits the
+ * viewport. The value updates automatically on window resize.
+ *
+ * @returns {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<number>}
+ */
+function squareCanvasSize() {
+  const size = ref(Math.min(window.innerWidth, window.innerHeight));
+  window.addEventListener("resize", () => {
+    size.value = Math.min(window.innerWidth, window.innerHeight);
+  });
+  return size;
+}
 
 /**
  * Draw the face of a dice at the given size and coordinates.

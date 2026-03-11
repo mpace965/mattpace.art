@@ -9,7 +9,6 @@ import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
 
 /**
  * @typedef Params
- * @prop {number} canvasSize
  * @prop {number} pipScale
  * @prop {number} gridLength
  * @prop {NoiseParams} noise
@@ -26,7 +25,6 @@ import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
 /** @type {Record<string, Params>} */
 const PRESETS = {
   terrain: {
-    canvasSize: 800,
     pipScale: 0.75,
     gridLength: 64,
     noise: {
@@ -37,7 +35,6 @@ const PRESETS = {
     },
   },
   face: {
-    canvasSize: 800,
     pipScale: 0.75,
     gridLength: 100,
     noise: {
@@ -70,8 +67,9 @@ function bindParamsToPane(pane, params) {
  * @param {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<Params>} params
  */
 function mountSketch(params) {
+  const size = squareCanvasSize();
   const diceSize = computed(
-    () => params.value.canvasSize / params.value.gridLength
+    () => size.value / params.value.gridLength
   );
   const diceOffset = computed(() => diceSize.value / 2);
   const diceValueGrid = computed(() =>
@@ -79,7 +77,11 @@ function mountSketch(params) {
   );
 
   globalThis.setup = function () {
-    createCanvas(params.value.canvasSize, params.value.canvasSize);
+    createCanvas(size.value, size.value);
+  };
+
+  globalThis.windowResized = function () {
+    resizeCanvas(size.value, size.value);
   };
 
   globalThis.draw = function () {
@@ -104,6 +106,20 @@ function mountSketch(params) {
 // #endregion
 
 // #region lib: sketch
+
+/**
+ * Returns a ref holding the side length of the largest square that fits the
+ * viewport. The value updates automatically on window resize.
+ *
+ * @returns {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<number>}
+ */
+function squareCanvasSize() {
+  const size = ref(Math.min(window.innerWidth, window.innerHeight));
+  window.addEventListener("resize", () => {
+    size.value = Math.min(window.innerWidth, window.innerHeight);
+  });
+  return size;
+}
 
 /**
  * Sample an n x n grid of dice values using noise configured with the given parameters.
