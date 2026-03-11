@@ -1,12 +1,12 @@
 ---
-title: Sketchbook
+title: matt's pixel library
 ---
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sketchbook</title>
+    <title>{{ title }}</title>
     <style>
       body {
         font-family: monospace;
@@ -55,7 +55,7 @@ title: Sketchbook
     </style>
   </head>
   <body>
-    <h1>sketchbook</h1>
+    <h1>{{ title }}</h1>
     <ul>
       {%- assign sketches = collections.sketch | sort: "date" | reverse %}
       {%- for sketch in sketches %}
