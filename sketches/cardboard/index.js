@@ -12,10 +12,10 @@ import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
 
 /** @type {Record<string, Params>} */
 const PRESETS = {
-  default: { count: 3, radius: 0.75 },
+  nine: { count: 3, radius: 0.75 },
 };
 
-const DEFAULT_PRESET_NAME = "default";
+const DEFAULT_PRESET_NAME = "nine";
 
 /**
  * @param {Pane} pane
