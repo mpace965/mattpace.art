@@ -34,7 +34,7 @@ const DEFAULT_PRESET_NAME = "default";
  * @param {Params} params
  */
 function bindParamsToPane(pane, params) {
-  pane.addBinding(params, "count", { min: 1, max: 100, step: 1 });
+  pane.addBinding(params, "count", { min: 1, max: 50, step: 1 });
   pane.addBinding(params, "vertMargin", { min: 0, max: 1, step: 0.01 });
   pane.addBinding(params, "horzMargin", { min: 0, max: 1, step: 0.01 });
   pane.addBinding(params, "widthFn", {
