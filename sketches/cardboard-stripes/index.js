@@ -19,13 +19,14 @@ const WIDTH_FNS = {
  * @property {number} vertMargin
  * @property {number} horzMargin
  * @property {string} widthFn
+ * @property {boolean} invertFn
  * @property {number} minWidth
  * @property {string} align
  */
 
 /** @type {Record<string, Params>} */
 const PRESETS = {
-  default: { "count": 3, "vertMargin": 0.45, "horzMargin": 0.2, "widthFn": "uniform", "minWidth": 0, "align": "center" }
+  default: { "count": 3, "vertMargin": 0.45, "horzMargin": 0.2, "widthFn": "uniform", "invertFn": false, "minWidth": 0, "align": "center" }
 };
 
 const DEFAULT_PRESET_NAME = "default";
@@ -43,6 +44,7 @@ function bindParamsToPane(pane, params) {
     label: "widthFn",
     options: Object.fromEntries(Object.keys(WIDTH_FNS).map((k) => [k, k])),
   });
+  pane.addBinding(params, "invertFn");
   pane.addBinding(params, "align", {
     options: { center: "center", left: "left", right: "right" },
   });
@@ -75,7 +77,7 @@ function mountSketch(params) {
   };
 
   function drawMask() {
-    const { count, vertMargin, horzMargin, widthFn, minWidth, align } = params.value;
+    const { count, vertMargin, horzMargin, widthFn, invertFn, minWidth, align } = params.value;
 
     mask.clear();
     mask.noStroke();
@@ -89,7 +91,8 @@ function mountSketch(params) {
     const rectH = (size.value - totalGap) / count;
 
     for (let i = 0; i < count; i++) {
-      const v = WIDTH_FNS[widthFn]?.(i, count) ?? 1.0;
+      const raw = WIDTH_FNS[widthFn]?.(i, count) ?? 1.0;
+      const v = invertFn ? 1 - raw : raw;
       const rectW = availableWidth * map(v, 0, 1, minWidth, 1);
       const offset = align === "left" ? 0 : align === "right" ? availableWidth - rectW : (availableWidth - rectW) / 2;
       const x = inset + offset;
