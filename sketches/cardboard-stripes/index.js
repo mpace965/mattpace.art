@@ -10,7 +10,6 @@ const WIDTH_FNS = {
   linear: (i, count) => count < 2 ? 1.0 : i / (count - 1),
   exponential: (i, count) => count < 2 ? 1.0 : (Math.exp(i / (count - 1)) - 1) / (Math.E - 1),
   sinusoidal: (i, count) => count < 2 ? 1.0 : Math.sin(Math.PI * i / (count - 1)),
-  wave: (i, count) => 0.5 + 0.5 * Math.sin(2 * Math.PI * i / count),
 };
 
 /**
