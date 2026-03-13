@@ -4,6 +4,15 @@ import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
 
 // #region sketch
 
+/** @type {Record<string, (i: number, count: number) => number>} */
+const WIDTH_FNS = {
+  uniform: (_i, _count) => 1.0,
+  linear: (i, count) => count < 2 ? 1.0 : i / (count - 1),
+  exponential: (i, count) => count < 2 ? 1.0 : (Math.exp(i / (count - 1)) - 1) / (Math.E - 1),
+  sinusoidal: (i, count) => count < 2 ? 1.0 : Math.sin(Math.PI * i / (count - 1)),
+  wave: (i, count) => 0.5 + 0.5 * Math.sin(2 * Math.PI * i / count),
+};
+
 /**
  * @typedef Params
  * @property {number} count
@@ -11,11 +20,12 @@ import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
  * @property {number} horzMargin
  * @property {string} widthFn
  * @property {number} minWidth
+ * @property {string} align
  */
 
 /** @type {Record<string, Params>} */
 const PRESETS = {
-  default: { "count": 3, "vertMargin": 0.45, "horzMargin": 0.2, "widthFn": "uniform", "minWidth": 0 }
+  default: { "count": 3, "vertMargin": 0.45, "horzMargin": 0.2, "widthFn": "uniform", "minWidth": 0, "align": "center" }
 };
 
 const DEFAULT_PRESET_NAME = "default";
@@ -32,6 +42,9 @@ function bindParamsToPane(pane, params) {
   pane.addBinding(params, "widthFn", {
     label: "widthFn",
     options: Object.fromEntries(Object.keys(WIDTH_FNS).map((k) => [k, k])),
+  });
+  pane.addBinding(params, "align", {
+    options: { center: "center", left: "left", right: "right" },
   });
 }
 
@@ -61,76 +74,39 @@ function mountSketch(params) {
     redraw();
   };
 
+  function drawMask() {
+    const { count, vertMargin, horzMargin, widthFn, minWidth, align } = params.value;
+
+    mask.clear();
+    mask.noStroke();
+    mask.fill(255);
+
+    const inset = horzMargin * 0.5 * size.value;
+    const availableWidth = size.value - 2 * inset;
+
+    const totalGap = vertMargin * size.value;
+    const gap = totalGap / (count + 1);
+    const rectH = (size.value - totalGap) / count;
+
+    for (let i = 0; i < count; i++) {
+      const v = WIDTH_FNS[widthFn]?.(i, count) ?? 1.0;
+      const rectW = availableWidth * map(v, 0, 1, minWidth, 1);
+      const offset = align === "left" ? 0 : align === "right" ? availableWidth - rectW : (availableWidth - rectW) / 2;
+      const x = inset + offset;
+      const y = gap + i * (rectH + gap);
+      mask.rect(x, y, rectW, rectH);
+    }
+  }
+
   globalThis.draw = function () {
     image(img, 0, 0, size.value, size.value);
 
-    drawMask(mask, size.value, params.value.count, params.value.vertMargin, params.value.horzMargin, params.value.widthFn, params.value.minWidth);
+    drawMask();
 
     blendMode(DIFFERENCE);
     image(mask, 0, 0);
     blendMode(BLEND);
   };
-}
-
-// #endregion
-
-// #region lib: sketch
-
-/**
- * Proportion functions: each takes the current rectangle index and total count,
- * and returns a value in [0, 1] representing that rectangle's width as a
- * fraction of the available horizontal span.
- *
- * @type {Record<string, (i: number, count: number) => number>}
- */
-const WIDTH_FNS = {
-  uniform: (_i, _count) => 1.0,
-  linear: (i, count) => count < 2 ? 1.0 : i / (count - 1),
-  exponential: (i, count) => count < 2 ? 1.0 : (Math.exp(i / (count - 1)) - 1) / (Math.E - 1),
-  sinusoidal: (i, count) => count < 2 ? 1.0 : Math.sin(Math.PI * i / (count - 1)),
-  wave: (i, count) => 0.5 + 0.5 * Math.sin(2 * Math.PI * i / count),
-};
-
-/**
- * @param {string} widthFn
- * @param {number} i
- * @param {number} count
- * @returns {number} value in [0, 1]
- */
-function getRectWidthProportion(widthFn, i, count, minWidth) {
-  const v = WIDTH_FNS[widthFn]?.(i, count) ?? 1.0;
-  return map(v, 0, 1, minWidth, 1);
-}
-
-/**
- * Draw the mask used to invert the image — a stack of horizontal rectangles.
- *
- * @param {import("../../vendor/p5@1.11.11/types/index.js").Graphics} mask
- * @param {number} size
- * @param {number} count      - number of rectangles
- * @param {number} vertMargin - vertical gap between rectangles (px)
- * @param {number} horzMargin - horizontal inset from each canvas edge (px)
- * @param {string} widthFn   - key into WIDTH_FNS
- * @param {number} minWidth  - minimum width proportion in [0, 1]
- */
-function drawMask(mask, size, count, vertMargin, horzMargin, widthFn, minWidth) {
-  mask.clear();
-  mask.noStroke();
-  mask.fill(255);
-
-  const inset = horzMargin * 0.5 * size;
-  const availableWidth = size - 2 * inset;
-
-  const totalGap = vertMargin * size;
-  const gap = totalGap / (count + 1);
-  const rectH = (size - totalGap) / count;
-
-  for (let i = 0; i < count; i++) {
-    const rectW = availableWidth * getRectWidthProportion(widthFn, i, count, minWidth);
-    const x = inset + (availableWidth - rectW) / 2;
-    const y = gap + i * (rectH + gap);
-    mask.rect(x, y, rectW, rectH);
-  }
 }
 
 /**
