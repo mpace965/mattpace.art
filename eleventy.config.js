@@ -9,6 +9,7 @@ export default function (eleventyConfig) {
 
   eleventyConfig.addPassthroughCopy("CNAME");
   eleventyConfig.addPassthroughCopy("favicon.png");
+  eleventyConfig.addPassthroughCopy("assets");
 
   eleventyConfig.addPassthroughCopy("vendor", {
     filter: ["**", "!**/types", "!**/types/**"],
