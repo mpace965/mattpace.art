@@ -24,7 +24,8 @@ const WIDTH_FNS = {
 
 /** @type {Record<string, Params>} */
 const PRESETS = {
-  default: { "count": 3, "vertMargin": 0.45, "horzMargin": 0.2, "widthFn": "uniform", "invertFn": false, "align": "center" }
+  default: { "count": 3, "vertMargin": 0.45, "horzMargin": 0.2, "widthFn": "uniform", "invertFn": false, "align": "center" },
+  steps: { "count": 5, "vertMargin": 0.39, "horzMargin": 0.11000000000000001, "widthFn": "linear", "invertFn": true, "align": "left" }
 };
 
 const DEFAULT_PRESET_NAME = "default";
