@@ -10,11 +10,12 @@ import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
  * @property {number} vertMargin
  * @property {number} horzMargin
  * @property {string} widthFn
+ * @property {number} minWidth
  */
 
 /** @type {Record<string, Params>} */
 const PRESETS = {
-  default: { count: 5, vertMargin: 0.1, horzMargin: 0.1, widthFn: "uniform" },
+  default: { "count": 3, "vertMargin": 0.45, "horzMargin": 0.2, "widthFn": "uniform", "minWidth": 0 }
 };
 
 const DEFAULT_PRESET_NAME = "default";
@@ -24,9 +25,10 @@ const DEFAULT_PRESET_NAME = "default";
  * @param {Params} params
  */
 function bindParamsToPane(pane, params) {
-  pane.addBinding(params, "count", { min: 1, max: 20, step: 1 });
+  pane.addBinding(params, "count", { min: 1, max: 100, step: 1 });
   pane.addBinding(params, "vertMargin", { min: 0, max: 1, step: 0.01 });
   pane.addBinding(params, "horzMargin", { min: 0, max: 1, step: 0.01 });
+  pane.addBinding(params, "minWidth", { min: 0, max: 1, step: 0.01 });
   pane.addBinding(params, "widthFn", {
     label: "widthFn",
     options: Object.fromEntries(Object.keys(WIDTH_FNS).map((k) => [k, k])),
@@ -62,7 +64,7 @@ function mountSketch(params) {
   globalThis.draw = function () {
     image(img, 0, 0, size.value, size.value);
 
-    drawMask(mask, size.value, params.value.count, params.value.vertMargin, params.value.horzMargin, params.value.widthFn);
+    drawMask(mask, size.value, params.value.count, params.value.vertMargin, params.value.horzMargin, params.value.widthFn, params.value.minWidth);
 
     blendMode(DIFFERENCE);
     image(mask, 0, 0);
@@ -83,6 +85,10 @@ function mountSketch(params) {
  */
 const WIDTH_FNS = {
   uniform: (_i, _count) => 1.0,
+  linear: (i, count) => count < 2 ? 1.0 : i / (count - 1),
+  exponential: (i, count) => count < 2 ? 1.0 : (Math.exp(i / (count - 1)) - 1) / (Math.E - 1),
+  sinusoidal: (i, count) => count < 2 ? 1.0 : Math.sin(Math.PI * i / (count - 1)),
+  wave: (i, count) => 0.5 + 0.5 * Math.sin(2 * Math.PI * i / count),
 };
 
 /**
@@ -91,8 +97,9 @@ const WIDTH_FNS = {
  * @param {number} count
  * @returns {number} value in [0, 1]
  */
-function getRectWidthProportion(widthFn, i, count) {
-  return WIDTH_FNS[widthFn]?.(i, count) ?? 1.0;
+function getRectWidthProportion(widthFn, i, count, minWidth) {
+  const v = WIDTH_FNS[widthFn]?.(i, count) ?? 1.0;
+  return map(v, 0, 1, minWidth, 1);
 }
 
 /**
@@ -104,8 +111,9 @@ function getRectWidthProportion(widthFn, i, count) {
  * @param {number} vertMargin - vertical gap between rectangles (px)
  * @param {number} horzMargin - horizontal inset from each canvas edge (px)
  * @param {string} widthFn   - key into WIDTH_FNS
+ * @param {number} minWidth  - minimum width proportion in [0, 1]
  */
-function drawMask(mask, size, count, vertMargin, horzMargin, widthFn) {
+function drawMask(mask, size, count, vertMargin, horzMargin, widthFn, minWidth) {
   mask.clear();
   mask.noStroke();
   mask.fill(255);
@@ -118,7 +126,7 @@ function drawMask(mask, size, count, vertMargin, horzMargin, widthFn) {
   const rectH = (size - totalGap) / count;
 
   for (let i = 0; i < count; i++) {
-    const rectW = availableWidth * getRectWidthProportion(widthFn, i, count);
+    const rectW = availableWidth * getRectWidthProportion(widthFn, i, count, minWidth);
     const x = inset + (availableWidth - rectW) / 2;
     const y = gap + i * (rectH + gap);
     mask.rect(x, y, rectW, rectH);
