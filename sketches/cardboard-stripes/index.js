@@ -9,11 +9,12 @@ import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
  * @property {number} count
  * @property {number} vertMargin
  * @property {number} horzMargin
+ * @property {string} widthFn
  */
 
 /** @type {Record<string, Params>} */
 const PRESETS = {
-  default: { count: 5, vertMargin: 0.1, horzMargin: 0.1 },
+  default: { count: 5, vertMargin: 0.1, horzMargin: 0.1, widthFn: "uniform" },
 };
 
 const DEFAULT_PRESET_NAME = "default";
@@ -26,6 +27,10 @@ function bindParamsToPane(pane, params) {
   pane.addBinding(params, "count", { min: 1, max: 20, step: 1 });
   pane.addBinding(params, "vertMargin", { min: 0, max: 1, step: 0.01 });
   pane.addBinding(params, "horzMargin", { min: 0, max: 1, step: 0.01 });
+  pane.addBinding(params, "widthFn", {
+    label: "widthFn",
+    options: Object.fromEntries(Object.keys(WIDTH_FNS).map((k) => [k, k])),
+  });
 }
 
 /**
@@ -57,7 +62,7 @@ function mountSketch(params) {
   globalThis.draw = function () {
     image(img, 0, 0, size.value, size.value);
 
-    drawMask(mask, size.value, params.value.count, params.value.vertMargin, params.value.horzMargin);
+    drawMask(mask, size.value, params.value.count, params.value.vertMargin, params.value.horzMargin, params.value.widthFn);
 
     blendMode(DIFFERENCE);
     image(mask, 0, 0);
@@ -70,13 +75,24 @@ function mountSketch(params) {
 // #region lib: sketch
 
 /**
- * Returns the width of each rectangle as a proportion of the available
- * horizontal span (canvas width minus both horizontal margins).
+ * Proportion functions: each takes the current rectangle index and total count,
+ * and returns a value in [0, 1] representing that rectangle's width as a
+ * fraction of the available horizontal span.
  *
+ * @type {Record<string, (i: number, count: number) => number>}
+ */
+const WIDTH_FNS = {
+  uniform: (_i, _count) => 1.0,
+};
+
+/**
+ * @param {string} widthFn
+ * @param {number} i
+ * @param {number} count
  * @returns {number} value in [0, 1]
  */
-function getRectWidthProportion() {
-  return 1.0;
+function getRectWidthProportion(widthFn, i, count) {
+  return WIDTH_FNS[widthFn]?.(i, count) ?? 1.0;
 }
 
 /**
@@ -87,22 +103,23 @@ function getRectWidthProportion() {
  * @param {number} count      - number of rectangles
  * @param {number} vertMargin - vertical gap between rectangles (px)
  * @param {number} horzMargin - horizontal inset from each canvas edge (px)
+ * @param {string} widthFn   - key into WIDTH_FNS
  */
-function drawMask(mask, size, count, vertMargin, horzMargin) {
+function drawMask(mask, size, count, vertMargin, horzMargin, widthFn) {
   mask.clear();
   mask.noStroke();
   mask.fill(255);
 
   const inset = horzMargin * 0.5 * size;
   const availableWidth = size - 2 * inset;
-  const rectW = availableWidth * getRectWidthProportion();
-  const x = inset + (availableWidth - rectW) / 2;
 
   const totalGap = vertMargin * size;
   const gap = totalGap / (count + 1);
   const rectH = (size - totalGap) / count;
 
   for (let i = 0; i < count; i++) {
+    const rectW = availableWidth * getRectWidthProportion(widthFn, i, count);
+    const x = inset + (availableWidth - rectW) / 2;
     const y = gap + i * (rectH + gap);
     mask.rect(x, y, rectW, rectH);
   }
