@@ -7,6 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 npm run dev     # dev server (default port 8080)
 npm run build   # build to _site/
+npm run new <name>  # scaffold a new sketch from _template (required — do not create sketches manually)
 ```
 
 No linter, no test suite.
@@ -26,7 +27,7 @@ No linter, no test suite.
 
 **Vendor deps:** `p5@1.11.11`, `tweakpane@4.0.5`, `@vue/reactivity@3.5.23`
 
-**Each sketch** lives in `sketches/<name>/` with `index.html` + `index.js`. Copy `sketches/_template/` to start a new one.
+**Each sketch** lives in `sketches/<name>/` with `index.html` + `index.js`. Always scaffold with `npm run new <name>` — never copy the template or create files manually.
 
 ### Sketch index.html frontmatter
 
