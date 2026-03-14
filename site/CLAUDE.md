@@ -35,13 +35,15 @@ Sketch HTML files use YAML frontmatter for feed metadata. Eleventy strips it and
 
 ```yaml
 ---
-title: My Sketch
+title: my sketch
 date: 2024-01-15
-description: One sentence about what it does.
+description: one sentence about what it does.
 presets:
   - preset-name
 ---
 ```
+
+`title` and `description` are written in lowercase.
 
 The optional `presets` list renders `?preset=<name>` links in the feed, one per entry. Include a preset name here for each named preset defined in `PRESETS` in `index.js`.
 
