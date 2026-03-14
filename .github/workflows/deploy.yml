@@ -22,11 +22,14 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: site/package-lock.json
       - run: npm ci
+        working-directory: site
       - run: npm run build
+        working-directory: site
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: site/_site
 
   deploy:
     needs: build
