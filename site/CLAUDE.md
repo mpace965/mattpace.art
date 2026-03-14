@@ -18,6 +18,7 @@ No linter, no test suite.
 - **One idea per sketch.** When something new occurs, open a new file rather than adding to an existing one.
 - **Save versions.** Either duplicate the file or use git. Iterate in new sketches, not over good ones.
 - **11ty is for the shell only.** Eleventy handles the index/feed page and static site generation. Sketches themselves are just files.
+- **Sketches own their assets.** A sketch's images and other files are the source of truth and live under `sketches/<name>/assets/`. The `analysis/` project reads from and writes to these directories; it does not keep its own copy.
 
 ## Architecture
 
