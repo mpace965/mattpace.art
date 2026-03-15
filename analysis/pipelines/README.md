@@ -35,4 +35,6 @@ Use `sketchbook.paths` to resolve all paths. Never hardcode sketch directories.
 
 ## Available pipelines
 
-_(none yet — add one following the steps above)_
+| name | description |
+|------|-------------|
+| `edges` | Canny edge detection → contours JSON. Params tuned in `playground/canny_edge_fence.py`. |
