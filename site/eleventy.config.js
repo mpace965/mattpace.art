@@ -5,7 +5,7 @@ export default function (eleventyConfig) {
   eleventyConfig.addCollection("sketch", (api) => {
     return api
       .getFilteredByGlob("sketches/*/index.html")
-      .filter((item) => !item.data.hidden);
+      .filter((item) => !process.env.IS_PROD || !item.data.hidden);
   });
 
 

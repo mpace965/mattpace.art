@@ -30,6 +30,8 @@ jobs:
         working-directory: site
       - run: npm run build
         working-directory: site
+        env:
+          IS_PROD: true
       - uses: actions/upload-pages-artifact@v4.0.0
         with:
           path: site/_site
