@@ -4,7 +4,11 @@ version = "0.1.0"
 description = "Image analysis tooling for mattpace.art sketches"
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "opencv-python-headless>=4.13.0.92",
+    "panel>=1.8.9",
+    "param>=2.3.2",
+]
 
 [project.scripts]
 analysis = "main:main"
