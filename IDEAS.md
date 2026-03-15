@@ -1,1 +1,14 @@
 - shell completion for analysis project commands
+- can plug an interactive ui into every pipeline. named parameters saved per-sketch-asset-per-pipeline. filesystem based, ui writes to file
+- everything in repo dependency based and fully interactive. Every piece of the process in a named part of the python system and you can view it as a website.
+  - every image has its own page and can be viewed in a gallery format
+  - you can start a sketch at any image and it will just display the image
+  - it's like creating a new untitled sketch that just uses the image as a source
+  - and it's represented as a python class on the filsystem.
+  - and you could add steps before it
+  - it would be like a node based workflow
+  - the intermediate steps would be stored in tmp files. previewable and and full resolution if you go to that specific step's page
+  - At the end you could have a "feed" node and this would flow into the static site system
+    - how would we handle different output format requirements? For example, if the final output is just a static image, then we can bake everything into that. But if it's a JS sketch, then we might need the base image and supporting data side-by-side. It would be nice to seamlessly go between these without having to reconfigured the pipeline
+    - That could recontextualize output requirements of previous nodes. For example if we're just baking into an image, JSON data used to
+  - basically a build dag
