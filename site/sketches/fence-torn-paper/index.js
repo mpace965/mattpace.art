@@ -6,12 +6,12 @@ import { Pane } from "../../vendor/tweakpane@4.0.5/tweakpane.min.js";
 
 /**
  * @typedef Params
- * @property {number} foo
+ * @property {number} strokeWeight
  */
 
 /** @type {Record<string, Params>} */
 const PRESETS = {
-  default: { foo: 0 },
+  default: { strokeWeight: 2 },
 };
 
 const DEFAULT_PRESET_NAME = "default";
@@ -20,7 +20,9 @@ const DEFAULT_PRESET_NAME = "default";
  * @param {Pane} pane
  * @param {Params} params
  */
-function bindParamsToPane(pane, params) {}
+function bindParamsToPane(pane, params) {
+  pane.addBinding(params, "strokeWeight", { min: 0.5, max: 10, step: 0.5 }).on("change", () => redraw());
+}
 
 /**
  * @param {import("../../vendor/@vue/reactivity@3.5.23/reactivity.js").Ref<Params>} params
@@ -28,9 +30,11 @@ function bindParamsToPane(pane, params) {}
 function mountSketch(params) {
   const size = squareCanvasSize();
   let img;
+  let edgeData;
 
   globalThis.preload = function () {
     img = loadImage("./assets/fence-torn-paper.png");
+    edgeData = loadJSON("./assets/fence-torn-paper.edges.json");
   };
 
   globalThis.setup = function () {
@@ -43,7 +47,20 @@ function mountSketch(params) {
     const scale = Math.min(width / img.width, height / img.height);
     const w = img.width * scale;
     const h = img.height * scale;
-    image(img, (width - w) / 2, (height - h) / 2, w, h);
+    const ox = (width - w) / 2;
+    const oy = (height - h) / 2;
+    image(img, ox, oy, w, h);
+
+    stroke(255, 105, 180);
+    strokeWeight(params.value.strokeWeight);
+    noFill();
+    for (const contour of edgeData.contours) {
+      beginShape();
+      for (const [x, y] of contour) {
+        vertex(ox + x * scale, oy + y * scale);
+      }
+      endShape();
+    }
   };
 
   globalThis.windowResized = function () {
