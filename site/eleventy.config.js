@@ -3,7 +3,9 @@ export default function (eleventyConfig) {
   eleventyConfig.ignores.add("CLAUDE.md");
 
   eleventyConfig.addCollection("sketch", (api) => {
-    return api.getFilteredByGlob("sketches/*/index.html");
+    return api
+      .getFilteredByGlob("sketches/*/index.html")
+      .filter((item) => !item.data.hidden);
   });
 
 

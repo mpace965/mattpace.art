@@ -38,12 +38,15 @@ Sketch HTML files use YAML frontmatter for feed metadata. Eleventy strips it and
 title: my sketch
 date: 2024-01-15
 description: one sentence about what it does.
+hidden: true
 presets:
   - preset-name
 ---
 ```
 
 `title` and `description` are written in lowercase.
+
+`hidden: true` excludes the sketch from the feed. The sketch is still built and accessible by URL.
 
 The optional `presets` list renders `?preset=<name>` links in the feed, one per entry. Include a preset name here for each named preset defined in `PRESETS` in `index.js`.
 
