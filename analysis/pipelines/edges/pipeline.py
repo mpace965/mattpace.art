@@ -18,9 +18,9 @@ PIPELINE_NAME = "edges"
 VERSION = 1
 
 # Tuned in playground/canny_edge_fence.py
-BLUR = 15
-LOW = 144
-HIGH = 89
+BLUR = 17
+LOW = 88
+HIGH = 151
 
 
 def _process_image(image_path) -> dict:
