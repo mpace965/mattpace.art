@@ -1,0 +1,156 @@
+"""Unit tests for the pipeline executor: full execution, failure propagation, workdir write, stale file deletion."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import pytest
+
+from sketchbook.core.dag import DAG, DAGNode
+from sketchbook.core.executor import execute
+from sketchbook.core.step import PipelineStep
+from sketchbook.core.types import Image
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+class _ConstantStep(PipelineStep):
+    """Always returns a fixed Image regardless of inputs."""
+
+    def __init__(self, image: Image) -> None:
+        self._image = image
+        super().__init__()
+
+    def setup(self) -> None:
+        pass
+
+    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
+        return self._image
+
+
+class _PassthroughStep(PipelineStep):
+    def setup(self) -> None:
+        self.add_input("image", Image)
+
+    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
+        return inputs["image"]
+
+
+class _BrokenStep(PipelineStep):
+    def setup(self) -> None:
+        self.add_input("image", Image)
+
+    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
+        raise RuntimeError("intentional failure")
+
+
+def _small_image() -> Image:
+    return Image(np.zeros((4, 4, 3), dtype=np.uint8))
+
+
+def _make_node(node_id: str, step: PipelineStep, workdir: Path | None = None) -> DAGNode:
+    wp = str(workdir / f"{node_id}.png") if workdir else None
+    return DAGNode(step, node_id, workdir_path=wp)
+
+
+# ---------------------------------------------------------------------------
+# Full execution
+# ---------------------------------------------------------------------------
+
+def test_execute_single_source_node() -> None:
+    img = _small_image()
+    dag = DAG()
+    dag.add_node(_make_node("src", _ConstantStep(img)))
+
+    result = execute(dag)
+
+    assert result.ok
+    assert dag.node("src").output is img
+
+
+def test_execute_source_to_passthrough() -> None:
+    img = _small_image()
+    dag = DAG()
+    dag.add_node(_make_node("src", _ConstantStep(img)))
+    dag.add_node(_make_node("pass", _PassthroughStep()))
+    dag.connect("src", "pass", "image")
+
+    result = execute(dag)
+
+    assert result.ok
+    assert dag.node("pass").output is img
+
+
+# ---------------------------------------------------------------------------
+# Workdir write
+# ---------------------------------------------------------------------------
+
+def test_execute_writes_workdir_file(tmp_path: Path) -> None:
+    img = _small_image()
+    dag = DAG()
+    dag.add_node(_make_node("src", _ConstantStep(img)))
+    pt_node = _make_node("pass", _PassthroughStep(), workdir=tmp_path)
+    dag.add_node(pt_node)
+    dag.connect("src", "pass", "image")
+
+    execute(dag)
+
+    assert (tmp_path / "pass.png").exists()
+
+
+# ---------------------------------------------------------------------------
+# Failure propagation
+# ---------------------------------------------------------------------------
+
+def test_failed_node_propagates_to_downstream() -> None:
+    img = _small_image()
+    dag = DAG()
+    dag.add_node(_make_node("src", _ConstantStep(img)))
+    dag.add_node(_make_node("broken", _BrokenStep()))
+    dag.add_node(_make_node("downstream", _PassthroughStep()))
+    dag.connect("src", "broken", "image")
+    dag.connect("broken", "downstream", "image")
+
+    result = execute(dag)
+
+    assert "broken" in result.errors
+    assert "downstream" in result.errors
+    assert dag.node("downstream").output is None
+
+
+def test_failed_node_clears_output() -> None:
+    img = _small_image()
+    dag = DAG()
+    dag.add_node(_make_node("src", _ConstantStep(img)))
+    dag.add_node(_make_node("broken", _BrokenStep()))
+    dag.connect("src", "broken", "image")
+
+    result = execute(dag)
+
+    assert not result.ok
+    assert dag.node("broken").output is None
+
+
+# ---------------------------------------------------------------------------
+# Stale file deletion
+# ---------------------------------------------------------------------------
+
+def test_failed_node_deletes_stale_workdir_file(tmp_path: Path) -> None:
+    img = _small_image()
+    stale = tmp_path / "broken.png"
+    stale.write_bytes(b"old")
+
+    dag = DAG()
+    broken_node = DAGNode(_BrokenStep(), "broken", workdir_path=str(stale))
+    src_node = DAGNode(_ConstantStep(img), "src")
+    dag.add_node(src_node)
+    dag.add_node(broken_node)
+    dag.connect("src", "broken", "image")
+
+    execute(dag)
+
+    assert not stale.exists()

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{{ step_id }} — {{ sketch_id }}</title>
+  <style>
+    body { margin: 0; background: #111; color: #eee; font-family: monospace; }
+    img { max-width: 100%; display: block; }
+    #error-banner { display: none; padding: 1rem; background: #600; color: #fcc; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h2>{{ sketch_id }} / {{ step_id }}</h2>
+  <div id="error-banner"></div>
+  <img id="step-output" src="{{ image_url }}" alt="step output">
+
+  <script>
+    const SKETCH_ID = "{{ sketch_id }}";
+    const STEP_ID = "{{ step_id }}";
+
+    function connect() {
+      const ws = new WebSocket(`ws://${location.host}/ws/${SKETCH_ID}`);
+      ws.onmessage = (event) => {
+        const msg = JSON.parse(event.data);
+        const banner = document.getElementById("error-banner");
+        if (msg.type === "step_updated" && msg.step_id === STEP_ID) {
+          banner.style.display = "none";
+          const img = document.getElementById("step-output");
+          img.style.display = "";
+          img.src = msg.image_url + "?t=" + Date.now();
+        } else if (msg.type === "step_error" && msg.step_id === STEP_ID) {
+          banner.style.display = "block";
+          banner.textContent = msg.error;
+          document.getElementById("step-output").style.display = "none";
+        }
+      };
+      ws.onclose = () => setTimeout(connect, 1000);
+    }
+    connect();
+  </script>
+</body>
+</html>
