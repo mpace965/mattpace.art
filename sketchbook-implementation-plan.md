@@ -35,6 +35,18 @@ sketchbook/
 ├── .mise.toml
 ├── .gitignore
 ├── CLAUDE.md
+├── sketches/                       # User sketch modules (convention-based, outside src/)
+│   └── edge_portrait/
+│       ├── __init__.py             # Contains the Sketch subclass
+│       ├── assets/
+│       │   ├── portrait.jpg
+│       │   └── mask.png
+│       ├── presets/
+│       │   ├── heavy_edges.json
+│       │   └── _active.json        # Current working state (may be unsaved "untitled")
+│       └── .workdir/               # Intermediate outputs, gitignored
+│           ├── edge_detect_out.png
+│           └── ...
 ├── src/
 │   └── sketchbook/
 │       ├── __init__.py
@@ -80,19 +92,7 @@ sketchbook/
 │       │   └── templates/
 │       │       ├── feed.html       # Main feed page
 │       │       └── sketch_page.html # Individual sketch + variants page
-│       ├── cli.py                  # Entry points for `uv run dev` and `uv run build`
-│       └── sketches/               # User sketch modules (convention-based)
-│           └── edge_portrait/
-│               ├── __init__.py     # Contains the Sketch subclass
-│               ├── assets/
-│               │   ├── portrait.jpg
-│               │   └── mask.png
-│               ├── presets/
-│               │   ├── heavy_edges.json
-│               │   └── _active.json  # Current working state (may be unsaved "untitled")
-│               └── .workdir/       # Intermediate outputs, gitignored
-│                   ├── edge_detect_out.png
-│                   └── ...
+│       └── cli.py                  # Entry points for `uv run dev` and `uv run build`
 ├── tests/
 │   ├── conftest.py                 # Shared fixtures (tmp sketch dirs, test images, FastAPI TestClient)
 │   ├── acceptance/                 # End-to-end acceptance tests (one per increment)
@@ -155,7 +155,7 @@ This is the thinnest possible slice that touches every architectural boundary:
 ### Test sketch for this increment
 
 ```python
-# src/sketchbook/sketches/hello/__init__.py
+# sketches/hello/__init__.py
 from sketchbook import Sketch
 from sketchbook.steps import Passthrough
 
@@ -507,13 +507,13 @@ def test_optional_input_not_required(tmp_sketch_no_mask, test_client):
 
 ### Acceptance test
 
-> I have two sketch modules under `sketchbook.sketches`. I run `uv run dev` and open the browser root. I see a list of both sketches with their names and descriptions. I click one and land on its sketch overview page. The other sketch's watchers are not running.
+> I have two sketch modules under `sketches/`. I run `uv run dev` and open the browser root. I see a list of both sketches with their names and descriptions. I click one and land on its sketch overview page. The other sketch's watchers are not running.
 
 ### What this drives
 
 **Core engine additions:**
 
-- Sketch discovery — scan `sketchbook.sketches` submodules for `Sketch` subclasses, import them, register them.
+- Sketch discovery — scan `sketches.*` submodules for `Sketch` subclasses, import them, register them.
 - Lazy activation — watchers start only for the active sketch, tear down on navigate-away.
 
 **Server additions:**
@@ -542,7 +542,7 @@ def test_only_active_sketch_watches_files(two_sketches, test_client, watcher_reg
 ### Definition of done — Increment 6
 
 - [ ] Acceptance tests in `tests/acceptance/test_06_sketch_browser.py` pass
-- [ ] `tests/unit/test_discovery.py` covers sketch discovery (finds all `Sketch` subclasses in `sketchbook.sketches.*`, skips non-sketch modules)
+- [ ] `tests/unit/test_discovery.py` covers sketch discovery (finds all `Sketch` subclasses in `sketches.*`, skips non-sketch modules)
 - [ ] `tests/unit/test_watcher.py` covers lazy activation (watcher starts on activate, stops on deactivate, does not start for inactive sketches)
 
 ---

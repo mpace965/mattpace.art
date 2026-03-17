@@ -59,7 +59,7 @@ def tmp_sketch(tmp_path: Path) -> Generator[Path, None, None]:
 @pytest.fixture()
 def test_client(tmp_sketch: Path) -> Generator[TestClient, None, None]:
     """Build the Hello sketch and return a FastAPI TestClient."""
-    from sketchbook.sketches.hello import Hello
+    from sketches.hello import Hello
 
     sketch = Hello(tmp_sketch)
     execute(sketch.dag)
@@ -98,7 +98,7 @@ def tmp_edge_sketch(tmp_path: Path) -> Generator[Path, None, None]:
 @pytest.fixture()
 def edge_test_client(tmp_edge_sketch: Path) -> Generator[TestClient, None, None]:
     """Build the EdgeHello sketch and return a FastAPI TestClient."""
-    from sketchbook.sketches.edge_hello import EdgeHello
+    from sketches.edge_hello import EdgeHello
 
     sketch = EdgeHello(tmp_edge_sketch)
     execute(sketch.dag)

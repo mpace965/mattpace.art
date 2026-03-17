@@ -128,7 +128,7 @@ def test_active_json_written_on_param_change(tmp_edge_sketch: Path, edge_test_cl
 def test_active_persists_across_reload(tmp_edge_sketch: Path) -> None:
     """Params written to _active.json are restored when the sketch is reloaded."""
     from sketchbook.core.executor import execute
-    from sketchbook.sketches.edge_hello import EdgeHello
+    from sketches.edge_hello import EdgeHello
 
     sketch = EdgeHello(tmp_edge_sketch)
     execute(sketch.dag)

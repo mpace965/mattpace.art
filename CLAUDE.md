@@ -29,7 +29,7 @@ Everything flows from the DAG. The executor walks it. The server renders it. The
 
 ### Sketches are self-contained modules
 
-Each sketch lives in its own directory under `src/sketchbook/sketches/` with its own `assets/`, `presets/`, and `.workdir/`. A sketch should be deletable by removing its folder. No central registry file — discovery is by convention (scan for `Sketch` subclasses in `sketchbook.sketches.*`).
+Each sketch lives in its own directory under `sketches/` (at the repo root) with its own `assets/`, `presets/`, and `.workdir/`. A sketch should be deletable by removing its folder. No central registry file — discovery is by convention (scan for `Sketch` subclasses in `sketches.*`).
 
 ### Intermediates are cheap and disposable
 
@@ -94,16 +94,16 @@ If you need a utility function that exists in a library, consider whether it's s
 
 ## File conventions
 
-- Sketch modules: `src/sketchbook/sketches/<slug>/__init__.py`
-- Sketch assets: `src/sketchbook/sketches/<slug>/assets/`
-- Presets: `src/sketchbook/sketches/<slug>/presets/*.json`
-- Active params: `src/sketchbook/sketches/<slug>/presets/_active.json`
-- Intermediates: `src/sketchbook/sketches/<slug>/.workdir/` (gitignored)
+- Sketch modules: `sketches/<slug>/__init__.py`
+- Sketch assets: `sketches/<slug>/assets/`
+- Presets: `sketches/<slug>/presets/*.json`
+- Active params: `sketches/<slug>/presets/_active.json`
+- Intermediates: `sketches/<slug>/.workdir/` (gitignored)
 - Built site: `dist/` (gitignored)
 
 ## Git
 
 - `.workdir/` directories are always gitignored.
 - `dist/` is gitignored on main. It gets force-pushed to `gh-pages` for deployment.
-- Source assets under `src/sketchbook/sketches/*/assets/` are **not** committed (too large). The repo works without them — you just can't build until you have the assets locally.
+- Source assets under `sketches/*/assets/` are **not** committed (too large). The repo works without them — you just can't build until you have the assets locally.
 - Presets **are** committed. They're small JSON files and they represent creative decisions worth versioning.

@@ -7,6 +7,7 @@ import importlib
 import inspect
 import logging
 import pkgutil
+import sys
 from pathlib import Path
 
 import uvicorn
@@ -18,13 +19,17 @@ from sketchbook.core.watcher import Watcher
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("sketchbook.cli")
 
-_SKETCHES_PACKAGE = "sketchbook.sketches"
-_SKETCHES_DIR = Path(__file__).parent / "sketches"
+_REPO_ROOT = Path(__file__).parent.parent.parent
+_SKETCHES_PACKAGE = "sketches"
+_SKETCHES_DIR = _REPO_ROOT / "sketches"
 
 
 def discover_sketches() -> dict[str, Sketch]:
-    """Scan sketchbook.sketches submodules for Sketch subclasses and instantiate them."""
-    import sketchbook.sketches  # noqa: F401
+    """Scan sketches/ submodules for Sketch subclasses and instantiate them."""
+    repo_root = str(_REPO_ROOT)
+    if repo_root not in sys.path:
+        sys.path.insert(0, repo_root)
+    import sketches  # noqa: F401
 
     sketches: dict[str, Sketch] = {}
 
