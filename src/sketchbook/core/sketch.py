@@ -20,9 +20,9 @@ class _ManagedNode(DAGNode):
         super().__init__(step, node_id, **kwargs)
         self._sketch = sketch
 
-    def pipe(self, step_class: type[PipelineStep], input_name: str = "image") -> _ManagedNode:
+    def pipe(self, step_class: type[PipelineStep], input_name: str = "image", params: dict[str, dict] | None = None) -> _ManagedNode:
         """Connect this node's output to a new step instance."""
-        return self._sketch._pipe(self, step_class, input_name)
+        return self._sketch._pipe(self, step_class, input_name, param_overrides=params)
 
 
 class Sketch:
@@ -60,19 +60,23 @@ class Sketch:
 
         step = SourceFile(self._sketch_dir / path)
         node_id = f"source_{name}"
-        node = _ManagedNode(step, node_id, self)
+        workdir_path = self._workdir / f"{node_id}.png"
+        node = _ManagedNode(step, node_id, self, workdir_path=str(workdir_path))
         self._dag.add_node(node)
         log.debug(f"Added source node '{node_id}' watching {self._sketch_dir / path}")
         return node
 
-    def _pipe(self, from_node: _ManagedNode, step_class: type[PipelineStep], input_name: str) -> _ManagedNode:
-        """Internal: instantiate step_class, add node, wire edge."""
+    def _pipe(self, from_node: _ManagedNode, step_class: type[PipelineStep], input_name: str, param_overrides: dict[str, dict] | None = None) -> _ManagedNode:
+        """Internal: instantiate step_class, add node, wire edge, apply param overrides."""
         base_name = _step_id_base(step_class)
         count = self._step_counts.get(base_name, 0)
         self._step_counts[base_name] = count + 1
         node_id = f"{base_name}_{count}"
 
         step = step_class()
+        if param_overrides:
+            for param_name, fields in param_overrides.items():
+                step._param_registry.override(param_name, **fields)
         workdir_path = self._workdir / f"{node_id}.png"
         node = _ManagedNode(step, node_id, self, workdir_path=str(workdir_path))
         self._dag.add_node(node)

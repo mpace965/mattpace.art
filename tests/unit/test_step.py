@@ -61,6 +61,35 @@ def test_process_not_implemented_raises() -> None:
 
 
 # ---------------------------------------------------------------------------
+# add_param
+# ---------------------------------------------------------------------------
+
+class _ParamStep(PipelineStep):
+    def setup(self) -> None:
+        self.add_param("threshold", float, default=50.0, min=0.0, max=100.0)
+
+    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Any:
+        return params["threshold"]
+
+
+def test_add_param_registers_in_registry() -> None:
+    step = _ParamStep()
+    assert "threshold" in step._param_registry._params
+
+
+def test_add_param_default_value() -> None:
+    step = _ParamStep()
+    assert step._param_registry.get_value("threshold") == 50.0
+
+
+def test_params_passed_to_process() -> None:
+    step = _ParamStep()
+    step._param_registry.set_value("threshold", 77.0)
+    result = step.process({}, step._param_registry.values())
+    assert result == 77.0
+
+
+# ---------------------------------------------------------------------------
 # Passthrough
 # ---------------------------------------------------------------------------
 

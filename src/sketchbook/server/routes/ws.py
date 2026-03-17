@@ -42,3 +42,22 @@ async def broadcast(sketch_id: str, message: dict) -> None:
         except Exception:
             dead.add(ws)
     _connections[sketch_id] -= dead
+
+
+async def broadcast_results(sketch_id: str, dag, result) -> None:
+    """Broadcast step_updated or step_error for every node with a workdir path."""
+    for n in dag.topo_sort():
+        if not n.workdir_path:
+            continue
+        if n.id in result.errors:
+            await broadcast(sketch_id, {
+                "type": "step_error",
+                "step_id": n.id,
+                "error": str(result.errors[n.id]),
+            })
+        else:
+            await broadcast(sketch_id, {
+                "type": "step_updated",
+                "step_id": n.id,
+                "image_url": f"/workdir/{sketch_id}/{n.id}.png",
+            })

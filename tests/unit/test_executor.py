@@ -40,6 +40,22 @@ class _PassthroughStep(PipelineStep):
         return inputs["image"]
 
 
+class _ParamCapturingStep(PipelineStep):
+    """Records the params dict it receives in process()."""
+
+    def __init__(self) -> None:
+        self.received_params: dict[str, Any] = {}
+        super().__init__()
+
+    def setup(self) -> None:
+        self.add_input("image", Image)
+        self.add_param("strength", float, default=42.0)
+
+    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
+        self.received_params = dict(params)
+        return inputs["image"]
+
+
 class _BrokenStep(PipelineStep):
     def setup(self) -> None:
         self.add_input("image", Image)
@@ -100,6 +116,39 @@ def test_execute_writes_workdir_file(tmp_path: Path) -> None:
     execute(dag)
 
     assert (tmp_path / "pass.png").exists()
+
+
+# ---------------------------------------------------------------------------
+# Params
+# ---------------------------------------------------------------------------
+
+def test_executor_passes_params_to_process() -> None:
+    img = _small_image()
+    step = _ParamCapturingStep()
+    step._param_registry.set_value("strength", 99.0)
+
+    dag = DAG()
+    dag.add_node(_make_node("src", _ConstantStep(img)))
+    dag.add_node(_make_node("capture", step))
+    dag.connect("src", "capture", "image")
+
+    execute(dag)
+
+    assert step.received_params["strength"] == 99.0
+
+
+def test_executor_uses_registry_not_empty_dict() -> None:
+    img = _small_image()
+    step = _ParamCapturingStep()
+
+    dag = DAG()
+    dag.add_node(_make_node("src", _ConstantStep(img)))
+    dag.add_node(_make_node("capture", step))
+    dag.connect("src", "capture", "image")
+
+    execute(dag)
+
+    assert "strength" in step.received_params
 
 
 # ---------------------------------------------------------------------------

@@ -4,19 +4,65 @@
   <meta charset="UTF-8">
   <title>{{ step_id }} — {{ sketch_id }}</title>
   <style>
-    body { margin: 0; background: #111; color: #eee; font-family: monospace; }
+    body { margin: 0; background: #111; color: #eee; font-family: monospace; display: flex; gap: 1rem; padding: 1rem; }
+    #main { flex: 1; }
+    #sidebar { width: 280px; }
     img { max-width: 100%; display: block; }
     #error-banner { display: none; padding: 1rem; background: #600; color: #fcc; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <h2>{{ sketch_id }} / {{ step_id }}</h2>
-  <div id="error-banner"></div>
-  <img id="step-output" src="{{ image_url }}" alt="step output">
+  <div id="main">
+    <h2>{{ sketch_id }} / {{ step_id }}</h2>
+    <div id="error-banner"></div>
+    <img id="step-output" src="{{ image_url }}" alt="step output">
+  </div>
+  <div id="sidebar">
+    <div id="tweakpane-container"></div>
+  </div>
 
-  <script>
+  <script type="module">
+    import { Pane } from "https://cdn.jsdelivr.net/npm/tweakpane@4/+esm";
+
     const SKETCH_ID = "{{ sketch_id }}";
     const STEP_ID = "{{ step_id }}";
+    const PARAMS_URL = `/api/sketches/${SKETCH_ID}/params/${STEP_ID}`;
+    const PATCH_URL = `/api/sketches/${SKETCH_ID}/params`;
+
+    async function initTweakpane() {
+      const res = await fetch(PARAMS_URL);
+      if (!res.ok) return;
+      const data = await res.json();
+      const params = data.params;
+      if (!params || Object.keys(params).length === 0) return;
+
+      const pane = new Pane({ container: document.getElementById("tweakpane-container"), title: STEP_ID });
+      const state = {};
+
+      for (const [name, spec] of Object.entries(params)) {
+        state[name] = spec.value;
+        const opts = {};
+        if (spec.min !== undefined) opts.min = spec.min;
+        if (spec.max !== undefined) opts.max = spec.max;
+        if (spec.step !== undefined) opts.step = spec.step;
+        if (spec.label !== undefined) opts.label = spec.label;
+        const debounceMs = spec.debounce ?? 0;
+        let debounceTimer = null;
+        const sendPatch = (value) => fetch(PATCH_URL, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ step_id: STEP_ID, param_name: name, value }),
+        });
+        pane.addBinding(state, name, opts).on("change", (ev) => {
+          if (debounceMs > 0) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => sendPatch(ev.value), debounceMs);
+          } else {
+            sendPatch(ev.value);
+          }
+        });
+      }
+    }
 
     function connect() {
       const ws = new WebSocket(`ws://${location.host}/ws/${SKETCH_ID}`);
@@ -36,6 +82,8 @@
       };
       ws.onclose = () => setTimeout(connect, 1000);
     }
+
+    initTweakpane();
     connect();
   </script>
 </body>

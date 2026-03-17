@@ -15,6 +15,7 @@ from fastapi.templating import Jinja2Templates
 from sketchbook.core.executor import execute
 from sketchbook.core.sketch import Sketch
 from sketchbook.core.watcher import Watcher
+from sketchbook.server.routes import params as params_routes
 from sketchbook.server.routes import sketch as sketch_routes
 from sketchbook.server.routes import ws as ws_routes
 from sketchbook.steps.source import SourceFile
@@ -53,6 +54,7 @@ def create_app(sketches: dict[str, Sketch], sketches_dir: Path | None = None) ->
     sketch_routes.init_templates(templates)
 
     app.include_router(sketch_routes.router)
+    app.include_router(params_routes.router)
     app.include_router(ws_routes.router)
 
     # Serve .workdir/ output images per sketch
@@ -78,27 +80,10 @@ def _register_watch(watcher: Watcher, sketch_id: str, sketch: Sketch, loop: asyn
         def on_change(sid: str = sketch_id, sk: Sketch = sketch) -> None:
             log.info(f"Source changed for sketch '{sid}', re-executing")
             result = execute(sk.dag)
-            for n in sk.dag.topo_sort():
-                if not n.workdir_path:
-                    continue
-                if n.id in result.errors:
-                    asyncio.run_coroutine_threadsafe(
-                        ws_routes.broadcast(sid, {
-                            "type": "step_error",
-                            "step_id": n.id,
-                            "error": str(result.errors[n.id]),
-                        }),
-                        loop,
-                    )
-                else:
-                    asyncio.run_coroutine_threadsafe(
-                        ws_routes.broadcast(sid, {
-                            "type": "step_updated",
-                            "step_id": n.id,
-                            "image_url": f"/workdir/{sid}/{n.id}.png",
-                        }),
-                        loop,
-                    )
+            asyncio.run_coroutine_threadsafe(
+                ws_routes.broadcast_results(sid, sk.dag, result),
+                loop,
+            )
 
         watcher.watch(source_path, on_change)
 

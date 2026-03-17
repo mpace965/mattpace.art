@@ -48,8 +48,9 @@ def execute(dag: DAG) -> ExecutionResult:
 
         try:
             inputs = {name: upstream.output for name, upstream in node._inputs.items()}
+            params = node.step._param_registry.values()
             log.debug(f"Executing node '{node.id}'")
-            node.output = node.step.process(inputs, {})
+            node.output = node.step.process(inputs, params)
             if node.workdir_path and node.output is not None:
                 node.output.save(node.workdir_path)
                 log.debug(f"Wrote output for '{node.id}' to {node.workdir_path}")

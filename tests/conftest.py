@@ -79,3 +79,38 @@ def ws_client(test_client: TestClient):
     def _factory(path: str):
         return test_client.websocket_connect(path)
     return _factory
+
+
+# ---------------------------------------------------------------------------
+# edge_hello fixtures (increment 2)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def tmp_edge_sketch(tmp_path: Path) -> Generator[Path, None, None]:
+    """Create a temporary sketch directory for EdgeHello with a test source image."""
+    sketch_dir = tmp_path / "edge_hello"
+    assets_dir = sketch_dir / "assets"
+    assets_dir.mkdir(parents=True)
+    make_test_image(assets_dir / "hello.jpg")
+    yield sketch_dir
+
+
+@pytest.fixture()
+def edge_test_client(tmp_edge_sketch: Path) -> Generator[TestClient, None, None]:
+    """Build the EdgeHello sketch and return a FastAPI TestClient."""
+    from sketchbook.sketches.edge_hello import EdgeHello
+
+    sketch = EdgeHello(tmp_edge_sketch)
+    execute(sketch.dag)
+
+    app = create_app({"edge_hello": sketch}, sketches_dir=tmp_edge_sketch.parent)
+    with TestClient(app, raise_server_exceptions=True) as client:
+        yield client
+
+
+@pytest.fixture()
+def edge_ws_client(edge_test_client: TestClient):
+    """Return a factory that opens a WebSocket connection via the edge TestClient."""
+    def _factory(path: str):
+        return edge_test_client.websocket_connect(path)
+    return _factory
