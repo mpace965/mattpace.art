@@ -44,6 +44,15 @@ async def broadcast(sketch_id: str, message: dict) -> None:
     _connections[sketch_id] -= dead
 
 
+async def broadcast_preset_state(sketch_id: str, preset_manager) -> None:
+    """Broadcast current preset dirty/based_on state to all clients watching a sketch."""
+    await broadcast(sketch_id, {
+        "type": "preset_state",
+        "dirty": preset_manager.dirty,
+        "based_on": preset_manager.based_on,
+    })
+
+
 async def broadcast_results(sketch_id: str, dag, result) -> None:
     """Broadcast step_updated or step_error for every node with a workdir path."""
     for n in dag.topo_sort():

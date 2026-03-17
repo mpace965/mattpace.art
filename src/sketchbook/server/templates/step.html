@@ -4,21 +4,48 @@
   <meta charset="UTF-8">
   <title>{{ step_id }} — {{ sketch_id }}</title>
   <style>
-    body { margin: 0; background: #111; color: #eee; font-family: monospace; display: flex; gap: 1rem; padding: 1rem; }
-    #main { flex: 1; }
-    #sidebar { width: 280px; }
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; background: #111; color: #eee; font-family: monospace; display: flex; flex-direction: column; height: 100vh; }
+
+    #toolbar {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 1rem; background: #1a1a1a; border-bottom: 1px solid #333;
+      flex-shrink: 0;
+    }
+    #toolbar h2 { margin: 0; font-size: 0.9rem; flex: 1; }
+    #preset-label { font-size: 0.8rem; color: #aaa; white-space: nowrap; }
+    #dirty-indicator { color: #f90; }
+    #preset-select { background: #222; color: #eee; border: 1px solid #444; padding: 0.2rem 0.4rem; font-family: monospace; font-size: 0.8rem; }
+    .btn { background: #333; color: #eee; border: 1px solid #555; padding: 0.2rem 0.6rem; cursor: pointer; font-family: monospace; font-size: 0.8rem; }
+    .btn:hover:not(:disabled) { background: #444; }
+    .btn:disabled { opacity: 0.35; cursor: default; }
+
+    #content { display: flex; flex: 1; overflow: hidden; }
+    #main { flex: 1; padding: 1rem; overflow: auto; }
+    #sidebar { width: 280px; padding: 0.5rem; overflow: auto; border-left: 1px solid #333; }
+
     img { max-width: 100%; display: block; }
     #error-banner { display: none; padding: 1rem; background: #600; color: #fcc; white-space: pre-wrap; }
   </style>
 </head>
 <body>
-  <div id="main">
+  <div id="toolbar">
     <h2>{{ sketch_id }} / {{ step_id }}</h2>
-    <div id="error-banner"></div>
-    <img id="step-output" src="{{ image_url }}" alt="step output">
+    <span id="preset-label">preset: <span id="dirty-indicator"></span></span>
+    <select id="preset-select"><option value="">— untitled —</option></select>
+    <button class="btn" id="btn-save" disabled>Save</button>
+    <button class="btn" id="btn-save-as">Save as…</button>
+    <button class="btn" id="btn-new">New</button>
   </div>
-  <div id="sidebar">
-    <div id="tweakpane-container"></div>
+
+  <div id="content">
+    <div id="main">
+      <div id="error-banner"></div>
+      <img id="step-output" src="{{ image_url }}" alt="step output">
+    </div>
+    <div id="sidebar">
+      <div id="tweakpane-container"></div>
+    </div>
   </div>
 
   <script type="module">
@@ -28,6 +55,85 @@
     const STEP_ID = "{{ step_id }}";
     const PARAMS_URL = `/api/sketches/${SKETCH_ID}/params/${STEP_ID}`;
     const PATCH_URL = `/api/sketches/${SKETCH_ID}/params`;
+    const PRESETS_URL = `/api/sketches/${SKETCH_ID}/presets`;
+
+    // -----------------------------------------------------------------------
+    // Presets
+    // -----------------------------------------------------------------------
+
+    async function fetchAndRenderPresets() {
+      const res = await fetch(PRESETS_URL);
+      if (!res.ok) return;
+      renderPresets(await res.json());
+    }
+
+    function renderPresets({ presets, active }) {
+      const select = document.getElementById("preset-select");
+      const dirty = document.getElementById("dirty-indicator");
+      const btnSave = document.getElementById("btn-save");
+
+      select.innerHTML = '<option value="">— untitled —</option>';
+      for (const name of presets) {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      }
+
+      select.value = active.based_on ?? "";
+      dirty.textContent = active.dirty ? "*" : "";
+      btnSave.disabled = !active.based_on;
+    }
+
+    function markDirtyLocally() {
+      // Keep the current preset selected — editing "foo" keeps you on "foo*", not "untitled"
+      document.getElementById("dirty-indicator").textContent = "*";
+      document.getElementById("btn-save").disabled =
+        !document.getElementById("preset-select").value;
+    }
+
+    document.getElementById("preset-select").addEventListener("change", async (e) => {
+      const name = e.target.value;
+      if (!name) return;
+      await fetch(`${PRESETS_URL}/${name}/load`, { method: "POST" });
+      await fetchAndRenderPresets();
+    });
+
+    document.getElementById("btn-save").addEventListener("click", async () => {
+      const current = document.getElementById("preset-select").value;
+      if (current) {
+        await fetch(PRESETS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: current }),
+        });
+        await fetchAndRenderPresets();
+      } else {
+        await saveAs();
+      }
+    });
+
+    document.getElementById("btn-save-as").addEventListener("click", saveAs);
+
+    document.getElementById("btn-new").addEventListener("click", async () => {
+      await fetch(`${PRESETS_URL}/new`, { method: "POST" });
+      await fetchAndRenderPresets();
+    });
+
+    async function saveAs() {
+      const name = prompt("Preset name:");
+      if (!name) return;
+      await fetch(PRESETS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      await fetchAndRenderPresets();
+    }
+
+    // -----------------------------------------------------------------------
+    // Tweakpane
+    // -----------------------------------------------------------------------
 
     async function initTweakpane() {
       const res = await fetch(PARAMS_URL);
@@ -54,6 +160,7 @@
           body: JSON.stringify({ step_id: STEP_ID, param_name: name, value }),
         });
         pane.addBinding(state, name, opts).on("change", (ev) => {
+          markDirtyLocally();
           if (debounceMs > 0) {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => sendPatch(ev.value), debounceMs);
@@ -63,6 +170,10 @@
         });
       }
     }
+
+    // -----------------------------------------------------------------------
+    // WebSocket
+    // -----------------------------------------------------------------------
 
     function connect() {
       const ws = new WebSocket(`ws://${location.host}/ws/${SKETCH_ID}`);
@@ -78,11 +189,14 @@
           banner.style.display = "block";
           banner.textContent = msg.error;
           document.getElementById("step-output").style.display = "none";
+        } else if (msg.type === "preset_state") {
+          fetchAndRenderPresets();
         }
       };
       ws.onclose = () => setTimeout(connect, 1000);
     }
 
+    fetchAndRenderPresets();
     initTweakpane();
     connect();
   </script>

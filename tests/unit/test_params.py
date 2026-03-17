@@ -106,6 +106,16 @@ class TestParamRegistry:
         with pytest.raises(ValueError):
             reg.override("x", bogus=99)
 
+    def test_reset_to_defaults(self) -> None:
+        reg = ParamRegistry()
+        reg.add(ParamDef(name="x", type=float, default=1.0))
+        reg.add(ParamDef(name="k", type=int, default=3))
+        reg.set_value("x", 99.0)
+        reg.set_value("k", 42)
+        reg.reset_to_defaults()
+        assert reg.get_value("x") == 1.0
+        assert reg.get_value("k") == 3
+
     def test_serialization_roundtrip(self) -> None:
         reg = ParamRegistry()
         reg.add(ParamDef(name="threshold1", type=float, default=100.0))

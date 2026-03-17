@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from sketchbook.core.dag import DAG, DAGNode
+from sketchbook.core.presets import PresetManager
 from sketchbook.core.step import PipelineStep
 
 log = logging.getLogger("sketchbook.sketch")
@@ -39,6 +40,8 @@ class Sketch:
         self._workdir.mkdir(parents=True, exist_ok=True)
         self._step_counts: dict[str, int] = {}
         self.build()
+        self._preset_manager = PresetManager(self._sketch_dir / "presets")
+        self._preset_manager.load_active(self._dag)
 
     @property
     def dag(self) -> DAG:
@@ -49,6 +52,11 @@ class Sketch:
     def sketch_dir(self) -> Path:
         """Return the sketch directory."""
         return self._sketch_dir
+
+    @property
+    def preset_manager(self) -> PresetManager:
+        """Return the preset manager for this sketch."""
+        return self._preset_manager
 
     def build(self) -> None:
         """Override to define the pipeline."""

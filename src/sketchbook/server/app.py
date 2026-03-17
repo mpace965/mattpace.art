@@ -16,6 +16,7 @@ from sketchbook.core.executor import execute
 from sketchbook.core.sketch import Sketch
 from sketchbook.core.watcher import Watcher
 from sketchbook.server.routes import params as params_routes
+from sketchbook.server.routes import presets as presets_routes
 from sketchbook.server.routes import sketch as sketch_routes
 from sketchbook.server.routes import ws as ws_routes
 from sketchbook.steps.source import SourceFile
@@ -55,6 +56,7 @@ def create_app(sketches: dict[str, Sketch], sketches_dir: Path | None = None) ->
 
     app.include_router(sketch_routes.router)
     app.include_router(params_routes.router)
+    app.include_router(presets_routes.router)
     app.include_router(ws_routes.router)
 
     # Serve .workdir/ output images per sketch

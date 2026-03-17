@@ -311,8 +311,15 @@ def test_param_schema_endpoint(tmp_sketch, test_client):
 - `POST /api/sketches/{sketch_id}/presets` — save current as named preset.
 - `POST /api/sketches/{sketch_id}/presets/{name}/load` — load preset.
 - PATCH endpoint now writes to `_active.json` and sets dirty flag.
-- `preset_state` WebSocket event.
-- Frontend: preset `<select>` dropdown, save/save-as buttons, dirty indicator ("untitled*").
+
+**Frontend additions (`step.html`):**
+
+- Toolbar with preset `<select>` dropdown (named presets + "untitled" fallback), "Save" button, "Save as…" button, and a `*` dirty indicator.
+- On page load: fetch `/presets` endpoint, populate dropdown, restore selected preset and dirty state.
+- Selecting a preset from the dropdown calls `POST /presets/{name}/load`.
+- "Save" overwrites the currently selected preset (or prompts for a name if untitled).
+- "Save as…" always prompts for a name.
+- Tweakpane `onChange` immediately marks the UI dirty before the PATCH response returns.
 
 ### Acceptance test (pytest)
 
@@ -367,9 +374,10 @@ def test_dirty_tracking(tmp_sketch, test_client):
 
 ### Definition of done — Increment 3
 
-- [ ] Acceptance tests in `tests/acceptance/test_03_preset_persistence.py` pass
-- [ ] `tests/unit/test_params.py` updated: `_active.json` round-trip, dirty flag set on edit, `based_on` written on load
-- [ ] `tests/unit/test_presets.py` covers preset save (copies active to named file), preset load (replaces active, clears dirty), list returns all named presets
+- [x] Acceptance tests in `tests/acceptance/test_03_preset_persistence.py` pass
+- [x] `tests/unit/test_params.py` updated: `_active.json` round-trip, dirty flag set on edit, `based_on` written on load
+- [x] `tests/unit/test_presets.py` covers preset save (copies active to named file), preset load (replaces active, clears dirty), list returns all named presets
+- [x] `step.html` has preset toolbar: dropdown populated from `/presets` API, save/save-as buttons, `*` dirty indicator updated on param change
 
 ---
 

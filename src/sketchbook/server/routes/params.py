@@ -61,6 +61,10 @@ async def update_param(sketch_id: str, body: ParamUpdate):
 
     log.info(f"Param updated: sketch='{sketch_id}' step='{body.step_id}' {body.param_name}={body.value}")
 
+    sketch.preset_manager.mark_dirty()
+    sketch.preset_manager.save_active(sketch.dag)
+
     result = execute(sketch.dag)
     await ws_routes.broadcast_results(sketch_id, sketch.dag, result)
+    await ws_routes.broadcast_preset_state(sketch_id, sketch.preset_manager)
     return {"ok": True}

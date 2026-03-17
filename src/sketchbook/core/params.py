@@ -71,6 +71,11 @@ class ParamRegistry:
             if name in self._params:
                 self._values[name] = self._params[name].type(value)
 
+    def reset_to_defaults(self) -> None:
+        """Reset all values to their declared defaults."""
+        for name, param in self._params.items():
+            self._values[name] = param.default
+
     def override(self, name: str, **fields: Any) -> None:
         """Override specific fields of an existing param definition.
 
