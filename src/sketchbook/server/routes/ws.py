@@ -26,7 +26,7 @@ async def ws_endpoint(websocket: WebSocket, sketch_id: str) -> None:
     try:
         while True:
             await asyncio.sleep(1)
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, asyncio.CancelledError):
         pass
     finally:
         _connections[sketch_id].discard(websocket)
