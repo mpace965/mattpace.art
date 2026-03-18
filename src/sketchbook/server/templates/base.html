@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Sketchbook{% endblock %}</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body { margin: 0; background: #111; color: #eee; font-family: monospace; display: flex; flex-direction: column; height: 100vh; }
+
+    #toolbar {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 1rem; background: #1a1a1a; border-bottom: 1px solid #333;
+      flex-shrink: 0;
+    }
+    #toolbar h2 { margin: 0; font-size: 0.9rem; flex: 1; }
+    #toolbar h2 a { color: #eee; text-decoration: none; }
+    #toolbar h2 a:hover { text-decoration: underline; }
+    #toolbar h2 .sep { color: #555; margin: 0 0.3rem; }
+    #preset-label { font-size: 0.8rem; color: #aaa; white-space: nowrap; }
+    #dirty-indicator { color: #f90; }
+    #preset-select { background: #222; color: #eee; border: 1px solid #444; padding: 0.2rem 0.4rem; font-family: monospace; font-size: 0.8rem; }
+    .btn { background: #333; color: #eee; border: 1px solid #555; padding: 0.2rem 0.6rem; cursor: pointer; font-family: monospace; font-size: 0.8rem; }
+    .btn:hover:not(:disabled) { background: #444; }
+    .btn:disabled { opacity: 0.35; cursor: default; }
+
+    #content { display: flex; flex: 1; overflow: hidden; }
+
+    /* Shared step body layout */
+    .step-card-body { padding: 0.75rem; display: flex; gap: 1rem; align-items: flex-start; }
+    .step-card-params { flex-shrink: 0; width: 260px; }
+    .step-card-output { flex: 1; min-width: 0; }
+    .step-card-output .error-msg { color: #f88; font-size: 0.8rem; white-space: pre-wrap; padding: 0.5rem; background: #300; border-radius: 3px; margin-bottom: 0.5rem; display: none; }
+    .step-card-output img { max-width: 100%; width: auto; display: block; border-radius: 2px; }
+
+    {% block extra_style %}{% endblock %}
+  </style>
+</head>
+<body>
+  <div id="toolbar">
+    <h2>{% block toolbar_title %}Sketchbook{% endblock %}</h2>
+    <span id="preset-label">preset: <span id="dirty-indicator"></span></span>
+    <select id="preset-select"><option value="">— untitled —</option></select>
+    <button class="btn" id="btn-save" disabled>Save</button>
+    <button class="btn" id="btn-save-as">Save as…</button>
+    <button class="btn" id="btn-new">New</button>
+  </div>
+
+  <div id="content">
+    {% block content %}{% endblock %}
+  </div>
+
+  <script type="module">
+    import { Pane } from "https://cdn.jsdelivr.net/npm/tweakpane@4/+esm";
+
+    const SKETCH_ID = "{{ sketch_id }}";
+    const PATCH_URL = `/api/sketches/${SKETCH_ID}/params`;
+    const PRESETS_URL = `/api/sketches/${SKETCH_ID}/presets`;
+
+    // -----------------------------------------------------------------------
+    // Presets
+    // -----------------------------------------------------------------------
+
+    async function fetchAndRenderPresets() {
+      const res = await fetch(PRESETS_URL);
+      if (!res.ok) return;
+      renderPresets(await res.json());
+    }
+
+    function renderPresets({ presets, active }) {
+      const select = document.getElementById("preset-select");
+      const dirty = document.getElementById("dirty-indicator");
+      const btnSave = document.getElementById("btn-save");
+
+      select.innerHTML = '<option value="">— untitled —</option>';
+      for (const name of presets) {
+        const opt = document.createElement("option");
+        opt.value = name;
+        opt.textContent = name;
+        select.appendChild(opt);
+      }
+
+      select.value = active.based_on ?? "";
+      dirty.textContent = active.dirty ? "*" : "";
+      btnSave.disabled = !active.based_on || !active.dirty;
+    }
+
+    function markDirtyLocally() {
+      document.getElementById("dirty-indicator").textContent = "*";
+      document.getElementById("btn-save").disabled =
+        !document.getElementById("preset-select").value;
+    }
+
+    document.getElementById("preset-select").addEventListener("change", async (e) => {
+      const name = e.target.value;
+      if (!name) return;
+      await fetch(`${PRESETS_URL}/${name}/load`, { method: "POST" });
+      await fetchAndRenderPresets();
+    });
+
+    document.getElementById("btn-save").addEventListener("click", async () => {
+      const current = document.getElementById("preset-select").value;
+      if (current) {
+        await fetch(PRESETS_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: current }),
+        });
+        await fetchAndRenderPresets();
+      } else {
+        await saveAs();
+      }
+    });
+
+    document.getElementById("btn-save-as").addEventListener("click", saveAs);
+
+    document.getElementById("btn-new").addEventListener("click", async () => {
+      await fetch(`${PRESETS_URL}/new`, { method: "POST" });
+      await fetchAndRenderPresets();
+    });
+
+    async function saveAs() {
+      const name = prompt("Preset name:");
+      if (!name) return;
+      await fetch(PRESETS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      await fetchAndRenderPresets();
+    }
+
+    // -----------------------------------------------------------------------
+    // Shared Tweakpane helper
+    // -----------------------------------------------------------------------
+
+    function buildPane(container, stepId, params) {
+      const pane = new Pane({ container });
+      const state = {};
+      for (const [name, spec] of Object.entries(params)) {
+        state[name] = spec.value;
+        const opts = {};
+        if (spec.min !== undefined) opts.min = spec.min;
+        if (spec.max !== undefined) opts.max = spec.max;
+        if (spec.step !== undefined) opts.step = spec.step;
+        if (spec.label !== undefined) opts.label = spec.label;
+        const debounceMs = spec.debounce ?? 0;
+        let debounceTimer = null;
+        const sendPatch = (value) => fetch(PATCH_URL, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ step_id: stepId, param_name: name, value }),
+        });
+        pane.addBinding(state, name, opts).on("change", (ev) => {
+          markDirtyLocally();
+          if (debounceMs > 0) {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(() => sendPatch(ev.value), debounceMs);
+          } else {
+            sendPatch(ev.value);
+          }
+        });
+      }
+      return pane;
+    }
+
+    // -----------------------------------------------------------------------
+    // Page-specific init (Tweakpane + WebSocket)
+    // -----------------------------------------------------------------------
+
+    {% block scripts %}{% endblock %}
+
+    fetchAndRenderPresets();
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+{% macro step_body(step_id, image_url) %}
+<div class="step-card-body">
+  <div class="step-card-params" id="params-{{ step_id }}"></div>
+  <div class="step-card-output">
+    <div class="error-msg" id="err-msg-{{ step_id }}"></div>
+    <img id="img-{{ step_id }}" src="{{ image_url }}" alt="{{ step_id }} output">
+  </div>
+</div>
+{% endmacro %}

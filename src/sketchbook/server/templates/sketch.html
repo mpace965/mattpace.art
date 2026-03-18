@@ -1,41 +1,17 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>{{ sketch_id }} — Sketchbook</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; }
-    body { margin: 0; background: #111; color: #eee; font-family: monospace; display: flex; flex-direction: column; height: 100vh; }
+{% extends "base.html" %}
+{% from "macros.html" import step_body %}
 
-    #toolbar {
-      display: flex; align-items: center; gap: 0.5rem;
-      padding: 0.5rem 1rem; background: #1a1a1a; border-bottom: 1px solid #333;
-      flex-shrink: 0;
-    }
-    #toolbar h2 { margin: 0; font-size: 0.9rem; flex: 1; }
-    #preset-label { font-size: 0.8rem; color: #aaa; white-space: nowrap; }
-    #dirty-indicator { color: #f90; }
-    #preset-select { background: #222; color: #eee; border: 1px solid #444; padding: 0.2rem 0.4rem; font-family: monospace; font-size: 0.8rem; }
-    .btn { background: #333; color: #eee; border: 1px solid #555; padding: 0.2rem 0.6rem; cursor: pointer; font-family: monospace; font-size: 0.8rem; }
-    .btn:hover:not(:disabled) { background: #444; }
-    .btn:disabled { opacity: 0.35; cursor: default; }
+{% block title %}{{ sketch_id }} — Sketchbook{% endblock %}
 
-    #content { display: flex; flex: 1; overflow: hidden; }
-    #dag-panel { width: 220px; padding: 1rem; overflow: auto; border-right: 1px solid #333; flex-shrink: 0; }
+{% block toolbar_title %}<a href="/sketch/{{ sketch_id }}">{{ sketch_id }}</a>{% endblock %}
+
+{% block extra_style %}
     #main { flex: 1; padding: 1rem; overflow: auto; }
 
-    /* DAG panel */
-    #dag-panel h3 { margin: 0 0 0.75rem; font-size: 0.75rem; text-transform: uppercase; color: #666; letter-spacing: 0.05em; }
-    .dag-node { padding: 0.35rem 0.6rem; margin-bottom: 0.2rem; background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 3px; font-size: 0.75rem; }
-    .dag-node a { color: #7af; text-decoration: none; }
-    .dag-node a:hover { text-decoration: underline; }
-    .dag-node .node-type { font-size: 0.65rem; color: #555; margin-top: 0.1rem; }
-    .dag-edge { padding: 0.05rem 0.6rem; color: #444; font-size: 0.7rem; }
-
-    /* Step cards in main area */
+    /* Step cards */
     #main-controls { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; }
 
-    details.step-card { border: 1px solid #2a2a2a; border-radius: 4px; margin-bottom: 0.75rem; background: #161616; overflow: hidden; }
+    details.step-card { border: 1px solid #2a2a2a; border-radius: 4px; margin-bottom: 0.75rem; background: #161616; overflow: hidden; width: fit-content; min-width: 50vw; }
     details.step-card[open] summary { border-bottom: 1px solid #2a2a2a; }
 
     summary.step-card-header {
@@ -47,43 +23,23 @@
     summary.step-card-header::before { content: "▶"; font-size: 0.6rem; color: #555; transition: transform 0.1s; }
     details[open] summary.step-card-header::before { transform: rotate(90deg); }
 
-    .card-step-id { font-size: 0.8rem; color: #ddd; flex: 1; }
-    .card-step-type { font-size: 0.7rem; color: #555; }
+    .card-step-id { font-size: 0.8rem; color: #7af; text-decoration: none; }
+    .card-step-id:hover { text-decoration: underline; }
+    .card-step-type { font-size: 0.7rem; color: #555; margin-left: auto; padding-left: 1rem; }
     .card-error-dot { width: 6px; height: 6px; border-radius: 50%; background: #c44; flex-shrink: 0; display: none; }
     .card-error-dot.visible { display: block; }
 
-    .step-card-body { padding: 0.75rem; display: flex; gap: 1rem; align-items: flex-start; }
-    .step-card-output { flex: 1; min-width: 0; }
-    .step-card-body .error-msg { color: #f88; font-size: 0.8rem; white-space: pre-wrap; padding: 0.5rem; background: #300; border-radius: 3px; margin-bottom: 0.5rem; display: none; }
-    .step-card-body img { max-width: 100%; display: block; border-radius: 2px; }
-    .step-card-params { flex-shrink: 0; width: 260px; }
-  </style>
-</head>
-<body>
-  <div id="toolbar">
-    <h2>{{ sketch_id }}</h2>
-    <span id="preset-label">preset: <span id="dirty-indicator"></span></span>
-    <select id="preset-select"><option value="">— untitled —</option></select>
-    <button class="btn" id="btn-save" disabled>Save</button>
-    <button class="btn" id="btn-save-as">Save as…</button>
-    <button class="btn" id="btn-new">New</button>
-  </div>
+    /* Cap image height in overview */
+    .step-card-output img { max-height: 400px; }
 
-  <div id="content">
-    <div id="dag-panel">
-      <h3>Pipeline</h3>
-      <div id="dag-tree">
-        {% for node in nodes %}
-        <div class="dag-node">
-          <a href="#card-{{ node.id }}">{{ node.id }}</a>
-          <div class="node-type">{{ node.type }}</div>
-        </div>
-        {% if not loop.last %}
-        <div class="dag-edge">↓</div>
-        {% endif %}
-        {% endfor %}
-      </div>
-    </div>
+    /* Full-size hover preview */
+    #img-preview { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; pointer-events: none; }
+    #img-preview.visible { display: flex; }
+    #img-preview img { max-width: 90vw; max-height: 90vh; border-radius: 3px; box-shadow: 0 4px 32px rgba(0,0,0,0.8); }
+{% endblock %}
+
+{% block content %}
+    <div id="img-preview"><img id="img-preview-src" src="" alt=""></div>
 
     <div id="main">
       <div id="main-controls">
@@ -93,34 +49,48 @@
       {% for node in nodes %}
       <details class="step-card" id="card-{{ node.id }}" open>
         <summary class="step-card-header">
-          <span class="card-step-id">{{ node.id }}</span>
+          <a class="card-step-id" href="/sketch/{{ sketch_id }}/step/{{ node.id }}">{{ node.id }}</a>
           <span class="card-step-type">{{ node.type }}</span>
           <span class="card-error-dot" id="err-dot-{{ node.id }}"></span>
         </summary>
-        <div class="step-card-body">
-          <div class="step-card-output">
-            <div class="error-msg" id="err-msg-{{ node.id }}"></div>
-            <img id="img-{{ node.id }}" src="/workdir/{{ sketch_id }}/{{ node.id }}.png" alt="{{ node.id }} output">
-          </div>
-          <div class="step-card-params" id="params-{{ node.id }}"></div>
-        </div>
+        {{ step_body(node.id, "/workdir/" ~ sketch_id ~ "/" ~ node.id ~ ".png") }}
       </details>
       {% endfor %}
     </div>
+{% endblock %}
 
-  </div>
-
-  <script type="module">
-    import { Pane } from "https://cdn.jsdelivr.net/npm/tweakpane@4/+esm";
-
-    const SKETCH_ID = "{{ sketch_id }}";
+{% block scripts %}
     const PARAMS_URL = `/api/sketches/${SKETCH_ID}/params`;
-    const PATCH_URL = `/api/sketches/${SKETCH_ID}/params`;
-    const PRESETS_URL = `/api/sketches/${SKETCH_ID}/presets`;
 
-    // -----------------------------------------------------------------------
-    // Collapse / expand all
-    // -----------------------------------------------------------------------
+    document.querySelectorAll("a.card-step-id").forEach(a => {
+      a.addEventListener("click", (e) => e.stopPropagation());
+    });
+
+    // Full-size image preview on shift+hover (anywhere in the card)
+    const preview = document.getElementById("img-preview");
+    const previewImg = document.getElementById("img-preview-src");
+    let hoveredImg = null;
+
+    document.querySelectorAll(".step-card-body").forEach(card => {
+      card.addEventListener("mouseenter", (e) => {
+        hoveredImg = card.querySelector("img");
+        if (e.shiftKey) { previewImg.src = hoveredImg.src; preview.classList.add("visible"); }
+      });
+      card.addEventListener("mouseleave", () => {
+        hoveredImg = null;
+        preview.classList.remove("visible");
+      });
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Shift" && hoveredImg && !preview.classList.contains("visible")) {
+        previewImg.src = hoveredImg.src;
+        preview.classList.add("visible");
+      }
+    });
+    window.addEventListener("keyup", (e) => {
+      if (e.key === "Shift") preview.classList.remove("visible");
+    });
 
     document.getElementById("btn-expand-all").addEventListener("click", () => {
       document.querySelectorAll("details.step-card").forEach(d => d.open = true);
@@ -129,84 +99,7 @@
       document.querySelectorAll("details.step-card").forEach(d => d.open = false);
     });
 
-    // -----------------------------------------------------------------------
-    // Presets
-    // -----------------------------------------------------------------------
-
-    async function fetchAndRenderPresets() {
-      const res = await fetch(PRESETS_URL);
-      if (!res.ok) return;
-      renderPresets(await res.json());
-    }
-
-    function renderPresets({ presets, active }) {
-      const select = document.getElementById("preset-select");
-      const dirty = document.getElementById("dirty-indicator");
-      const btnSave = document.getElementById("btn-save");
-
-      select.innerHTML = '<option value="">— untitled —</option>';
-      for (const name of presets) {
-        const opt = document.createElement("option");
-        opt.value = name;
-        opt.textContent = name;
-        select.appendChild(opt);
-      }
-
-      select.value = active.based_on ?? "";
-      dirty.textContent = active.dirty ? "*" : "";
-      btnSave.disabled = !active.based_on;
-    }
-
-    function markDirtyLocally() {
-      document.getElementById("dirty-indicator").textContent = "*";
-      document.getElementById("btn-save").disabled =
-        !document.getElementById("preset-select").value;
-    }
-
-    document.getElementById("preset-select").addEventListener("change", async (e) => {
-      const name = e.target.value;
-      if (!name) return;
-      await fetch(`${PRESETS_URL}/${name}/load`, { method: "POST" });
-      await fetchAndRenderPresets();
-    });
-
-    document.getElementById("btn-save").addEventListener("click", async () => {
-      const current = document.getElementById("preset-select").value;
-      if (current) {
-        await fetch(PRESETS_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: current }),
-        });
-        await fetchAndRenderPresets();
-      } else {
-        await saveAs();
-      }
-    });
-
-    document.getElementById("btn-save-as").addEventListener("click", saveAs);
-
-    document.getElementById("btn-new").addEventListener("click", async () => {
-      await fetch(`${PRESETS_URL}/new`, { method: "POST" });
-      await fetchAndRenderPresets();
-    });
-
-    async function saveAs() {
-      const name = prompt("Preset name:");
-      if (!name) return;
-      await fetch(PRESETS_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      await fetchAndRenderPresets();
-    }
-
-    // -----------------------------------------------------------------------
-    // Tweakpane (one pane per step card, inline)
-    // -----------------------------------------------------------------------
-
-    async function initTweakpane() {
+    async function init() {
       const res = await fetch(PARAMS_URL);
       if (!res.ok) return;
       const allParams = await res.json();
@@ -216,39 +109,11 @@
         const container = document.getElementById(`params-${stepId}`);
         if (!container) continue;
 
-        const pane = new Pane({ container, title: stepId });
-        const state = {};
-
-        for (const [name, spec] of Object.entries(params)) {
-          state[name] = spec.value;
-          const opts = {};
-          if (spec.min !== undefined) opts.min = spec.min;
-          if (spec.max !== undefined) opts.max = spec.max;
-          if (spec.step !== undefined) opts.step = spec.step;
-          if (spec.label !== undefined) opts.label = spec.label;
-          const debounceMs = spec.debounce ?? 0;
-          let debounceTimer = null;
-          const sendPatch = (value) => fetch(PATCH_URL, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ step_id: stepId, param_name: name, value }),
-          });
-          pane.addBinding(state, name, opts).on("change", (ev) => {
-            markDirtyLocally();
-            if (debounceMs > 0) {
-              clearTimeout(debounceTimer);
-              debounceTimer = setTimeout(() => sendPatch(ev.value), debounceMs);
-            } else {
-              sendPatch(ev.value);
-            }
-          });
-        }
+        buildPane(container, stepId, params);
       }
-    }
 
-    // -----------------------------------------------------------------------
-    // WebSocket
-    // -----------------------------------------------------------------------
+      connect();
+    }
 
     function connect() {
       const ws = new WebSocket(`ws://${location.host}/ws/${SKETCH_ID}`);
@@ -258,9 +123,13 @@
           const img = document.getElementById(`img-${msg.step_id}`);
           const errMsg = document.getElementById(`err-msg-${msg.step_id}`);
           const errDot = document.getElementById(`err-dot-${msg.step_id}`);
-          if (img) img.src = msg.image_url + "?t=" + Date.now();
+          const newSrc = msg.image_url + "?t=" + Date.now();
+          if (img) img.src = newSrc;
           if (errMsg) errMsg.style.display = "none";
           if (errDot) errDot.classList.remove("visible");
+          if (hoveredImg === img && preview.classList.contains("visible")) {
+            previewImg.src = newSrc;
+          }
         } else if (msg.type === "step_error") {
           const errMsg = document.getElementById(`err-msg-${msg.step_id}`);
           const errDot = document.getElementById(`err-dot-${msg.step_id}`);
@@ -274,10 +143,4 @@
       };
       ws.onclose = () => setTimeout(connect, 1000);
     }
-
-    fetchAndRenderPresets();
-    initTweakpane();
-    connect();
-  </script>
-</body>
-</html>
+{% endblock %}
