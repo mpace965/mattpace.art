@@ -25,8 +25,10 @@ from fastapi.testclient import TestClient
 # Helpers
 # ---------------------------------------------------------------------------
 
-def _collect_ws_messages(ws_client, path: str, trigger, *, timeout: float = 5.0) -> list[dict]:
-    """Open a WebSocket, call trigger(), collect all messages until timeout."""
+def _collect_ws_messages(
+    ws_client, path: str, trigger, *, timeout: float = 5.0, idle: float = 0.3
+) -> list[dict]:
+    """Open a WebSocket, call trigger(), collect messages until idle or timeout."""
     received: queue.Queue = queue.Queue()
 
     def _reader(ws) -> None:
@@ -44,12 +46,13 @@ def _collect_ws_messages(ws_client, path: str, trigger, *, timeout: float = 5.0)
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             try:
-                msg = received.get(timeout=0.2)
+                msg = received.get(timeout=idle)
                 if isinstance(msg, Exception):
                     break
                 msgs.append(msg)
             except queue.Empty:
-                pass
+                if msgs:
+                    break  # went idle after receiving at least one message
     return msgs
 
 
