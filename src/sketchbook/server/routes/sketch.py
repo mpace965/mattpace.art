@@ -8,6 +8,7 @@ from fastapi.requests import Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
+
 log = logging.getLogger("sketchbook.server.routes.sketch")
 
 router = APIRouter()
@@ -29,16 +30,28 @@ async def sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
     if sketch is None:
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
 
-    nodes = [
-        {"id": node.id, "type": type(node.step).__name__}
-        for node in sketch.dag.topo_sort()
+    depths = sketch.dag.node_depths()
+    components = sketch.dag.connected_components()
+    groups = [
+        [
+            {
+                "id": nid,
+                "type": type(sketch.dag.node(nid).step).__name__,
+                "depth": depths[nid],
+                "input_ids": [src.id for src in sketch.dag.node(nid)._inputs.values()],
+            }
+            for nid in component
+        ]
+        for component in components
     ]
+    # Flatten for backwards-compat (tests check node IDs appear in response text)
+    nodes = [node for group in groups for node in group]
 
     assert _templates is not None
     return _templates.TemplateResponse(
         request,
         "sketch.html",
-        {"sketch_id": sketch_id, "nodes": nodes},
+        {"sketch_id": sketch_id, "nodes": nodes, "groups": groups},
     )
 
 

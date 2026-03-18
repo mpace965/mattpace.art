@@ -73,9 +73,12 @@ async def broadcast_preset_state(sketch_id: str, preset_manager) -> None:
 
 
 async def broadcast_results(sketch_id: str, dag, result) -> None:
-    """Broadcast step_updated or step_error for every node with a workdir path."""
+    """Broadcast step_updated or step_error for every executed or failed node with a workdir path."""
+    relevant = result.executed | result.errors.keys()
     for n in dag.topo_sort():
         if not n.workdir_path:
+            continue
+        if relevant and n.id not in relevant:
             continue
         if n.id in result.errors:
             await broadcast(sketch_id, {

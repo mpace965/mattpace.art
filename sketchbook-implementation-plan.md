@@ -440,10 +440,10 @@ def test_all_step_params_in_sketch_view(tmp_sketch, test_client):
 
 ### Definition of done — Increment 4
 
-- [ ] Acceptance tests in `tests/acceptance/test_04_dag_overview.py` pass
-- [ ] `tests/unit/test_dag.py` updated: topo sort over 3+ node chain, correct order guaranteed
-- [ ] `tests/unit/test_sketch.py` updated: `Sketch.add()` with explicit inputs wires correctly into DAG
-- [ ] `tests/unit/test_gaussian_blur.py` covers `GaussianBlur.setup` declares correct params, `process` returns same-shape image
+- [x] Acceptance tests in `tests/acceptance/test_04_dag_overview.py` pass
+- [x] `tests/unit/test_dag.py` updated: topo sort over 3+ node chain, correct order guaranteed
+- [x] `tests/unit/test_sketch.py` updated: `Sketch.add()` with explicit inputs wires correctly into DAG
+- [x] `tests/unit/test_gaussian_blur.py` covers `GaussianBlur.setup` declares correct params, `process` returns same-shape image
 
 ---
 
@@ -496,10 +496,10 @@ def test_optional_input_not_required(tmp_sketch_no_mask, test_client):
 
 ### Definition of done — Increment 5
 
-- [ ] Acceptance tests in `tests/acceptance/test_05_explicit_wiring.py` pass
-- [ ] `tests/unit/test_dag.py` updated: `descendants()` returns correct subgraph, partial re-execution skips non-descendants
-- [ ] `tests/unit/test_step.py` updated: optional input not required at execution time, missing required input raises at DAG validation
-- [ ] `tests/unit/test_sketch.py` updated: `add()` with `inputs={}` dict wires named inputs correctly
+- [x] Acceptance tests in `tests/acceptance/test_05_explicit_wiring.py` pass
+- [x] `tests/unit/test_dag.py` updated: `descendants()` returns correct subgraph, partial re-execution skips non-descendants
+- [x] `tests/unit/test_step.py` updated: optional input not required at execution time, missing required input raises at DAG validation
+- [x] `tests/unit/test_sketch.py` updated: `add()` with `inputs={}` dict wires named inputs correctly
 
 ---
 

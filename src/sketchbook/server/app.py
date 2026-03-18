@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from sketchbook.core.executor import execute
+from sketchbook.core.executor import execute, execute_partial
 from sketchbook.core.sketch import Sketch
 from sketchbook.core.watcher import Watcher
 from sketchbook.server.routes import dag as dag_routes
@@ -29,16 +29,17 @@ _templates_dir = Path(__file__).parent / "templates"
 
 
 def _register_watch(watcher: Watcher, sketch_id: str, sketch: Sketch, loop: asyncio.AbstractEventLoop) -> None:
-    """Watch all source nodes in a sketch and wire changes to re-execution + broadcast."""
+    """Watch all source nodes in a sketch and wire changes to partial re-execution + broadcast."""
     for node in sketch.dag.topo_sort():
         if not isinstance(node.step, SourceFile):
             continue
 
         source_path = node.step._path
+        changed_node_id = node.id
 
-        def on_change(sid: str = sketch_id, sk: Sketch = sketch) -> None:
-            log.info(f"Source changed for sketch '{sid}', re-executing")
-            result = execute(sk.dag)
+        def on_change(sid: str = sketch_id, sk: Sketch = sketch, nid: str = changed_node_id) -> None:
+            log.info(f"Source '{nid}' changed for sketch '{sid}', re-executing descendants")
+            result = execute_partial(sk.dag, [nid])
             asyncio.run_coroutine_threadsafe(
                 ws_routes.broadcast_results(sid, sk.dag, result),
                 loop,

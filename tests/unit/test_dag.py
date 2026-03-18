@@ -134,3 +134,212 @@ def test_node_lookup_missing_raises() -> None:
     dag = DAG()
     with pytest.raises(KeyError, match="No node 'x'"):
         dag.node("x")
+
+
+# ---------------------------------------------------------------------------
+# descendants
+# ---------------------------------------------------------------------------
+
+def test_descendants_leaf_node_is_empty() -> None:
+    dag = DAG()
+    dag.add_node(_node("a"))
+    dag.add_node(_node("b"))
+    dag.connect("a", "b")
+    assert dag.descendants("b") == []
+
+
+def test_descendants_simple_chain() -> None:
+    dag = DAG()
+    for nid in ("a", "b", "c"):
+        dag.add_node(_node(nid))
+    dag.connect("a", "b")
+    dag.connect("b", "c")
+    assert set(dag.descendants("a")) == {"b", "c"}
+
+
+def test_descendants_direct_child_only() -> None:
+    dag = DAG()
+    for nid in ("a", "b", "c"):
+        dag.add_node(_node(nid))
+    dag.connect("a", "b")
+    dag.connect("b", "c")
+    assert set(dag.descendants("b")) == {"c"}
+
+
+def test_descendants_branching() -> None:
+    """Two children both appear as descendants."""
+    dag = DAG()
+    for nid in ("a", "b", "c"):
+        dag.add_node(_node(nid))
+    dag.connect("a", "b")
+    dag.connect("a", "c")
+    assert set(dag.descendants("a")) == {"b", "c"}
+
+
+def test_descendants_diamond() -> None:
+    """a → b → d, a → c → d: descendants of a = {b, c, d}."""
+    dag = DAG()
+    for nid in ("a", "b", "c", "d"):
+        dag.add_node(_node(nid))
+    dag.connect("a", "b")
+    dag.connect("a", "c")
+    dag.connect("b", "d")
+    dag.connect("c", "d")
+    assert set(dag.descendants("a")) == {"b", "c", "d"}
+
+
+def test_descendants_missing_node_raises() -> None:
+    dag = DAG()
+    with pytest.raises(KeyError, match="No node 'z'"):
+        dag.descendants("z")
+
+
+# ---------------------------------------------------------------------------
+# validate
+# ---------------------------------------------------------------------------
+
+class _RequiredInputStep(_Stub):
+    def setup(self) -> None:
+        self.add_input("image", object)
+
+
+class _OptionalInputStep(_Stub):
+    def setup(self) -> None:
+        self.add_input("image", object)
+        self.add_input("mask", object, optional=True)
+
+
+def test_validate_missing_required_raises() -> None:
+    dag = DAG()
+    dag.add_node(DAGNode(_RequiredInputStep(), "step"))
+    with pytest.raises(ValueError, match="Required input 'image'.*step"):
+        dag.validate()
+
+
+def test_validate_connected_required_passes() -> None:
+    dag = DAG()
+    dag.add_node(_node("src"))
+    dag.add_node(DAGNode(_RequiredInputStep(), "step"))
+    dag.connect("src", "step", "image")
+    dag.validate()  # should not raise
+
+
+# ---------------------------------------------------------------------------
+# node_depths
+# ---------------------------------------------------------------------------
+
+def test_node_depths_single_node() -> None:
+    dag = DAG()
+    dag.add_node(_node("a"))
+    assert dag.node_depths() == {"a": 0}
+
+
+def test_node_depths_chain() -> None:
+    dag = DAG()
+    for nid in ("a", "b", "c"):
+        dag.add_node(_node(nid))
+    dag.connect("a", "b")
+    dag.connect("b", "c")
+    depths = dag.node_depths()
+    assert depths["a"] == 0
+    assert depths["b"] == 1
+    assert depths["c"] == 2
+
+
+def test_node_depths_diamond() -> None:
+    """Both short and long paths — depth is the longest."""
+    dag = DAG()
+    for nid in ("a", "b", "c", "d"):
+        dag.add_node(_node(nid))
+    dag.connect("a", "b")
+    dag.connect("a", "c")
+    dag.connect("b", "d")
+    dag.connect("c", "d")
+    depths = dag.node_depths()
+    assert depths["a"] == 0
+    assert depths["d"] == 2
+
+
+def test_node_depths_two_roots() -> None:
+    dag = DAG()
+    for nid in ("a", "b", "c", "d"):
+        dag.add_node(_node(nid))
+    dag.connect("a", "c")
+    dag.connect("b", "d")
+    depths = dag.node_depths()
+    assert depths["a"] == 0
+    assert depths["b"] == 0
+    assert depths["c"] == 1
+    assert depths["d"] == 1
+
+
+# ---------------------------------------------------------------------------
+# connected_components
+# ---------------------------------------------------------------------------
+
+def test_connected_components_single_chain() -> None:
+    dag = DAG()
+    for nid in ("a", "b", "c"):
+        dag.add_node(_node(nid))
+    dag.connect("a", "b")
+    dag.connect("b", "c")
+    components = dag.connected_components()
+    assert len(components) == 1
+    assert set(components[0]) == {"a", "b", "c"}
+
+
+def test_connected_components_two_isolated_chains() -> None:
+    dag = DAG()
+    for nid in ("a", "b", "x", "y"):
+        dag.add_node(_node(nid))
+    dag.connect("a", "b")
+    dag.connect("x", "y")
+    components = dag.connected_components()
+    assert len(components) == 2
+    as_sets = [set(c) for c in components]
+    assert {"a", "b"} in as_sets
+    assert {"x", "y"} in as_sets
+
+
+def test_connected_components_each_group_in_topo_order() -> None:
+    dag = DAG()
+    for nid in ("a", "b", "c"):
+        dag.add_node(_node(nid))
+    dag.connect("a", "b")
+    dag.connect("b", "c")
+    components = dag.connected_components()
+    group = components[0]
+    assert group.index("a") < group.index("b") < group.index("c")
+
+
+def test_connected_components_single_node() -> None:
+    dag = DAG()
+    dag.add_node(_node("solo"))
+    components = dag.connected_components()
+    assert components == [["solo"]]
+
+
+def test_connected_components_diamond_is_one_component() -> None:
+    dag = DAG()
+    for nid in ("a", "b", "c", "d"):
+        dag.add_node(_node(nid))
+    dag.connect("a", "b")
+    dag.connect("a", "c")
+    dag.connect("b", "d")
+    dag.connect("c", "d")
+    components = dag.connected_components()
+    assert len(components) == 1
+    assert set(components[0]) == {"a", "b", "c", "d"}
+
+
+# ---------------------------------------------------------------------------
+# validate
+# ---------------------------------------------------------------------------
+
+def test_validate_missing_optional_passes() -> None:
+    """Required input connected, optional input not connected — should pass."""
+    dag = DAG()
+    dag.add_node(_node("src"))
+    dag.add_node(DAGNode(_OptionalInputStep(), "step"))
+    dag.connect("src", "step", "image")
+    dag.validate()  # optional 'mask' not connected is fine

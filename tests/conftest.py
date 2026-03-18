@@ -179,3 +179,88 @@ def multi_step_client(tmp_multi_step_sketch: Path) -> Generator[TestClient, None
     app = create_app({"multi_step": sketch}, sketches_dir=tmp_multi_step_sketch.parent)
     with TestClient(app, raise_server_exceptions=True) as client:
         yield client
+
+
+# ---------------------------------------------------------------------------
+# masked edge sketch fixtures (increment 5)
+# ---------------------------------------------------------------------------
+
+
+class _MaskedEdgeSketch(Sketch):
+    """Sketch with source_photo → blur → edge_detect(mask=source_mask)."""
+
+    name = "Edge Portrait"
+    description = "Multi-source: blur + optional mask into edge detect."
+    date = "2026-03-18"
+
+    def build(self) -> None:
+        """Wire photo through blur, with mask as optional second input to edge detect."""
+        photo = self.source("photo", "assets/photo.jpg")
+        mask = self.source("mask", "assets/mask.png")
+        blur = photo.pipe(GaussianBlur)
+        self.add(EdgeDetect, inputs={"image": blur, "mask": mask})
+
+
+class _NoMaskEdgeSketch(Sketch):
+    """Same pipeline as _MaskedEdgeSketch but without the mask input connected."""
+
+    name = "Edge Portrait No Mask"
+    description = "Optional mask input not wired."
+    date = "2026-03-18"
+
+    def build(self) -> None:
+        """Wire photo through blur then edge detect (no mask)."""
+        photo = self.source("photo", "assets/photo.jpg")
+        blur = photo.pipe(GaussianBlur)
+        blur.pipe(EdgeDetect)
+
+
+@pytest.fixture()
+def tmp_masked_sketch(tmp_path: Path) -> Generator[Path, None, None]:
+    """Create a sketch directory with both photo and mask assets."""
+    sketch_dir = tmp_path / "edge_portrait"
+    assets_dir = sketch_dir / "assets"
+    assets_dir.mkdir(parents=True)
+    make_test_image(assets_dir / "photo.jpg")
+    make_test_image(assets_dir / "mask.png", color="white")
+    yield sketch_dir
+
+
+@pytest.fixture()
+def masked_client(tmp_masked_sketch: Path) -> Generator[TestClient, None, None]:
+    """Build the masked edge sketch and return a FastAPI TestClient."""
+    sketch = _MaskedEdgeSketch(tmp_masked_sketch)
+    execute(sketch.dag)
+
+    app = create_app({"edge_portrait": sketch}, sketches_dir=tmp_masked_sketch.parent)
+    with TestClient(app, raise_server_exceptions=True) as client:
+        yield client
+
+
+@pytest.fixture()
+def masked_ws_client(masked_client: TestClient):
+    """Return a factory that opens a WebSocket connection via the masked client."""
+    def _factory(path: str):
+        return masked_client.websocket_connect(path)
+    return _factory
+
+
+@pytest.fixture()
+def tmp_no_mask_sketch(tmp_path: Path) -> Generator[Path, None, None]:
+    """Create a sketch directory with only a photo asset (no mask)."""
+    sketch_dir = tmp_path / "edge_portrait_no_mask"
+    assets_dir = sketch_dir / "assets"
+    assets_dir.mkdir(parents=True)
+    make_test_image(assets_dir / "photo.jpg")
+    yield sketch_dir
+
+
+@pytest.fixture()
+def no_mask_client(tmp_no_mask_sketch: Path) -> Generator[TestClient, None, None]:
+    """Build the no-mask edge sketch and return a FastAPI TestClient."""
+    sketch = _NoMaskEdgeSketch(tmp_no_mask_sketch)
+    execute(sketch.dag)
+
+    app = create_app({"edge_portrait_no_mask": sketch}, sketches_dir=tmp_no_mask_sketch.parent)
+    with TestClient(app, raise_server_exceptions=True) as client:
+        yield client

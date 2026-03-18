@@ -105,3 +105,30 @@ def test_passthrough_declares_image_input() -> None:
     assert "image" in step._inputs
     assert step._inputs["image"].type is Image
     assert step._inputs["image"].optional is False
+
+
+# ---------------------------------------------------------------------------
+# Optional input not required at execution time
+# ---------------------------------------------------------------------------
+
+class _OptionalStep(PipelineStep):
+    """Step with one required and one optional input."""
+
+    def setup(self) -> None:
+        self.add_input("image", Image)
+        self.add_input("mask", Image, optional=True)
+
+    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
+        # Optional input should be None when not provided
+        assert "mask" not in inputs or inputs["mask"] is None or isinstance(inputs["mask"], Image)
+        return inputs["image"]
+
+
+def test_optional_input_is_optional_flag() -> None:
+    step = _OptionalStep()
+    assert step._inputs["mask"].optional is True
+
+
+def test_required_input_is_not_optional() -> None:
+    step = _OptionalStep()
+    assert step._inputs["image"].optional is False

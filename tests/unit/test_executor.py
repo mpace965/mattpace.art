@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 from sketchbook.core.dag import DAG, DAGNode
-from sketchbook.core.executor import execute
+from sketchbook.core.executor import execute, execute_partial
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
 
@@ -182,6 +182,115 @@ def test_failed_node_clears_output() -> None:
 
     assert not result.ok
     assert dag.node("broken").output is None
+
+
+# ---------------------------------------------------------------------------
+# Stale file deletion
+# ---------------------------------------------------------------------------
+
+def test_execute_result_records_executed_nodes() -> None:
+    img = _small_image()
+    dag = DAG()
+    dag.add_node(_make_node("src", _ConstantStep(img)))
+    dag.add_node(_make_node("pass", _PassthroughStep()))
+    dag.connect("src", "pass", "image")
+
+    result = execute(dag)
+
+    assert "src" in result.executed
+    assert "pass" in result.executed
+
+
+# ---------------------------------------------------------------------------
+# Partial execution
+# ---------------------------------------------------------------------------
+
+def test_execute_partial_skips_non_descendants() -> None:
+    """execute_partial on source_b only runs source_b and its descendants, not source_a."""
+    img = _small_image()
+    dag = DAG()
+    dag.add_node(_make_node("src_a", _ConstantStep(img)))
+    dag.add_node(_make_node("src_b", _ConstantStep(img)))
+    dst_a = _make_node("dst_a", _PassthroughStep())
+    dst_b = _make_node("dst_b", _PassthroughStep())
+    dag.add_node(dst_a)
+    dag.add_node(dst_b)
+    dag.connect("src_a", "dst_a", "image")
+    dag.connect("src_b", "dst_b", "image")
+
+    # Run full first to populate all outputs
+    execute(dag)
+
+    # Now partial-run only src_b branch
+    result = execute_partial(dag, ["src_b"])
+
+    assert "src_b" in result.executed
+    assert "dst_b" in result.executed
+    assert "src_a" not in result.executed
+    assert "dst_a" not in result.executed
+
+
+def test_execute_partial_includes_start_node() -> None:
+    img = _small_image()
+    dag = DAG()
+    dag.add_node(_make_node("src", _ConstantStep(img)))
+    dag.add_node(_make_node("pass", _PassthroughStep()))
+    dag.connect("src", "pass", "image")
+
+    execute(dag)
+    result = execute_partial(dag, ["src"])
+
+    assert "src" in result.executed
+    assert "pass" in result.executed
+
+
+# ---------------------------------------------------------------------------
+# Optional input handling
+# ---------------------------------------------------------------------------
+
+class _OptionalMaskStep(PipelineStep):
+    """Step that records whether mask was received."""
+
+    def __init__(self) -> None:
+        self.received_mask = object()  # sentinel
+        super().__init__()
+
+    def setup(self) -> None:
+        self.add_input("image", Image)
+        self.add_input("mask", Image, optional=True)
+
+    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
+        self.received_mask = inputs.get("mask")
+        return inputs["image"]
+
+
+def test_optional_input_receives_none_when_not_connected() -> None:
+    img = _small_image()
+    step = _OptionalMaskStep()
+    dag = DAG()
+    dag.add_node(_make_node("src", _ConstantStep(img)))
+    dag.add_node(_make_node("opt", step))
+    dag.connect("src", "opt", "image")
+
+    execute(dag)
+
+    assert step.received_mask is None
+
+
+def test_optional_input_receives_image_when_connected() -> None:
+    img = _small_image()
+    mask_img = _small_image()
+    step = _OptionalMaskStep()
+    dag = DAG()
+    dag.add_node(_make_node("src", _ConstantStep(img)))
+    dag.add_node(_make_node("mask_src", _ConstantStep(mask_img)))
+    dag.add_node(_make_node("opt", step))
+    dag.connect("src", "opt", "image")
+    dag.connect("mask_src", "opt", "mask")
+
+    execute(dag)
+
+    assert step.received_mask is mask_img
 
 
 # ---------------------------------------------------------------------------
