@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 from collections import defaultdict
+from pathlib import Path
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
@@ -19,14 +19,33 @@ _connections: dict[str, set[WebSocket]] = defaultdict(set)
 
 @router.websocket("/ws/{sketch_id}")
 async def ws_endpoint(websocket: WebSocket, sketch_id: str) -> None:
-    """Accept a WebSocket connection and hold it open for push updates."""
+    """Accept a WebSocket connection, push current state, then hold open for push updates."""
+    from sketchbook.server.app import get_sketch
+
     await websocket.accept()
     _connections[sketch_id].add(websocket)
     log.info(f"WebSocket connected for sketch '{sketch_id}'")
+
+    # Push current output state so the browser is up-to-date immediately after
+    # reconnecting (e.g. following a server hot-reload).
+    sketch = get_sketch(sketch_id)
+    if sketch is not None:
+        for node in sketch.dag.topo_sort():
+            if node.workdir_path and Path(node.workdir_path).exists():
+                await websocket.send_text(
+                    json.dumps({
+                        "type": "step_updated",
+                        "step_id": node.id,
+                        "image_url": f"/workdir/{sketch_id}/{node.id}.png",
+                    })
+                )
+
     try:
-        while True:
-            await asyncio.sleep(1)
-    except (WebSocketDisconnect, asyncio.CancelledError):
+        # Block until the client disconnects. We don't expect incoming messages,
+        # but receive() is the correct way to detect a close — asyncio.sleep()
+        # never notices the connection has gone away.
+        await websocket.receive()
+    except WebSocketDisconnect:
         pass
     finally:
         _connections[sketch_id].discard(websocket)

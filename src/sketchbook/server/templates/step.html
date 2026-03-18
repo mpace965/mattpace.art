@@ -191,6 +191,8 @@
           document.getElementById("step-output").style.display = "none";
         } else if (msg.type === "preset_state") {
           fetchAndRenderPresets();
+        } else if (msg.type === "page_reload") {
+          location.reload();
         }
       };
       ws.onclose = () => setTimeout(connect, 1000);

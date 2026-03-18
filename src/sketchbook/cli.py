@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import importlib
 import inspect
 import logging
@@ -14,7 +13,6 @@ import uvicorn
 
 from sketchbook.core.executor import execute
 from sketchbook.core.sketch import Sketch
-from sketchbook.core.watcher import Watcher
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("sketchbook.cli")
@@ -51,55 +49,24 @@ def discover_sketches() -> dict[str, Sketch]:
     return sketches
 
 
-def _register_watch(watcher: Watcher, sketch_id: str, sketch: Sketch, loop: asyncio.AbstractEventLoop) -> None:
-    """Watch all source nodes in a sketch and wire changes to re-execution + broadcast."""
-    from sketchbook.server.routes import ws as ws_routes
-    from sketchbook.steps.source import SourceFile
-
-    for node in sketch.dag.topo_sort():
-        if not isinstance(node.step, SourceFile):
-            continue
-
-        source_path = node.step._path
-
-        def on_change(sid: str = sketch_id, sk: Sketch = sketch) -> None:
-            log.info(f"Source changed for sketch '{sid}', re-executing")
-            result = execute(sk.dag)
-            asyncio.run_coroutine_threadsafe(
-                ws_routes.broadcast_results(sid, sk.dag, result),
-                loop,
-            )
-
-        watcher.watch(source_path, on_change)
-
-
 def dev() -> None:
-    """Start the dev server."""
-    from sketchbook.server.app import create_app
+    """Start the dev server with hot-reload for framework, template, and sketch code.
 
-    sketches = discover_sketches()
-    if not sketches:
-        log.warning("No sketches loaded — server will start with no content")
-
-    app = create_app(sketches, sketches_dir=_SKETCHES_DIR)
-    config = uvicorn.Config(app, host="127.0.0.1", port=8000, lifespan="off")
-    server = uvicorn.Server(config)
-
-    async def serve() -> None:
-        loop = asyncio.get_running_loop()
-        watcher = Watcher()
-        for sketch_id, sketch in sketches.items():
-            _register_watch(watcher, sketch_id, sketch, loop)
-        watcher.start()
-        try:
-            await server.serve()
-        finally:
-            watcher.stop()
-
-    try:
-        asyncio.run(serve())
-    except KeyboardInterrupt:
-        pass
+    Uvicorn's reload mode watches src/ and sketches/ for .py and .html changes,
+    restarting the server worker on any modification.  Source-image watching
+    (for pipeline re-execution) is handled by the FastAPI lifespan inside the
+    reloaded worker.
+    """
+    src_dir = _REPO_ROOT / "src"
+    uvicorn.run(
+        "sketchbook.server._dev:create_dev_app",
+        factory=True,
+        host="127.0.0.1",
+        port=8000,
+        reload=True,
+        reload_dirs=[str(src_dir), str(_SKETCHES_DIR)],
+        reload_includes=["*.py", "*.html"],
+    )
 
 
 def build() -> None:

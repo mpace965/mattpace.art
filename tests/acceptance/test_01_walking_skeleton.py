@@ -55,18 +55,25 @@ def test_file_change_triggers_websocket_update(tmp_sketch: Path, test_client: Te
     """Overwriting the source image pushes a step_updated message over WebSocket."""
     import queue
     import threading
+    import time
 
     received: queue.Queue = queue.Queue()
 
-    def _receive(ws) -> None:
+    def _receive_all(ws) -> None:
         try:
-            received.put(ws.receive_json())
-        except Exception as exc:
-            received.put(exc)
+            while True:
+                received.put(ws.receive_json())
+        except Exception:
+            pass
 
     with ws_client("/ws/hello") as ws:
-        t = threading.Thread(target=_receive, args=(ws,), daemon=True)
+        t = threading.Thread(target=_receive_all, args=(ws,), daemon=True)
         t.start()
+
+        # Drain initial-state messages sent immediately on connect.
+        time.sleep(0.3)
+        while not received.empty():
+            received.get_nowait()
 
         # Overwrite the source image with a red image
         write_test_image(tmp_sketch / "assets" / "fence-torn-paper.png", color="red")
@@ -75,9 +82,6 @@ def test_file_change_triggers_websocket_update(tmp_sketch: Path, test_client: Te
             msg = received.get(timeout=5.0)
         except queue.Empty:
             pytest.fail("No WebSocket message received within 5 seconds")
-
-        if isinstance(msg, Exception):
-            pytest.fail(f"WebSocket receive raised: {msg}")
 
         assert msg["type"] == "step_updated"
         assert "image_url" in msg
