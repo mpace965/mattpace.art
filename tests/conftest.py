@@ -9,8 +9,12 @@ import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
+from sketchbook import Sketch
 from sketchbook.core.executor import execute
 from sketchbook.server.app import create_app
+from sketchbook.steps import Passthrough
+from sketchbook.steps.opencv.blur import GaussianBlur
+from sketchbook.steps.opencv.edge_detect import EdgeDetect
 
 
 # ---------------------------------------------------------------------------
@@ -56,12 +60,23 @@ def tmp_sketch(tmp_path: Path) -> Generator[Path, None, None]:
 # test_client fixture
 # ---------------------------------------------------------------------------
 
+class _HelloSketch(Sketch):
+    """Minimal inline sketch for walking skeleton acceptance tests."""
+
+    name = "Hello"
+    description = "Simplest possible sketch."
+    date = "2026-03-16"
+
+    def build(self) -> None:
+        """Wire a source image through a passthrough step."""
+        photo = self.source("photo", "assets/fence-torn-paper.png")
+        photo.pipe(Passthrough)
+
+
 @pytest.fixture()
 def test_client(tmp_sketch: Path) -> Generator[TestClient, None, None]:
     """Build the Hello sketch and return a FastAPI TestClient."""
-    from sketches.hello import Hello
-
-    sketch = Hello(tmp_sketch)
+    sketch = _HelloSketch(tmp_sketch)
     execute(sketch.dag)
 
     app = create_app({"hello": sketch}, sketches_dir=tmp_sketch.parent)
@@ -95,12 +110,23 @@ def tmp_edge_sketch(tmp_path: Path) -> Generator[Path, None, None]:
     yield sketch_dir
 
 
+class _EdgeHelloSketch(Sketch):
+    """Minimal inline sketch for edge detection acceptance tests."""
+
+    name = "Edge Hello"
+    description = "Canny edge detection with tunable thresholds."
+    date = "2026-03-16"
+
+    def build(self) -> None:
+        """Wire a source image through blur then edge detection."""
+        photo = self.source("photo", "assets/hello.jpg")
+        photo.pipe(GaussianBlur, params={"sigma": {"max": 3.0, "step": 0.05}}).pipe(EdgeDetect)
+
+
 @pytest.fixture()
 def edge_test_client(tmp_edge_sketch: Path) -> Generator[TestClient, None, None]:
     """Build the EdgeHello sketch and return a FastAPI TestClient."""
-    from sketches.edge_hello import EdgeHello
-
-    sketch = EdgeHello(tmp_edge_sketch)
+    sketch = _EdgeHelloSketch(tmp_edge_sketch)
     execute(sketch.dag)
 
     app = create_app({"edge_hello": sketch}, sketches_dir=tmp_edge_sketch.parent)
@@ -117,13 +143,27 @@ def edge_ws_client(edge_test_client: TestClient):
 
 
 # ---------------------------------------------------------------------------
-# edge_portrait fixtures (increment 4)
+# multi-step pipeline fixtures (increment 4)
 # ---------------------------------------------------------------------------
 
+
+class _MultiStepSketch(Sketch):
+    """Inline sketch with source → blur → edge detect for DAG/params endpoint tests."""
+
+    name = "Multi Step"
+    description = "source → blur → edge detect"
+    date = "2026-03-18"
+
+    def build(self) -> None:
+        """Wire photo through blur then edge detection."""
+        photo = self.source("photo", "assets/photo.jpg")
+        photo.pipe(GaussianBlur).pipe(EdgeDetect)
+
+
 @pytest.fixture()
-def tmp_portrait_sketch(tmp_path: Path) -> Generator[Path, None, None]:
-    """Create a temporary sketch directory for EdgePortrait with a test source image."""
-    sketch_dir = tmp_path / "edge_portrait"
+def tmp_multi_step_sketch(tmp_path: Path) -> Generator[Path, None, None]:
+    """Create a temporary sketch directory for the multi-step pipeline tests."""
+    sketch_dir = tmp_path / "multi_step"
     assets_dir = sketch_dir / "assets"
     assets_dir.mkdir(parents=True)
     make_test_image(assets_dir / "photo.jpg")
@@ -131,13 +171,11 @@ def tmp_portrait_sketch(tmp_path: Path) -> Generator[Path, None, None]:
 
 
 @pytest.fixture()
-def portrait_test_client(tmp_portrait_sketch: Path) -> Generator[TestClient, None, None]:
-    """Build the EdgePortrait sketch and return a FastAPI TestClient."""
-    from sketches.edge_portrait import EdgePortrait
-
-    sketch = EdgePortrait(tmp_portrait_sketch)
+def multi_step_client(tmp_multi_step_sketch: Path) -> Generator[TestClient, None, None]:
+    """Build the multi-step sketch and return a FastAPI TestClient."""
+    sketch = _MultiStepSketch(tmp_multi_step_sketch)
     execute(sketch.dag)
 
-    app = create_app({"edge_portrait": sketch}, sketches_dir=tmp_portrait_sketch.parent)
+    app = create_app({"multi_step": sketch}, sketches_dir=tmp_multi_step_sketch.parent)
     with TestClient(app, raise_server_exceptions=True) as client:
         yield client

@@ -16,10 +16,10 @@ from fastapi.testclient import TestClient
 
 
 def test_dag_endpoint_reflects_pipeline_structure(
-    tmp_portrait_sketch: Path, portrait_test_client: TestClient
+    tmp_multi_step_sketch: Path, multi_step_client: TestClient
 ) -> None:
     """The DAG endpoint returns the correct graph for a multi-step pipeline."""
-    resp = portrait_test_client.get("/api/sketches/edge_portrait/dag")
+    resp = multi_step_client.get("/api/sketches/multi_step/dag")
     assert resp.status_code == 200
     dag = resp.json()
 
@@ -34,20 +34,20 @@ def test_dag_endpoint_reflects_pipeline_structure(
 
 
 def test_sketch_page_renders_all_steps(
-    tmp_portrait_sketch: Path, portrait_test_client: TestClient
+    tmp_multi_step_sketch: Path, multi_step_client: TestClient
 ) -> None:
     """The sketch overview page contains links to all step views."""
-    response = portrait_test_client.get("/sketch/edge_portrait")
+    response = multi_step_client.get("/sketch/multi_step")
     assert response.status_code == 200
     assert "gaussian_blur_0" in response.text
     assert "edge_detect_0" in response.text
 
 
 def test_all_step_params_in_sketch_view(
-    tmp_portrait_sketch: Path, portrait_test_client: TestClient
+    tmp_multi_step_sketch: Path, multi_step_client: TestClient
 ) -> None:
     """The full params endpoint returns params for all steps."""
-    resp = portrait_test_client.get("/api/sketches/edge_portrait/params")
+    resp = multi_step_client.get("/api/sketches/multi_step/params")
     assert resp.status_code == 200
     params = resp.json()
     assert "gaussian_blur_0" in params
