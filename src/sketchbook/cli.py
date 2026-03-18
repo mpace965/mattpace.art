@@ -7,11 +7,11 @@ import inspect
 import logging
 import pkgutil
 import sys
+import time
 from pathlib import Path
 
 import uvicorn
 
-from sketchbook.core.executor import execute
 from sketchbook.core.sketch import Sketch
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
@@ -22,31 +22,28 @@ _SKETCHES_PACKAGE = "sketches"
 _SKETCHES_DIR = _REPO_ROOT / "sketches"
 
 
-def discover_sketches() -> dict[str, Sketch]:
-    """Scan sketches/ submodules for Sketch subclasses and instantiate them."""
+def discover_sketch_classes() -> dict[str, type[Sketch]]:
+    """Scan sketches/ submodules for Sketch subclasses.
+
+    Only imports modules and collects classes — does not instantiate or execute.
+    Instantiation and DAG execution happen lazily on first request.
+    """
     repo_root = str(_REPO_ROOT)
     if repo_root not in sys.path:
         sys.path.insert(0, repo_root)
     import sketches  # noqa: F401
 
-    sketches: dict[str, Sketch] = {}
-
+    t0 = time.perf_counter()
+    candidates: dict[str, type[Sketch]] = {}
     for mod_info in pkgutil.iter_modules([str(_SKETCHES_DIR)]):
         slug = mod_info.name
         module = importlib.import_module(f"{_SKETCHES_PACKAGE}.{slug}")
         for _, obj in inspect.getmembers(module, inspect.isclass):
             if issubclass(obj, Sketch) and obj is not Sketch:
-                sketch_dir = _SKETCHES_DIR / slug
-                try:
-                    instance = obj(sketch_dir)
-                    execute(instance.dag)
-                    sketches[slug] = instance
-                    log.info(f"Loaded sketch '{slug}': {obj.name}")
-                except Exception as exc:
-                    log.warning(f"Skipping sketch '{slug}': {exc}")
+                candidates[slug] = obj
                 break
-
-    return sketches
+    log.info(f"Discovered {len(candidates)} sketch modules in {time.perf_counter() - t0:.2f}s")
+    return candidates
 
 
 def dev() -> None:

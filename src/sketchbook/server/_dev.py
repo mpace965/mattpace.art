@@ -8,11 +8,15 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from sketchbook.cli import _SKETCHES_DIR, discover_sketches
+from sketchbook.cli import _SKETCHES_DIR, discover_sketch_classes
 from sketchbook.server.app import create_app
 
 
 def create_dev_app() -> FastAPI:
-    """Discover sketches and build the FastAPI app for the dev server."""
-    sketches = discover_sketches()
-    return create_app(sketches, sketches_dir=_SKETCHES_DIR)
+    """Discover sketch classes and build the FastAPI app for the dev server.
+
+    Sketches are not instantiated or executed here — that happens lazily on
+    first request so the server starts immediately.
+    """
+    candidates = discover_sketch_classes()
+    return create_app({}, sketches_dir=_SKETCHES_DIR, candidates=candidates)

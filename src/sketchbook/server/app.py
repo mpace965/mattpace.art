@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import threading
+import time
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import AsyncGenerator
@@ -24,8 +26,19 @@ from sketchbook.steps.source import SourceFile
 
 log = logging.getLogger("sketchbook.server")
 
-_sketches: dict[str, Sketch] = {}
 _templates_dir = Path(__file__).parent / "templates"
+
+# Loaded sketch instances (populated eagerly by tests, lazily by dev server)
+_sketches: dict[str, Sketch] = {}
+
+# Unloaded candidates for lazy loading (dev server only)
+_candidates: dict[str, type[Sketch]] = {}
+_sketch_locks: dict[str, threading.Lock] = {}
+_sketches_dir: Path | None = None
+
+# Set during lifespan for lazy watcher registration
+_watcher: Watcher | None = None
+_loop: asyncio.AbstractEventLoop | None = None
 
 
 def _register_watch(watcher: Watcher, sketch_id: str, sketch: Sketch, loop: asyncio.AbstractEventLoop) -> None:
@@ -48,33 +61,83 @@ def _register_watch(watcher: Watcher, sketch_id: str, sketch: Sketch, loop: asyn
         watcher.watch(source_path, on_change)
 
 
-def create_app(sketches: dict[str, Sketch], sketches_dir: Path | None = None) -> FastAPI:
+def _load_sketch_lazy(sketch_id: str) -> Sketch | None:
+    """Instantiate and execute a sketch on first access, then register its file watcher."""
+    cls = _candidates[sketch_id]
+    if _sketches_dir is None:
+        raise RuntimeError("_load_sketch_lazy called before create_app set _sketches_dir")
+    sketch_dir = _sketches_dir / sketch_id
+    t0 = time.perf_counter()
+    try:
+        instance = cls(sketch_dir)
+        execute(instance.dag)
+        elapsed = time.perf_counter() - t0
+        log.info(f"Loaded sketch '{sketch_id}': {cls.name} ({elapsed:.2f}s)")
+        _sketches[sketch_id] = instance
+        if _watcher is not None and _loop is not None:
+            _register_watch(_watcher, sketch_id, instance, _loop)
+        return instance
+    except Exception as exc:
+        elapsed = time.perf_counter() - t0
+        log.warning(f"Failed to load sketch '{sketch_id}': {exc} ({elapsed:.2f}s)")
+        # Remove from candidates so subsequent requests get a clean 404
+        # rather than retrying and re-logging the same failure.
+        _candidates.pop(sketch_id, None)
+        return None
+
+
+def get_sketch(sketch_id: str) -> Sketch | None:
+    """Look up a sketch by ID, loading it lazily on first access if a candidate exists."""
+    if sketch_id in _sketches:
+        return _sketches[sketch_id]
+    if sketch_id not in _candidates:
+        return None
+    with _sketch_locks[sketch_id]:
+        # Double-check after acquiring the lock
+        if sketch_id in _sketches:
+            return _sketches[sketch_id]
+        return _load_sketch_lazy(sketch_id)
+
+
+def create_app(
+    sketches: dict[str, Sketch],
+    sketches_dir: Path | None = None,
+    *,
+    candidates: dict[str, type[Sketch]] | None = None,
+) -> FastAPI:
     """Build and return the FastAPI app with all routes mounted.
 
     Args:
-        sketches: mapping of sketch_id -> Sketch instance, already built and executed.
-        sketches_dir: root directory containing sketch modules (for workdir serving).
+        sketches: Already-built sketch instances (used by tests; immediately available).
+        sketches_dir: Root directory containing sketch modules (for workdir serving).
+        candidates: Uninstantiated Sketch subclasses for lazy loading (dev server path).
+            When provided, sketches are instantiated and executed on first request.
 
     Note:
-        The app's lifespan starts a file watcher for each sketch's source nodes.
-        When running under uvicorn with lifespan="off" (the dev server path), the
-        lifespan does not run — the caller (cli.dev) manages the watcher explicitly.
-        When running under TestClient, the lifespan runs normally.
+        The app's lifespan starts the file watcher. For eager sketches the watcher is
+        registered at startup; for lazy candidates it is registered on first load.
     """
-    global _sketches
+    global _sketches, _candidates, _sketch_locks, _sketches_dir
     _sketches = sketches
+    _sketches_dir = sketches_dir
+    _candidates = candidates or {}
+    _sketch_locks = {slug: threading.Lock() for slug in _candidates}
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-        loop = asyncio.get_running_loop()
+        global _watcher, _loop
+        _loop = asyncio.get_running_loop()
         watcher = Watcher()
-        for sketch_id, sketch in sketches.items():
-            _register_watch(watcher, sketch_id, sketch, loop)
+        _watcher = watcher
+        for sketch_id, sketch in _sketches.items():
+            _register_watch(watcher, sketch_id, sketch, _loop)
         watcher.start()
         try:
             yield
         finally:
             watcher.stop()
+            _watcher = None
+            _loop = None
 
     app = FastAPI(title="Sketchbook", lifespan=lifespan)
 
@@ -87,9 +150,18 @@ def create_app(sketches: dict[str, Sketch], sketches_dir: Path | None = None) ->
     app.include_router(ws_routes.router)
     app.include_router(dag_routes.router)
 
-    # Serve .workdir/ output images per sketch
-    for sketch_id, sketch in sketches.items():
-        workdir = sketch.sketch_dir / ".workdir"
+    # Serve .workdir/ output images per sketch.
+    # Eager sketches: workdir already exists (sketch was executed).
+    # Lazy candidates: pre-create the directory so StaticFiles mount succeeds;
+    # it will be populated when the sketch is first loaded.
+    all_ids = set(_sketches) | set(_candidates)
+    for sketch_id in all_ids:
+        if sketch_id in _sketches:
+            workdir = _sketches[sketch_id].sketch_dir / ".workdir"
+        else:
+            assert sketches_dir is not None
+            workdir = sketches_dir / sketch_id / ".workdir"
+            workdir.mkdir(parents=True, exist_ok=True)
         app.mount(
             f"/workdir/{sketch_id}",
             StaticFiles(directory=str(workdir)),
@@ -97,8 +169,3 @@ def create_app(sketches: dict[str, Sketch], sketches_dir: Path | None = None) ->
         )
 
     return app
-
-
-def get_sketch(sketch_id: str) -> Sketch | None:
-    """Look up a loaded sketch by ID."""
-    return _sketches.get(sketch_id)
