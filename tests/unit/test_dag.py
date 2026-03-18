@@ -105,6 +105,27 @@ def test_topo_sort_cycle_raises() -> None:
         dag.topo_sort()
 
 
+def test_topo_sort_three_node_chain_ordered() -> None:
+    dag = DAG()
+    for nid in ("src", "mid", "dst"):
+        dag.add_node(_node(nid))
+    dag.connect("src", "mid")
+    dag.connect("mid", "dst")
+    order = [n.id for n in dag.topo_sort()]
+    assert order.index("src") < order.index("mid") < order.index("dst")
+
+
+def test_edges_property_returns_all_edges() -> None:
+    dag = DAG()
+    for nid in ("a", "b", "c"):
+        dag.add_node(_node(nid))
+    dag.connect("a", "b", "image")
+    dag.connect("b", "c", "image")
+    edges = dag.edges
+    assert ("a", "b", "image") in edges
+    assert ("b", "c", "image") in edges
+
+
 # ---------------------------------------------------------------------------
 # node lookup
 # ---------------------------------------------------------------------------

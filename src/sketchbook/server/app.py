@@ -15,6 +15,7 @@ from fastapi.templating import Jinja2Templates
 from sketchbook.core.executor import execute
 from sketchbook.core.sketch import Sketch
 from sketchbook.core.watcher import Watcher
+from sketchbook.server.routes import dag as dag_routes
 from sketchbook.server.routes import params as params_routes
 from sketchbook.server.routes import presets as presets_routes
 from sketchbook.server.routes import sketch as sketch_routes
@@ -83,6 +84,7 @@ def create_app(sketches: dict[str, Sketch], sketches_dir: Path | None = None) ->
     app.include_router(params_routes.router)
     app.include_router(presets_routes.router)
     app.include_router(ws_routes.router)
+    app.include_router(dag_routes.router)
 
     # Serve .workdir/ output images per sketch
     for sketch_id, sketch in sketches.items():

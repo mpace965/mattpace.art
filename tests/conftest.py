@@ -114,3 +114,30 @@ def edge_ws_client(edge_test_client: TestClient):
     def _factory(path: str):
         return edge_test_client.websocket_connect(path)
     return _factory
+
+
+# ---------------------------------------------------------------------------
+# edge_portrait fixtures (increment 4)
+# ---------------------------------------------------------------------------
+
+@pytest.fixture()
+def tmp_portrait_sketch(tmp_path: Path) -> Generator[Path, None, None]:
+    """Create a temporary sketch directory for EdgePortrait with a test source image."""
+    sketch_dir = tmp_path / "edge_portrait"
+    assets_dir = sketch_dir / "assets"
+    assets_dir.mkdir(parents=True)
+    make_test_image(assets_dir / "photo.jpg")
+    yield sketch_dir
+
+
+@pytest.fixture()
+def portrait_test_client(tmp_portrait_sketch: Path) -> Generator[TestClient, None, None]:
+    """Build the EdgePortrait sketch and return a FastAPI TestClient."""
+    from sketches.edge_portrait import EdgePortrait
+
+    sketch = EdgePortrait(tmp_portrait_sketch)
+    execute(sketch.dag)
+
+    app = create_app({"edge_portrait": sketch}, sketches_dir=tmp_portrait_sketch.parent)
+    with TestClient(app, raise_server_exceptions=True) as client:
+        yield client

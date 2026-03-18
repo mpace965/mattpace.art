@@ -22,6 +22,21 @@ class ParamUpdate(BaseModel):
     value: float | int | bool | str
 
 
+@router.get("/api/sketches/{sketch_id}/params")
+async def get_all_params(sketch_id: str):
+    """Return param schema + current values for all steps in the sketch."""
+    from sketchbook.server.app import get_sketch
+
+    sketch = get_sketch(sketch_id)
+    if sketch is None:
+        raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
+
+    return {
+        node.id: node.step._param_registry.to_schema_dict()
+        for node in sketch.dag.topo_sort()
+    }
+
+
 @router.get("/api/sketches/{sketch_id}/params/{step_id}")
 async def get_step_params(sketch_id: str, step_id: str):
     """Return param schema + current values for a single step."""

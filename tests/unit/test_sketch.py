@@ -176,3 +176,64 @@ def test_step_id_base_acronym() -> None:
     result = _step_id_base(RGBSplit)
     assert result == result.lower()
     assert " " not in result
+
+
+# ---------------------------------------------------------------------------
+# add()
+# ---------------------------------------------------------------------------
+
+class _AddSketch(Sketch):
+    """Uses add() with explicit inputs."""
+
+    name = "Test"
+    description = ""
+    date = ""
+
+    def build(self) -> None:
+        src = self.source("photo", "assets/photo.png")
+        self.add(FakeStep, inputs={"image": src})
+
+
+class _AddTwoInputsSketch(Sketch):
+    """Uses add() with two inputs from two sources."""
+
+    name = "Test"
+    description = ""
+    date = ""
+
+    def build(self) -> None:
+        src = self.source("photo", "assets/photo.png")
+        mask = self.source("mask", "assets/photo.png")
+        self.add(FakeStep, inputs={"image": src, "mask": mask})
+
+
+def test_add_wires_explicit_input(tmp_path: Path) -> None:
+    _make_asset(tmp_path)
+    sketch = _AddSketch(tmp_path)
+    node = sketch.dag.node("fake_step_0")
+    assert node._inputs["image"].id == "source_photo"
+
+
+def test_add_two_explicit_inputs(tmp_path: Path) -> None:
+    _make_asset(tmp_path)
+    (tmp_path / "assets" / "mask.png")  # already exists from _make_asset
+    sketch = _AddTwoInputsSketch(tmp_path)
+    node = sketch.dag.node("fake_step_0")
+    assert node._inputs["image"].id == "source_photo"
+    assert node._inputs["mask"].id == "source_mask"
+
+
+def test_add_with_custom_id(tmp_path: Path) -> None:
+    _make_asset(tmp_path)
+
+    class _CustomIdSketch(Sketch):
+        name = "Test"
+        description = ""
+        date = ""
+
+        def build(self) -> None:
+            src = self.source("photo", "assets/photo.png")
+            self.add(FakeStep, inputs={"image": src}, id="my_step")
+
+    sketch = _CustomIdSketch(tmp_path)
+    assert "my_step" in sketch.dag.nodes

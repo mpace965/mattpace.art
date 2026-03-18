@@ -80,3 +80,8 @@ class DAG:
     def nodes(self) -> dict[str, DAGNode]:
         """Return all nodes."""
         return dict(self._nodes)
+
+    @property
+    def edges(self) -> list[tuple[str, str, str]]:
+        """Return all edges as (from_id, to_id, input_name) triples."""
+        return list(self._edges)

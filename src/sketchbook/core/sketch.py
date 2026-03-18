@@ -93,6 +93,42 @@ class Sketch:
         return node
 
 
+    def add(
+        self,
+        step_class: type[PipelineStep],
+        inputs: dict[str, _ManagedNode],
+        id: str | None = None,
+        params: dict[str, dict] | None = None,
+    ) -> _ManagedNode:
+        """Add a step with explicit named inputs.
+
+        Args:
+            step_class: The step class to instantiate.
+            inputs: Mapping of input_name -> source node.
+            id: Optional explicit node ID. Auto-generated if omitted.
+            params: Optional param overrides (same format as pipe()).
+        """
+        if id is None:
+            base_name = _step_id_base(step_class)
+            count = self._step_counts.get(base_name, 0)
+            self._step_counts[base_name] = count + 1
+            node_id = f"{base_name}_{count}"
+        else:
+            node_id = id
+
+        step = step_class()
+        if params:
+            for param_name, fields in params.items():
+                step._param_registry.override(param_name, **fields)
+        workdir_path = self._workdir / f"{node_id}.png"
+        node = _ManagedNode(step, node_id, self, workdir_path=str(workdir_path))
+        self._dag.add_node(node)
+        for input_name, source_node in inputs.items():
+            self._dag.connect(source_node.id, node_id, input_name)
+        log.debug(f"Added step '{node_id}' with explicit inputs {list(inputs)}")
+        return node
+
+
 def _step_id_base(step_class: type) -> str:
     """Convert a class name to snake_case for use as a node ID prefix."""
     name = step_class.__name__
