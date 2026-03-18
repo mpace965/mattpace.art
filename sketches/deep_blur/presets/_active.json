@@ -1,0 +1,19 @@
+{
+  "_meta": {
+    "dirty": true,
+    "based_on": null
+  },
+  "gaussian_blur_0": {
+    "sigma": 20.0
+  },
+  "gaussian_blur_1": {
+    "sigma": 20.0
+  },
+  "gaussian_blur_2": {
+    "sigma": 20.0
+  },
+  "edge_detect_0": {
+    "low_threshold": 100.0,
+    "high_threshold": 200.0
+  }
+}
