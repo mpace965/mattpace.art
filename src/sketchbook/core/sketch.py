@@ -75,13 +75,15 @@ class Sketch:
         log.debug(f"Added source node '{node_id}' watching {self._sketch_dir / path}")
         return node
 
-    def _pipe(self, from_node: _ManagedNode, step_class: type[PipelineStep], input_name: str, param_overrides: dict[str, dict] | None = None) -> _ManagedNode:
-        """Internal: instantiate step_class, add node, wire edge, apply param overrides."""
+    def _next_id(self, step_class: type[PipelineStep]) -> str:
+        """Return the next auto-generated node ID for step_class and advance the counter."""
         base_name = _step_id_base(step_class)
         count = self._step_counts.get(base_name, 0)
         self._step_counts[base_name] = count + 1
-        node_id = f"{base_name}_{count}"
+        return f"{base_name}_{count}"
 
+    def _make_node(self, step_class: type[PipelineStep], node_id: str, param_overrides: dict[str, dict] | None = None) -> _ManagedNode:
+        """Instantiate step_class, apply param overrides, create a workdir path, and register the node in the DAG."""
         step = step_class()
         if param_overrides:
             for param_name, fields in param_overrides.items():
@@ -89,10 +91,15 @@ class Sketch:
         workdir_path = self._workdir / f"{node_id}.png"
         node = _ManagedNode(step, node_id, self, workdir_path=str(workdir_path))
         self._dag.add_node(node)
+        return node
+
+    def _pipe(self, from_node: _ManagedNode, step_class: type[PipelineStep], input_name: str, param_overrides: dict[str, dict] | None = None) -> _ManagedNode:
+        """Internal: instantiate step_class, add node, wire edge, apply param overrides."""
+        node_id = self._next_id(step_class)
+        node = self._make_node(step_class, node_id, param_overrides)
         self._dag.connect(from_node.id, node_id, input_name)
         log.debug(f"Wired {from_node.id} -> {node_id} via '{input_name}'")
         return node
-
 
     def site_output(self, node: _ManagedNode) -> _ManagedNode:
         """Add a SiteOutput node after the given node and return it.
@@ -118,21 +125,8 @@ class Sketch:
             id: Optional explicit node ID. Auto-generated if omitted.
             params: Optional param overrides (same format as pipe()).
         """
-        if id is None:
-            base_name = _step_id_base(step_class)
-            count = self._step_counts.get(base_name, 0)
-            self._step_counts[base_name] = count + 1
-            node_id = f"{base_name}_{count}"
-        else:
-            node_id = id
-
-        step = step_class()
-        if params:
-            for param_name, fields in params.items():
-                step._param_registry.override(param_name, **fields)
-        workdir_path = self._workdir / f"{node_id}.png"
-        node = _ManagedNode(step, node_id, self, workdir_path=str(workdir_path))
-        self._dag.add_node(node)
+        node_id = self._next_id(step_class) if id is None else id
+        node = self._make_node(step_class, node_id, params)
         for input_name, source_node in inputs.items():
             self._dag.connect(source_node.id, node_id, input_name)
         log.debug(f"Added step '{node_id}' with explicit inputs {list(inputs)}")
