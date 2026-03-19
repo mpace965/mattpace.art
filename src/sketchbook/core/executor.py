@@ -32,38 +32,7 @@ def execute(dag: DAG) -> ExecutionResult:
     nodes that depend on it are also failed. Workdir files for failed nodes are
     deleted so the filesystem reflects the current pipeline state.
     """
-    result = ExecutionResult()
-    failed_nodes: set[str] = set()
-
-    for node in dag.topo_sort():
-        upstream_failures = [src.id for src in node._inputs.values() if src.id in failed_nodes]
-        if upstream_failures:
-            causes = "; ".join(f"{nid}: {result.errors[nid]}" for nid in upstream_failures)
-            exc = RuntimeError(f"No output — {causes}")
-            result.errors[node.id] = exc
-            failed_nodes.add(node.id)
-            node.output = None
-            _delete_workdir(node)
-            log.warning(str(exc))
-            continue
-
-        try:
-            inputs = _gather_inputs(node)
-            params = node.step._param_registry.values()
-            log.debug(f"Executing node '{node.id}'")
-            node.output = node.step.process(inputs, params)
-            result.executed.add(node.id)
-            if node.workdir_path and node.output is not None:
-                node.output.save(node.workdir_path)
-                log.debug(f"Wrote output for '{node.id}' to {node.workdir_path}")
-        except Exception as exc:
-            result.errors[node.id] = exc
-            failed_nodes.add(node.id)
-            node.output = None
-            _delete_workdir(node)
-            log.warning(f"Node '{node.id}' failed: {exc}")
-
-    return result
+    return _execute_nodes(dag, subset=None)
 
 
 def execute_partial(dag: DAG, start_node_ids: list[str]) -> ExecutionResult:
@@ -74,12 +43,21 @@ def execute_partial(dag: DAG, start_node_ids: list[str]) -> ExecutionResult:
     subset: set[str] = set(start_node_ids)
     for nid in start_node_ids:
         subset.update(dag.descendants(nid))
+    return _execute_nodes(dag, subset=subset)
 
+
+def _execute_nodes(dag: DAG, subset: set[str] | None) -> ExecutionResult:
+    """Run DAG nodes in topological order, optionally restricted to *subset*.
+
+    When *subset* is None all nodes are executed. When *subset* is provided,
+    nodes whose id is not in the set are skipped (their cached outputs remain).
+    """
     result = ExecutionResult()
     failed_nodes: set[str] = set()
+    partial = subset is not None
 
     for node in dag.topo_sort():
-        if node.id not in subset:
+        if partial and node.id not in subset:
             continue
 
         upstream_failures = [src.id for src in node._inputs.values() if src.id in failed_nodes]
@@ -96,7 +74,8 @@ def execute_partial(dag: DAG, start_node_ids: list[str]) -> ExecutionResult:
         try:
             inputs = _gather_inputs(node)
             params = node.step._param_registry.values()
-            log.debug(f"Executing node '{node.id}' (partial)")
+            suffix = " (partial)" if partial else ""
+            log.debug(f"Executing node '{node.id}'{suffix}")
             node.output = node.step.process(inputs, params)
             result.executed.add(node.id)
             if node.workdir_path and node.output is not None:

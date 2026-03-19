@@ -135,7 +135,7 @@ These should be methods on `DAGNode` or `PipelineStep`, not reached through two 
 | Priority | Issue | Scope |
 |----------|-------|-------|
 | **High** | ~~`app.py` module globals → `SketchRegistry` class~~ ✅ | Server |
-| **High** | `execute`/`execute_partial` duplication → single function | Core |
+| **High** | ~~`execute`/`execute_partial` duplication → single function~~ ✅ | Core |
 | **High** | Encapsulation violations → accessor methods on `PipelineStep`/`DAGNode` | Cross-cutting |
 | **Medium** | `DAGNode._inputs` / `PipelineStep._inputs` naming collision | Core |
 | **Medium** | `_pipe()`/`add()` duplication in `Sketch` | Core |
