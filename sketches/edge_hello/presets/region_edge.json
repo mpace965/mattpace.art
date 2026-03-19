@@ -1,9 +1,0 @@
-{
-  "gaussian_blur_0": {
-    "sigma": 2.1999999999999997
-  },
-  "edge_detect_0": {
-    "low_threshold": 130.0,
-    "high_threshold": 207.0
-  }
-}
