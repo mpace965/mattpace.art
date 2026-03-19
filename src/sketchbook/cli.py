@@ -74,6 +74,33 @@ def dev() -> None:
     )
 
 
+def serve() -> None:
+    """Serve dist/ as a static site on localhost:8080."""
+    import http.server
+    import os
+
+    dist_dir = _REPO_ROOT / "dist"
+    if not dist_dir.exists():
+        print(f"dist/ not found at {dist_dir} — run 'uv run build' first")
+        return
+
+    os.chdir(dist_dir)
+    port = 8080
+    handler = http.server.SimpleHTTPRequestHandler
+    with http.server.HTTPServer(("127.0.0.1", port), handler) as httpd:
+        print(f"Serving {dist_dir} at http://127.0.0.1:{port}/")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            pass
+
+
 def build() -> None:
-    """Build the static site."""
-    raise NotImplementedError("build not yet implemented")
+    """Build the static site into dist/."""
+    from sketchbook.site.builder import build_site
+
+    sketch_classes = discover_sketch_classes()
+    dist_dir = _REPO_ROOT / "dist"
+    log.info(f"Building site for {len(sketch_classes)} sketch(es) -> {dist_dir}")
+    build_site(sketch_classes, _SKETCHES_DIR, dist_dir)
+    print(f"Built {len(sketch_classes)} sketch(es) -> {dist_dir}")

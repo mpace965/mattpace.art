@@ -605,8 +605,8 @@ def test_build_without_site_output_produces_empty_feed(tmp_project_no_site_outpu
 
 ### Definition of done — Increment 7
 
-- [ ] Acceptance tests in `tests/acceptance/test_07_static_site.py` pass
-- [ ] `tests/unit/test_builder.py` covers: discovers `SiteOutput` nodes, iterates presets, renders feed and sketch pages, copies baked images to `dist/`, sketch with no `SiteOutput` is absent from feed
+- [x] Acceptance tests in `tests/acceptance/test_07_static_site.py` pass
+- [x] `tests/unit/test_builder.py` covers: discovers `SiteOutput` nodes, iterates presets, renders feed and sketch pages, copies baked images to `dist/`, sketch with no `SiteOutput` is absent from feed
 
 ---
 

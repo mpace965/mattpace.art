@@ -32,6 +32,7 @@ class Sketch:
     name: str = ""
     description: str = ""
     date: str = ""
+    site_presets: list[str] | None = None  # None = all saved presets
 
     def __init__(self, sketch_dir: str | Path) -> None:
         self._sketch_dir = Path(sketch_dir)
@@ -92,6 +93,15 @@ class Sketch:
         log.debug(f"Wired {from_node.id} -> {node_id} via '{input_name}'")
         return node
 
+
+    def site_output(self, node: _ManagedNode) -> _ManagedNode:
+        """Add a SiteOutput node after the given node and return it.
+
+        The site builder scans for SiteOutput nodes to determine what to publish.
+        """
+        from sketchbook.steps.site_output import SiteOutput
+
+        return self._pipe(node, SiteOutput, "image")
 
     def add(
         self,

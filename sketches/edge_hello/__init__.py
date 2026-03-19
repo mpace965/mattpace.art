@@ -6,6 +6,8 @@ from sketchbook.steps.opencv.edge_detect import EdgeDetect
 
 
 class EdgeHello(Sketch):
+    site_presets = ["region_edge"]
+
     """Edge detection sketch used in increment 2 acceptance tests."""
 
     name = "Edge Hello"
@@ -15,4 +17,5 @@ class EdgeHello(Sketch):
     def build(self) -> None:
         """Wire a source image through blur then edge detection."""
         photo = self.source("photo", "assets/hello.jpg")
-        photo.pipe(GaussianBlur, params={"sigma": {"max": 3.0, "step": 0.05}}).pipe(EdgeDetect)
+        edges = photo.pipe(GaussianBlur, params={"sigma": {"max": 3.0, "step": 0.05}}).pipe(EdgeDetect)
+        self.site_output(edges)
