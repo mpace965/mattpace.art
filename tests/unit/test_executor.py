@@ -125,7 +125,7 @@ def test_execute_writes_workdir_file(tmp_path: Path) -> None:
 def test_executor_passes_params_to_process() -> None:
     img = _small_image()
     step = _ParamCapturingStep()
-    step._param_registry.set_value("strength", 99.0)
+    step.set_param("strength", 99.0)
 
     dag = DAG()
     dag.add_node(_make_node("src", _ConstantStep(img)))

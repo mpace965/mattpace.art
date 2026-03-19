@@ -60,7 +60,7 @@ def _execute_nodes(dag: DAG, subset: set[str] | None) -> ExecutionResult:
         if partial and node.id not in subset:
             continue
 
-        upstream_failures = [src.id for src in node._inputs.values() if src.id in failed_nodes]
+        upstream_failures = [src.id for src in node.source_nodes.values() if src.id in failed_nodes]
         if upstream_failures:
             causes = "; ".join(f"{nid}: {result.errors[nid]}" for nid in upstream_failures)
             exc = RuntimeError(f"No output — {causes}")
@@ -73,7 +73,7 @@ def _execute_nodes(dag: DAG, subset: set[str] | None) -> ExecutionResult:
 
         try:
             inputs = _gather_inputs(node)
-            params = node.step._param_registry.values()
+            params = node.step.param_values()
             suffix = " (partial)" if partial else ""
             log.debug(f"Executing node '{node.id}'{suffix}")
             node.output = node.step.process(inputs, params)
@@ -94,9 +94,10 @@ def _execute_nodes(dag: DAG, subset: set[str] | None) -> ExecutionResult:
 def _gather_inputs(node: DAGNode) -> dict[str, Any]:
     """Build the inputs dict for a node, passing None for missing optional inputs."""
     inputs: dict[str, Any] = {}
-    for input_name, spec in node.step._inputs.items():
-        if input_name in node._inputs:
-            inputs[input_name] = node._inputs[input_name].output
+    sources = node.source_nodes
+    for input_name, spec in node.step.input_specs.items():
+        if input_name in sources:
+            inputs[input_name] = sources[input_name].output
         elif spec.optional:
             inputs[input_name] = None
     return inputs

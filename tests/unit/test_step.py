@@ -27,8 +27,8 @@ class _MinimalStep(PipelineStep):
 
 def test_add_input_registers_required_input() -> None:
     step = _MinimalStep()
-    assert "image" in step._inputs
-    spec = step._inputs["image"]
+    assert "image" in step.input_specs
+    spec = step.input_specs["image"]
     assert isinstance(spec, InputSpec)
     assert spec.type is Image
     assert spec.optional is False
@@ -36,13 +36,13 @@ def test_add_input_registers_required_input() -> None:
 
 def test_add_input_registers_optional_input() -> None:
     step = _MinimalStep()
-    assert "mask" in step._inputs
-    assert step._inputs["mask"].optional is True
+    assert "mask" in step.input_specs
+    assert step.input_specs["mask"].optional is True
 
 
 def test_add_input_multiple_inputs() -> None:
     step = _MinimalStep()
-    assert len(step._inputs) == 2
+    assert len(step.input_specs) == 2
 
 
 # ---------------------------------------------------------------------------
@@ -74,18 +74,18 @@ class _ParamStep(PipelineStep):
 
 def test_add_param_registers_in_registry() -> None:
     step = _ParamStep()
-    assert "threshold" in step._param_registry._params
+    assert "threshold" in step.param_values()
 
 
 def test_add_param_default_value() -> None:
     step = _ParamStep()
-    assert step._param_registry.get_value("threshold") == 50.0
+    assert step.param_values()["threshold"] == 50.0
 
 
 def test_params_passed_to_process() -> None:
     step = _ParamStep()
-    step._param_registry.set_value("threshold", 77.0)
-    result = step.process({}, step._param_registry.values())
+    step.set_param("threshold", 77.0)
+    result = step.process({}, step.param_values())
     assert result == 77.0
 
 
@@ -102,9 +102,9 @@ def test_passthrough_output_equals_input() -> None:
 
 def test_passthrough_declares_image_input() -> None:
     step = Passthrough()
-    assert "image" in step._inputs
-    assert step._inputs["image"].type is Image
-    assert step._inputs["image"].optional is False
+    assert "image" in step.input_specs
+    assert step.input_specs["image"].type is Image
+    assert step.input_specs["image"].optional is False
 
 
 # ---------------------------------------------------------------------------
@@ -126,9 +126,9 @@ class _OptionalStep(PipelineStep):
 
 def test_optional_input_is_optional_flag() -> None:
     step = _OptionalStep()
-    assert step._inputs["mask"].optional is True
+    assert step.input_specs["mask"].optional is True
 
 
 def test_required_input_is_not_optional() -> None:
     step = _OptionalStep()
-    assert step._inputs["image"].optional is False
+    assert step.input_specs["image"].optional is False

@@ -32,7 +32,7 @@ async def get_all_params(sketch_id: str, registry: SketchRegistry = Depends(get_
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
 
     return {
-        node.id: node.step._param_registry.to_schema_dict()
+        node.id: node.step.param_schema()
         for node in sketch.dag.topo_sort()
     }
 
@@ -56,7 +56,7 @@ async def get_step_params(
             detail=f"Step '{step_id}' not found in sketch '{sketch_id}'",
         )
 
-    return {"params": node.step._param_registry.to_schema_dict()}
+    return {"params": node.step.param_schema()}
 
 
 @router.patch("/api/sketches/{sketch_id}/params")
@@ -79,7 +79,7 @@ async def update_param(
         )
 
     try:
-        node.step._param_registry.set_value(body.param_name, body.value)
+        node.step.set_param(body.param_name, body.value)
     except KeyError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 

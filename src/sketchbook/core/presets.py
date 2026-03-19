@@ -63,7 +63,7 @@ class PresetManager:
             except KeyError:
                 log.warning(f"_active.json references unknown step '{step_id}', skipping")
                 continue
-            node.step._param_registry.load_values(values)
+            node.step.load_params(values)
 
         log.info(f"Loaded _active.json (dirty={self._dirty}, based_on={self._based_on!r})")
 
@@ -77,7 +77,7 @@ class PresetManager:
             }
         }
         for node in dag.topo_sort():
-            values = node.step._param_registry.values()
+            values = node.step.param_values()
             if values:
                 data[node.id] = values
         (self._dir / "_active.json").write_text(json.dumps(data, indent=2))
@@ -88,7 +88,7 @@ class PresetManager:
         self._dir.mkdir(parents=True, exist_ok=True)
         data: dict[str, Any] = {}
         for node in dag.topo_sort():
-            values = node.step._param_registry.values()
+            values = node.step.param_values()
             if values:
                 data[node.id] = values
         (self._dir / f"{name}.json").write_text(json.dumps(data, indent=2))
@@ -112,7 +112,7 @@ class PresetManager:
             except KeyError:
                 log.warning(f"Preset '{name}' references unknown step '{step_id}', skipping")
                 continue
-            node.step._param_registry.load_values(values)
+            node.step.load_params(values)
         self._dirty = False
         self._based_on = name
         self.save_active(dag)
@@ -121,7 +121,7 @@ class PresetManager:
     def reset(self, dag: Any) -> None:
         """Reset all step params to their declared defaults and clear active state."""
         for node in dag.topo_sort():
-            node.step._param_registry.reset_to_defaults()
+            node.step.reset_params()
         self._dirty = False
         self._based_on = None
         self.save_active(dag)

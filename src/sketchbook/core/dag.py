@@ -19,6 +19,11 @@ class DAGNode:
         self._inputs: dict[str, DAGNode] = {}  # input_name -> source node
         self.output: Any = None
 
+    @property
+    def source_nodes(self) -> dict[str, DAGNode]:
+        """Return the mapping of input name to source node."""
+        return dict(self._inputs)
+
     def pipe(self, step_class: type, input_name: str = "image") -> DAGNode:
         """Connect this node's output to a new step and return the new node."""
         # Deferred: sketch wires this through the DAG
@@ -89,11 +94,12 @@ class DAG:
     def validate(self) -> None:
         """Raise ValueError if any required input is not connected."""
         for node in self._nodes.values():
-            for input_name, spec in node.step._inputs.items():
-                if not spec.optional and input_name not in node._inputs:
+            connected = node.source_nodes
+            for input_name, spec in node.step.input_specs.items():
+                if not spec.optional and input_name not in connected:
                     raise ValueError(
                         f"Required input '{input_name}' of step '{node.id}' is not connected. "
-                        f"Connected inputs: {list(node._inputs)}"
+                        f"Connected inputs: {list(connected)}"
                     )
 
     def node(self, node_id: str) -> DAGNode:
@@ -106,10 +112,11 @@ class DAG:
         """Return the depth (longest upstream path length) for each node."""
         depths: dict[str, int] = {}
         for node in self.topo_sort():
-            if not node._inputs:
+            sources = node.source_nodes
+            if not sources:
                 depths[node.id] = 0
             else:
-                depths[node.id] = max(depths[inp.id] for inp in node._inputs.values()) + 1
+                depths[node.id] = max(depths[src.id] for src in sources.values()) + 1
         return depths
 
     def connected_components(self) -> list[list[str]]:
