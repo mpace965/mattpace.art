@@ -24,11 +24,6 @@ class DAGNode:
         """Return the mapping of input name to source node."""
         return dict(self._sources)
 
-    def pipe(self, step_class: type, input_name: str = "image") -> DAGNode:
-        """Connect this node's output to a new step and return the new node."""
-        # Deferred: sketch wires this through the DAG
-        raise NotImplementedError("pipe() must be called on a sketch-managed node")
-
 
 class DAG:
     """Holds nodes and edges for a pipeline."""
@@ -36,12 +31,14 @@ class DAG:
     def __init__(self) -> None:
         self._nodes: dict[str, DAGNode] = {}
         self._edges: list[tuple[str, str, str]] = []  # (from_id, to_id, input_name)
+        self._children: dict[str, list[tuple[str, str]]] = {}  # from_id -> [(to_id, input_name)]
 
     def add_node(self, node: DAGNode) -> None:
         """Register a node in the graph."""
         if node.id in self._nodes:
             raise ValueError(f"Node '{node.id}' already exists in the DAG")
         self._nodes[node.id] = node
+        self._children.setdefault(node.id, [])
 
     def connect(self, from_id: str, to_id: str, input_name: str = "image") -> None:
         """Add a directed edge from one node to another."""
@@ -50,6 +47,7 @@ class DAG:
         if to_id not in self._nodes:
             raise ValueError(f"Target node '{to_id}' not in DAG")
         self._edges.append((from_id, to_id, input_name))
+        self._children[from_id].append((to_id, input_name))
         self._nodes[to_id]._sources[input_name] = self._nodes[from_id]
 
     def topo_sort(self) -> list[DAGNode]:
@@ -65,11 +63,10 @@ class DAG:
         while queue:
             nid = queue.popleft()
             order.append(self._nodes[nid])
-            for from_id, to_id, _ in self._edges:
-                if from_id == nid:
-                    remaining_in_degree[to_id] -= 1
-                    if remaining_in_degree[to_id] == 0:
-                        queue.append(to_id)
+            for to_id, _ in self._children[nid]:
+                remaining_in_degree[to_id] -= 1
+                if remaining_in_degree[to_id] == 0:
+                    queue.append(to_id)
 
         if len(order) != len(self._nodes):
             raise ValueError("DAG has a cycle")
@@ -84,8 +81,8 @@ class DAG:
         queue: deque[str] = deque([node_id])
         while queue:
             nid = queue.popleft()
-            for from_id, to_id, _ in self._edges:
-                if from_id == nid and to_id not in seen:
+            for to_id, _ in self._children[nid]:
+                if to_id not in seen:
                     seen.add(to_id)
                     result.append(to_id)
                     queue.append(to_id)
@@ -122,9 +119,10 @@ class DAG:
     def connected_components(self) -> list[list[str]]:
         """Return node IDs grouped by connected component, each group in topological order."""
         adjacency: dict[str, set[str]] = {nid: set() for nid in self._nodes}
-        for from_id, to_id, _ in self._edges:
-            adjacency[from_id].add(to_id)
-            adjacency[to_id].add(from_id)
+        for from_id, children in self._children.items():
+            for to_id, _ in children:
+                adjacency[from_id].add(to_id)
+                adjacency[to_id].add(from_id)
 
         visited: set[str] = set()
         components: list[set[str]] = []
