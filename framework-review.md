@@ -134,7 +134,7 @@ These should be methods on `DAGNode` or `PipelineStep`, not reached through two 
 
 | Priority | Issue | Scope |
 |----------|-------|-------|
-| **High** | `app.py` module globals → `SketchRegistry` class | Server |
+| **High** | ~~`app.py` module globals → `SketchRegistry` class~~ ✅ | Server |
 | **High** | `execute`/`execute_partial` duplication → single function | Core |
 | **High** | Encapsulation violations → accessor methods on `PipelineStep`/`DAGNode` | Cross-cutting |
 | **Medium** | `DAGNode._inputs` / `PipelineStep._inputs` naming collision | Core |
@@ -143,7 +143,7 @@ These should be methods on `DAGNode` or `PipelineStep`, not reached through two 
 | **Medium** | `dag: Any` typing in `PresetManager` | Core |
 | **Medium** | `InputSpec` should be a `@dataclass` | Core |
 | **Low** | `DAGNode.pipe()` Liskov violation | Core |
-| **Low** | Deferred imports in route handlers (symptom of globals) | Server |
+| **Low** | ~~Deferred imports in route handlers (symptom of globals)~~ ✅ | Server |
 | **Low** | `build_site` function length | Site |
 | **Low** | Edge adjacency dict for graph traversals | Core |
 | **Low** | `bool` coercion bug in `ParamRegistry.set_value` | Core |

@@ -10,7 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from sketchbook import Sketch
-from sketchbook.server.app import create_app, get_watched_sketch_ids
+from sketchbook.server.app import create_app
 from tests.steps import EdgeDetect, GaussianBlur, Passthrough
 
 
@@ -98,12 +98,14 @@ def test_index_links_to_sketch_pages(two_sketches_client: TestClient) -> None:
 
 def test_only_active_sketch_watches_files(two_sketches_client: TestClient) -> None:
     """Navigating to a sketch activates its watchers; unvisited sketches stay unwatched."""
+    registry = two_sketches_client.app.state.registry
+
     # Neither sketch has been accessed yet
-    assert "edge_portrait" not in get_watched_sketch_ids()
-    assert "hello" not in get_watched_sketch_ids()
+    assert "edge_portrait" not in registry.get_watched_sketch_ids()
+    assert "hello" not in registry.get_watched_sketch_ids()
 
     # Navigate to edge_portrait — triggers lazy load and watcher registration
     two_sketches_client.get("/sketch/edge_portrait")
 
-    assert "edge_portrait" in get_watched_sketch_ids()
-    assert "hello" not in get_watched_sketch_ids()
+    assert "edge_portrait" in registry.get_watched_sketch_ids()
+    assert "hello" not in registry.get_watched_sketch_ids()

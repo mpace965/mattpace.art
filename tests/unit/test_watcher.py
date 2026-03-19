@@ -11,7 +11,7 @@ import pytest
 
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
-from sketchbook.server.app import _register_watch
+from sketchbook.server.registry import SketchRegistry
 from tests.steps import EdgeDetect, GaussianBlur, Passthrough
 
 
@@ -47,6 +47,14 @@ def _make_image(path: Path) -> None:
     cv2.imwrite(str(path), img)
 
 
+def _make_registry_with_watcher(mock_watcher, mock_loop) -> SketchRegistry:
+    """Return a SketchRegistry with mock watcher/loop already injected."""
+    registry = SketchRegistry({}, None)
+    registry._watcher = mock_watcher
+    registry._loop = mock_loop
+    return registry
+
+
 def test_register_watch_calls_watch_once_for_single_source(tmp_path: Path) -> None:
     """_register_watch calls watcher.watch exactly once for a sketch with one source."""
     sketch_dir = tmp_path / "single"
@@ -57,7 +65,8 @@ def test_register_watch_calls_watch_once_for_single_source(tmp_path: Path) -> No
 
     mock_watcher = MagicMock()
     mock_loop = MagicMock()
-    _register_watch(mock_watcher, "single", sketch, mock_loop)
+    registry = _make_registry_with_watcher(mock_watcher, mock_loop)
+    registry._register_watch("single", sketch)
 
     assert mock_watcher.watch.call_count == 1
 
@@ -73,7 +82,8 @@ def test_register_watch_watches_correct_path(tmp_path: Path) -> None:
 
     mock_watcher = MagicMock()
     mock_loop = MagicMock()
-    _register_watch(mock_watcher, "single", sketch, mock_loop)
+    registry = _make_registry_with_watcher(mock_watcher, mock_loop)
+    registry._register_watch("single", sketch)
 
     watched_path = mock_watcher.watch.call_args[0][0]
     assert Path(watched_path) == source_path
@@ -90,7 +100,8 @@ def test_register_watch_calls_watch_for_each_source(tmp_path: Path) -> None:
 
     mock_watcher = MagicMock()
     mock_loop = MagicMock()
-    _register_watch(mock_watcher, "two", sketch, mock_loop)
+    registry = _make_registry_with_watcher(mock_watcher, mock_loop)
+    registry._register_watch("two", sketch)
 
     assert mock_watcher.watch.call_count == 2
 
@@ -109,7 +120,8 @@ def test_register_watch_does_not_watch_non_source_nodes(tmp_path: Path) -> None:
 
     mock_watcher = MagicMock()
     mock_loop = MagicMock()
-    _register_watch(mock_watcher, "single", sketch, mock_loop)
+    registry = _make_registry_with_watcher(mock_watcher, mock_loop)
+    registry._register_watch("single", sketch)
 
     # Only 1 watch call, not 2
     assert mock_watcher.watch.call_count == 1
