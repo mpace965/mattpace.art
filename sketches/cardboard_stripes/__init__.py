@@ -28,7 +28,7 @@ class CardboardStripes(Sketch):
 
     name = "cardboard-stripes"
     description = "greyscale cardboard texture with a stack of inverted horizontal bars."
-    date = "2026-03-18"
+    date = "2026-03-12"
     site_presets = ["three", "steps"]
 
     def build(self) -> None:

@@ -17,7 +17,7 @@ class Cardboard(Sketch):
 
     name = "cardboard"
     description = "greyscale cardboard texture with a grid of inverted circles."
-    date = "2026-03-18"
+    date = "2026-03-09"
     site_presets = ["nine"]
 
     def build(self) -> None:

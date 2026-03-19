@@ -118,6 +118,7 @@ def build_site(
         })
         log.info(f"Built '{sketch_id}' with {len(produced)} variant(s)")
 
+    entries.sort(key=lambda e: e["date"], reverse=True)
     feed_html = feed_tmpl.render(entries=entries)
     (dist_dir / "index.html").write_text(feed_html)
     log.info(f"Built feed with {len(entries)} sketch(es) -> {dist_dir / 'index.html'}")
