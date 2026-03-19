@@ -9,7 +9,7 @@ import pytest
 
 from sketchbook.core.step import InputSpec, PipelineStep
 from sketchbook.core.types import Image
-from sketchbook.steps.passthrough import Passthrough
+from tests.steps import Passthrough
 
 
 # ---------------------------------------------------------------------------

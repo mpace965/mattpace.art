@@ -12,8 +12,7 @@ import pytest
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
 from sketchbook.server.app import _register_watch
-from sketchbook.steps import Passthrough
-from sketchbook.steps.opencv.blur import GaussianBlur
+from tests.steps import EdgeDetect, GaussianBlur, Passthrough
 
 
 class _SingleSourceSketch(Sketch):
@@ -36,8 +35,6 @@ class _TwoSourceSketch(Sketch):
     date = "2026-03-18"
 
     def build(self) -> None:
-        from sketchbook.steps.opencv.edge_detect import EdgeDetect
-
         photo = self.source("photo", "assets/photo.jpg")
         mask = self.source("mask", "assets/mask.jpg")
         blur = photo.pipe(GaussianBlur)

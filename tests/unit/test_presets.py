@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from sketchbook.core.presets import PresetManager
+from tests.steps import EdgeDetect
 
 
 # ---------------------------------------------------------------------------
@@ -32,7 +33,6 @@ def minimal_dag(tmp_path: Path):
 def param_dag(tmp_path: Path):
     """A DAG with a source and EdgeDetect node. Returns (dag, node_id, param_name)."""
     from sketchbook.core.dag import DAG, DAGNode
-    from sketchbook.steps.opencv.edge_detect import EdgeDetect
     from sketchbook.steps.source import SourceFile
 
     dag = DAG()

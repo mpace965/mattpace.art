@@ -8,10 +8,9 @@ import pytest
 
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
-from sketchbook.steps.opencv.blur import GaussianBlur
-from sketchbook.steps.opencv.edge_detect import EdgeDetect
 from sketchbook.steps.site_output import SiteOutput
 from tests.conftest import make_test_image
+from tests.steps import EdgeDetect, GaussianBlur, Passthrough
 
 
 class _SiteSketch(Sketch):
@@ -57,7 +56,6 @@ def test_sketch_site_output_adds_site_output_node(sketch_dir: Path) -> None:
 def test_builder_discovers_site_output_nodes(sketch_dir: Path, tmp_path: Path) -> None:
     """build_site skips sketches with no SiteOutput node."""
     from sketchbook import Sketch
-    from sketchbook.steps import Passthrough
     from sketchbook.site.builder import build_site
 
     class _NoSiteSketch(Sketch):

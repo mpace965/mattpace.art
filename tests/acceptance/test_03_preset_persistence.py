@@ -131,9 +131,9 @@ def test_active_json_written_on_param_change(tmp_edge_sketch: Path, edge_test_cl
 def test_active_persists_across_reload(tmp_edge_sketch: Path) -> None:
     """Params written to _active.json are restored when the sketch is reloaded."""
     from sketchbook.core.executor import execute
-    from sketches.edge_hello import EdgeHello
+    from tests.conftest import _EdgeHelloSketch
 
-    sketch = EdgeHello(tmp_edge_sketch)
+    sketch = _EdgeHelloSketch(tmp_edge_sketch)
     execute(sketch.dag)
 
     # Set a value and save to disk
@@ -142,7 +142,7 @@ def test_active_persists_across_reload(tmp_edge_sketch: Path) -> None:
     sketch.preset_manager.save_active(sketch.dag)
 
     # Reload the sketch from the same directory
-    sketch2 = EdgeHello(tmp_edge_sketch)
+    sketch2 = _EdgeHelloSketch(tmp_edge_sketch)
     val = sketch2.dag.node("edge_detect_0").step._param_registry.get_value("low_threshold")
     assert val == 77.0
 

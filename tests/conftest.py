@@ -12,9 +12,7 @@ from fastapi.testclient import TestClient
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
 from sketchbook.server.app import create_app
-from sketchbook.steps import Passthrough
-from sketchbook.steps.opencv.blur import GaussianBlur
-from sketchbook.steps.opencv.edge_detect import EdgeDetect
+from tests.steps import EdgeDetect, GaussianBlur, Passthrough
 
 
 # ---------------------------------------------------------------------------

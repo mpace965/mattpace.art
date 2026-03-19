@@ -21,6 +21,20 @@ This is a modern Python project. Target Python 3.14.
 - **Docstrings** on every public class and every public method. One-liner is fine if the intent is obvious. Use imperative mood ("Return the image" not "Returns the image").
 - **No classes where a function will do.** But pipeline steps are classes — that's a deliberate design choice for lifecycle and introspection, not Java brain.
 
+## Userland vs framework
+
+**Framework** is everything under `src/sketchbook/` and `tests/`. It is the engine, server, site builder, CLI, and test infrastructure. It knows nothing about any specific sketch.
+
+**Userland** is everything under `sketches/`. Each sketch directory is a self-contained creative module. Sketches depend on the framework. The framework never depends on sketches.
+
+### Steps belong to sketches
+
+The framework provides the `PipelineStep` base class and the infrastructure to run steps (DAG, executor, server, watcher). It does **not** provide reusable processing steps. Steps like `GaussianBlur` or `EdgeDetect` live in the sketch that first needs them. If a step proves useful across many sketches it may be promoted to the framework — but conservatively, and only once the pattern is clearly general.
+
+### The hard rule: framework never imports from sketches
+
+`src/sketchbook/` must never import from `sketches.*`. `tests/` must never import from `sketches.*`. Tests that need concrete steps define them in `tests/steps.py` or inline. Violating this collapses the dependency boundary and makes sketches load-order dependencies of the framework itself.
+
 ## Architecture principles
 
 ### The DAG is the source of truth

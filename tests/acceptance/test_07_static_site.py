@@ -8,10 +8,8 @@ import pytest
 
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
-from sketchbook.steps import Passthrough
-from sketchbook.steps.opencv.blur import GaussianBlur
-from sketchbook.steps.opencv.edge_detect import EdgeDetect
 from tests.conftest import make_test_image
+from tests.steps import EdgeDetect, GaussianBlur, Passthrough
 
 
 class _EdgePortraitSketch(Sketch):
