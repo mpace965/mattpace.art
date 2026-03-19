@@ -38,11 +38,13 @@
 <body>
   <div id="toolbar">
     <h2>{% block toolbar_title %}Sketchbook{% endblock %}</h2>
+    {% block toolbar_controls %}
     <span id="preset-label">preset: <span id="dirty-indicator"></span></span>
     <select id="preset-select"><option value="">— untitled —</option></select>
     <button class="btn" id="btn-save" disabled>Save</button>
     <button class="btn" id="btn-save-as">Save as…</button>
     <button class="btn" id="btn-new">New</button>
+    {% endblock %}
   </div>
 
   <div id="content">
@@ -167,7 +169,7 @@
     // Page-specific init (Tweakpane + WebSocket)
     // -----------------------------------------------------------------------
 
-    {% block scripts %}{% endblock %}
+    {% block scripts %}function init() {}{% endblock %}
 
     fetchAndRenderPresets();
     init();

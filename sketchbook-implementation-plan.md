@@ -541,9 +541,9 @@ def test_only_active_sketch_watches_files(two_sketches, test_client, watcher_reg
 
 ### Definition of done — Increment 6
 
-- [ ] Acceptance tests in `tests/acceptance/test_06_sketch_browser.py` pass
-- [ ] `tests/unit/test_discovery.py` covers sketch discovery (finds all `Sketch` subclasses in `sketches.*`, skips non-sketch modules)
-- [ ] `tests/unit/test_watcher.py` covers lazy activation (watcher starts on activate, stops on deactivate, does not start for inactive sketches)
+- [x] Acceptance tests in `tests/acceptance/test_06_sketch_browser.py` pass
+- [x] `tests/unit/test_discovery.py` covers sketch discovery (finds all `Sketch` subclasses in `sketches.*`, skips non-sketch modules)
+- [x] `tests/unit/test_watcher.py` covers lazy activation (watcher starts on activate, stops on deactivate, does not start for inactive sketches)
 
 ---
 

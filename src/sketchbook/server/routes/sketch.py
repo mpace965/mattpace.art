@@ -21,6 +21,16 @@ def init_templates(templates: Jinja2Templates) -> None:
     _templates = templates
 
 
+@router.get("/", response_class=HTMLResponse)
+async def index_view(request: Request) -> HTMLResponse:
+    """Render the sketch browser index page listing all known sketches."""
+    from sketchbook.server.app import list_sketch_infos
+
+    sketches = list_sketch_infos()
+    assert _templates is not None
+    return _templates.TemplateResponse(request, "index.html", {"sketches": sketches})
+
+
 @router.get("/sketch/{sketch_id}", response_class=HTMLResponse)
 async def sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
     """Render the sketch overview page (DAG + all-step Tweakpane)."""

@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% from "macros.html" import step_body %}
+{% from "macros.html" import breadcrumbs, step_body %}
 
-{% block title %}{{ step_id }} — {{ sketch_id }}{% endblock %}
+{% block title %}{{ step_id }} — {{ sketch_id }} — sketchbook{% endblock %}
 
-{% block toolbar_title %}<a href="/sketch/{{ sketch_id }}#card-{{ step_id }}">{{ sketch_id }}</a><span class="sep">/</span><a href="/sketch/{{ sketch_id }}/step/{{ step_id }}">{{ step_id }}</a>{% endblock %}
+{% block toolbar_title %}{{ breadcrumbs(sketch_id, step_id) }}{% endblock %}
 
 {% block extra_style %}
     #step-view { flex: 1; padding: 0.75rem; overflow: auto; }

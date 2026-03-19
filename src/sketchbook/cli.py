@@ -8,6 +8,7 @@ import logging
 import pkgutil
 import sys
 import time
+import types
 from pathlib import Path
 
 import uvicorn
@@ -20,6 +21,14 @@ log = logging.getLogger("sketchbook.cli")
 _REPO_ROOT = Path(__file__).parent.parent.parent
 _SKETCHES_PACKAGE = "sketches"
 _SKETCHES_DIR = _REPO_ROOT / "sketches"
+
+
+def _find_sketch_class_in_module(module: types.ModuleType) -> type[Sketch] | None:
+    """Return the first Sketch subclass found in module, or None."""
+    for _, obj in inspect.getmembers(module, inspect.isclass):
+        if issubclass(obj, Sketch) and obj is not Sketch:
+            return obj
+    return None
 
 
 def discover_sketch_classes() -> dict[str, type[Sketch]]:
@@ -38,10 +47,9 @@ def discover_sketch_classes() -> dict[str, type[Sketch]]:
     for mod_info in pkgutil.iter_modules([str(_SKETCHES_DIR)]):
         slug = mod_info.name
         module = importlib.import_module(f"{_SKETCHES_PACKAGE}.{slug}")
-        for _, obj in inspect.getmembers(module, inspect.isclass):
-            if issubclass(obj, Sketch) and obj is not Sketch:
-                candidates[slug] = obj
-                break
+        cls = _find_sketch_class_in_module(module)
+        if cls is not None:
+            candidates[slug] = cls
     log.info(f"Discovered {len(candidates)} sketch modules in {time.perf_counter() - t0:.2f}s")
     return candidates
 

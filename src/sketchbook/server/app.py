@@ -40,9 +40,49 @@ _sketches_dir: Path | None = None
 _watcher: Watcher | None = None
 _loop: asyncio.AbstractEventLoop | None = None
 
+# Sketch IDs that currently have file watchers registered
+_watched_sketches: set[str] = set()
+
+
+def get_watched_sketch_ids() -> frozenset[str]:
+    """Return the sketch IDs that currently have file watchers registered."""
+    return frozenset(_watched_sketches)
+
+
+def list_sketch_infos() -> list[dict[str, str]]:
+    """Return display metadata for all known sketches (loaded and candidates).
+
+    Draws name, description, and date from class attributes so candidates
+    (not yet instantiated) are included without triggering a load.
+    """
+    infos: list[dict[str, str]] = []
+    seen: set[str] = set()
+
+    for sketch_id, sketch in _sketches.items():
+        cls = type(sketch)
+        infos.append({
+            "id": sketch_id,
+            "name": cls.name,
+            "description": getattr(cls, "description", ""),
+            "date": getattr(cls, "date", ""),
+        })
+        seen.add(sketch_id)
+
+    for sketch_id, cls in _candidates.items():
+        if sketch_id not in seen:
+            infos.append({
+                "id": sketch_id,
+                "name": cls.name,
+                "description": getattr(cls, "description", ""),
+                "date": getattr(cls, "date", ""),
+            })
+
+    return sorted(infos, key=lambda x: x["date"], reverse=True)
+
 
 def _register_watch(watcher: Watcher, sketch_id: str, sketch: Sketch, loop: asyncio.AbstractEventLoop) -> None:
     """Watch all source nodes in a sketch and wire changes to partial re-execution + broadcast."""
+    _watched_sketches.add(sketch_id)
     for node in sketch.dag.topo_sort():
         if not isinstance(node.step, SourceFile):
             continue
@@ -117,11 +157,12 @@ def create_app(
         The app's lifespan starts the file watcher. For eager sketches the watcher is
         registered at startup; for lazy candidates it is registered on first load.
     """
-    global _sketches, _candidates, _sketch_locks, _sketches_dir
+    global _sketches, _candidates, _sketch_locks, _sketches_dir, _watched_sketches
     _sketches = sketches
     _sketches_dir = sketches_dir
     _candidates = candidates or {}
     _sketch_locks = {slug: threading.Lock() for slug in _candidates}
+    _watched_sketches = set()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:

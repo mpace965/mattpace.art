@@ -1,3 +1,5 @@
+{% macro breadcrumbs(sketch_id=None, step_id=None) %}<a href="/">sketchbook</a>{% if sketch_id %}<span class="sep">/</span><a href="/sketch/{{ sketch_id }}{% if step_id %}#card-{{ step_id }}{% endif %}">{{ sketch_id }}</a>{% endif %}{% if step_id %}<span class="sep">/</span><a href="/sketch/{{ sketch_id }}/step/{{ step_id }}">{{ step_id }}</a>{% endif %}{% endmacro %}
+
 {% macro step_body(step_id, image_url) %}
 <div class="step-card-body">
   <div class="step-card-params" id="params-{{ step_id }}"></div>
