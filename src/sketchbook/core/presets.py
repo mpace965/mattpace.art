@@ -7,7 +7,19 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from sketchbook.core.dag import DAG
+
 log = logging.getLogger("sketchbook.core.presets")
+
+
+def _snapshot_params(dag: DAG) -> dict[str, Any]:
+    """Return a mapping of step_id -> param values for all nodes with params."""
+    data: dict[str, Any] = {}
+    for node in dag.topo_sort():
+        values = node.step.param_values()
+        if values:
+            data[node.id] = values
+    return data
 
 
 class PresetManager:
@@ -43,7 +55,7 @@ class PresetManager:
         """Mark the active state as dirty (called after a param edit)."""
         self._dirty = True
 
-    def load_active(self, dag: Any) -> None:
+    def load_active(self, dag: DAG) -> None:
         """Load _active.json into the DAG's step registries (no-op if missing)."""
         active_path = self._dir / "_active.json"
         if not active_path.exists():
@@ -67,37 +79,29 @@ class PresetManager:
 
         log.info(f"Loaded _active.json (dirty={self._dirty}, based_on={self._based_on!r})")
 
-    def save_active(self, dag: Any) -> None:
+    def save_active(self, dag: DAG) -> None:
         """Serialize current registry state to _active.json."""
         self._dir.mkdir(parents=True, exist_ok=True)
         data: dict[str, Any] = {
             "_meta": {
                 "dirty": self._dirty,
                 "based_on": self._based_on,
-            }
+            },
+            **_snapshot_params(dag),
         }
-        for node in dag.topo_sort():
-            values = node.step.param_values()
-            if values:
-                data[node.id] = values
         (self._dir / "_active.json").write_text(json.dumps(data, indent=2))
         log.debug(f"Saved _active.json (dirty={self._dirty})")
 
-    def save_preset(self, name: str, dag: Any) -> None:
+    def save_preset(self, name: str, dag: DAG) -> None:
         """Save current params as a named preset and mark active as clean."""
         self._dir.mkdir(parents=True, exist_ok=True)
-        data: dict[str, Any] = {}
-        for node in dag.topo_sort():
-            values = node.step.param_values()
-            if values:
-                data[node.id] = values
-        (self._dir / f"{name}.json").write_text(json.dumps(data, indent=2))
+        (self._dir / f"{name}.json").write_text(json.dumps(_snapshot_params(dag), indent=2))
         self._dirty = False
         self._based_on = name
         self.save_active(dag)
         log.info(f"Saved preset '{name}'")
 
-    def load_preset(self, name: str, dag: Any) -> None:
+    def load_preset(self, name: str, dag: DAG) -> None:
         """Load a named preset into step registries and update _active.json."""
         preset_path = self._dir / f"{name}.json"
         if not preset_path.exists():
@@ -118,7 +122,7 @@ class PresetManager:
         self.save_active(dag)
         log.info(f"Loaded preset '{name}'")
 
-    def reset(self, dag: Any) -> None:
+    def reset(self, dag: DAG) -> None:
         """Reset all step params to their declared defaults and clear active state."""
         for node in dag.topo_sort():
             node.step.reset_params()
