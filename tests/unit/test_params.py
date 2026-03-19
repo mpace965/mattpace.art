@@ -21,6 +21,18 @@ class TestParamDef:
         assert p.min is None
         assert p.max is None
         assert p.step is None
+        assert p.options is None
+
+    def test_options_in_to_dict(self) -> None:
+        p = ParamDef(name="mode", type=str, default="a", options=["a", "b", "c"])
+        d = p.to_dict(current_value="a")
+        assert d["options"] == ["a", "b", "c"]
+        assert d["value"] == "a"
+
+    def test_no_options_omitted_from_to_dict(self) -> None:
+        p = ParamDef(name="x", type=float, default=1.0)
+        d = p.to_dict(current_value=1.0)
+        assert "options" not in d
 
     def test_to_dict_includes_value(self) -> None:
         p = ParamDef(name="x", type=float, default=1.0, min=0.0, max=10.0, step=0.5)
@@ -115,6 +127,33 @@ class TestParamRegistry:
         reg.reset_to_defaults()
         assert reg.get_value("x") == 1.0
         assert reg.get_value("k") == 3
+
+    def test_set_value_validates_options(self) -> None:
+        reg = ParamRegistry()
+        reg.add(ParamDef(name="mode", type=str, default="a", options=["a", "b", "c"]))
+        reg.set_value("mode", "b")
+        assert reg.get_value("mode") == "b"
+        with pytest.raises(ValueError, match="not a valid option"):
+            reg.set_value("mode", "z")
+
+    def test_options_in_schema_dict(self) -> None:
+        reg = ParamRegistry()
+        reg.add(ParamDef(name="mode", type=str, default="a", options=["a", "b", "c"]))
+        schema = reg.to_schema_dict()
+        assert schema["mode"]["options"] == ["a", "b", "c"]
+
+    def test_no_options_not_in_schema_dict(self) -> None:
+        reg = ParamRegistry()
+        reg.add(ParamDef(name="x", type=float, default=1.0))
+        schema = reg.to_schema_dict()
+        assert "options" not in schema["x"]
+
+    def test_override_options(self) -> None:
+        reg = ParamRegistry()
+        reg.add(ParamDef(name="mode", type=str, default="a", options=["a", "b"]))
+        reg.override("mode", options=["x", "y", "z"])
+        schema = reg.to_schema_dict()
+        assert schema["mode"]["options"] == ["x", "y", "z"]
 
     def test_serialization_roundtrip(self) -> None:
         reg = ParamRegistry()

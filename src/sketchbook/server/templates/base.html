@@ -146,6 +146,7 @@
         if (spec.max !== undefined) opts.max = spec.max;
         if (spec.step !== undefined) opts.step = spec.step;
         if (spec.label !== undefined) opts.label = spec.label;
+        if (spec.options !== undefined) opts.options = Object.fromEntries(spec.options.map(o => [o, o]));
         const debounceMs = spec.debounce ?? 0;
         let debounceTimer = null;
         const sendPatch = (value) => fetch(PATCH_URL, {

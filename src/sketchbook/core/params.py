@@ -18,6 +18,7 @@ class ParamDef:
     step: Any = None
     label: str | None = None
     debounce: int | None = None
+    options: list[str] | None = None
 
     def to_dict(self, current_value: Any) -> dict[str, Any]:
         """Return a Tweakpane-compatible schema dict for this param."""
@@ -35,6 +36,8 @@ class ParamDef:
             d["label"] = self.label
         if self.debounce is not None:
             d["debounce"] = self.debounce
+        if self.options is not None:
+            d["options"] = self.options
         return d
 
 
@@ -58,7 +61,10 @@ class ParamRegistry:
         """Set the current value for a param, coercing to the declared type."""
         if name not in self._params:
             raise KeyError(f"Unknown param '{name}'. Available: {list(self._params)}")
-        coerced = self._params[name].type(value)
+        param = self._params[name]
+        coerced = param.type(value)
+        if param.options is not None and coerced not in param.options:
+            raise ValueError(f"Value '{coerced}' is not a valid option for '{name}'. Must be one of: {param.options}")
         self._values[name] = coerced
 
     def values(self) -> dict[str, Any]:
@@ -85,7 +91,7 @@ class ParamRegistry:
         if name not in self._params:
             raise KeyError(f"Unknown param '{name}'. Available: {list(self._params)}")
         p = self._params[name]
-        allowed = {"min", "max", "step", "label", "debounce", "default"}
+        allowed = {"min", "max", "step", "label", "debounce", "default", "options"}
         unknown = set(fields) - allowed
         if unknown:
             raise ValueError(f"Unknown override fields for param '{name}': {unknown}")
