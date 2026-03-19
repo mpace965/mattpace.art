@@ -27,6 +27,103 @@ def _slug(sketch_id: str) -> str:
     return sketch_id.replace("_", "-")
 
 
+def _snapshot_variants(
+    sketch: Sketch,
+    presets: list[str],
+    site_nodes: list[Any],
+    variants_dir: Path,
+) -> list[str]:
+    """Execute the pipeline for each preset and save SiteOutput images.
+
+    Return the list of preset names that were successfully baked.
+    """
+    produced: list[str] = []
+    for preset_name in presets:
+        sketch.preset_manager.load_preset(preset_name, sketch.dag)
+        result = execute(sketch.dag)
+        if not result.ok:
+            log.warning(f"  preset '{preset_name}' failed: {result.errors}")
+            continue
+
+        for site_node in site_nodes:
+            if site_node.output is not None:
+                dest = variants_dir / f"{preset_name}.png"
+                site_node.output.save(dest)
+                log.info(f"  baked {preset_name} -> {dest}")
+
+        produced.append(preset_name)
+    return produced
+
+
+def _build_sketch(
+    sketch_id: str,
+    sketch_cls: type[Sketch],
+    sketches_dir: Path,
+    dist_dir: Path,
+    sketch_tmpl: Any,
+) -> dict[str, Any] | None:
+    """Build one sketch: bake variants and render its page.
+
+    Return a feed entry dict on success, or None if the sketch should be skipped.
+    """
+    sketch_dir = sketches_dir / sketch_id
+    log.info(f"Processing sketch '{sketch_id}'")
+
+    sketch = sketch_cls(sketch_dir)
+
+    site_nodes = [n for n in sketch.dag.topo_sort() if isinstance(n.step, SiteOutput)]
+    if not site_nodes:
+        log.info(f"Skipping '{sketch_id}': no SiteOutput node")
+        return None
+
+    all_presets = sketch.preset_manager.list_presets()
+    if not all_presets:
+        log.info(f"Skipping '{sketch_id}': no saved presets")
+        return None
+
+    if sketch.site_presets is not None:
+        presets = [p for p in sketch.site_presets if p in all_presets]
+        missing = [p for p in sketch.site_presets if p not in all_presets]
+        if missing:
+            log.warning(f"  site_presets references unknown preset(s): {missing}")
+    else:
+        presets = all_presets
+
+    if not presets:
+        log.info(f"Skipping '{sketch_id}': no matching presets after filtering")
+        return None
+
+    slug = _slug(sketch_id)
+    sketch_dist = dist_dir / slug
+    variants_dir = sketch_dist / "variants"
+    variants_dir.mkdir(parents=True, exist_ok=True)
+
+    produced = _snapshot_variants(sketch, presets, site_nodes, variants_dir)
+
+    if not produced:
+        log.warning(f"Skipping '{sketch_id}': all presets failed")
+        shutil.rmtree(sketch_dist)
+        return None
+
+    sketch_html = sketch_tmpl.render(
+        name=sketch.name,
+        description=sketch.description,
+        date=sketch.date,
+        slug=slug,
+        variants=produced,
+    )
+    (sketch_dist / "index.html").write_text(sketch_html)
+
+    log.info(f"Built '{sketch_id}' with {len(produced)} variant(s)")
+    return {
+        "slug": slug,
+        "name": sketch.name,
+        "description": sketch.description,
+        "date": sketch.date,
+        "variants": produced,
+    }
+
+
 def build_site(
     sketch_classes: dict[str, type[Sketch]],
     sketches_dir: Path,
@@ -47,76 +144,9 @@ def build_site(
     entries: list[dict[str, Any]] = []
 
     for sketch_id, sketch_cls in sketch_classes.items():
-        sketch_dir = sketches_dir / sketch_id
-        log.info(f"Processing sketch '{sketch_id}'")
-
-        sketch = sketch_cls(sketch_dir)
-
-        site_nodes = [n for n in sketch.dag.topo_sort() if isinstance(n.step, SiteOutput)]
-        if not site_nodes:
-            log.info(f"Skipping '{sketch_id}': no SiteOutput node")
-            continue
-
-        all_presets = sketch.preset_manager.list_presets()
-        if not all_presets:
-            log.info(f"Skipping '{sketch_id}': no saved presets")
-            continue
-
-        if sketch.site_presets is not None:
-            presets = [p for p in sketch.site_presets if p in all_presets]
-            missing = [p for p in sketch.site_presets if p not in all_presets]
-            if missing:
-                log.warning(f"  site_presets references unknown preset(s): {missing}")
-        else:
-            presets = all_presets
-
-        if not presets:
-            log.info(f"Skipping '{sketch_id}': no matching presets after filtering")
-            continue
-
-        slug = _slug(sketch_id)
-        sketch_dist = dist_dir / slug
-        variants_dir = sketch_dist / "variants"
-        variants_dir.mkdir(parents=True, exist_ok=True)
-
-        produced: list[str] = []
-        for preset_name in presets:
-            sketch.preset_manager.load_preset(preset_name, sketch.dag)
-            result = execute(sketch.dag)
-            if not result.ok:
-                log.warning(f"  preset '{preset_name}' failed: {result.errors}")
-                continue
-
-            for site_node in site_nodes:
-                if site_node.output is not None:
-                    dest = variants_dir / f"{preset_name}.png"
-                    site_node.output.save(dest)
-                    log.info(f"  baked {preset_name} -> {dest}")
-
-            produced.append(preset_name)
-
-        if not produced:
-            log.warning(f"Skipping '{sketch_id}': all presets failed")
-            shutil.rmtree(sketch_dist)
-            continue
-
-        sketch_html = sketch_tmpl.render(
-            name=sketch.name,
-            description=sketch.description,
-            date=sketch.date,
-            slug=slug,
-            variants=produced,
-        )
-        (sketch_dist / "index.html").write_text(sketch_html)
-
-        entries.append({
-            "slug": slug,
-            "name": sketch.name,
-            "description": sketch.description,
-            "date": sketch.date,
-            "variants": produced,
-        })
-        log.info(f"Built '{sketch_id}' with {len(produced)} variant(s)")
+        entry = _build_sketch(sketch_id, sketch_cls, sketches_dir, dist_dir, sketch_tmpl)
+        if entry is not None:
+            entries.append(entry)
 
     entries.sort(key=lambda e: e["date"], reverse=True)
     feed_html = feed_tmpl.render(entries=entries)
