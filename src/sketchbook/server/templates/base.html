@@ -28,9 +28,10 @@
     /* Shared step body layout */
     .step-card-body { padding: 0.75rem; display: flex; gap: 1rem; align-items: flex-start; }
     .step-card-params { flex-shrink: 0; width: 260px; }
+    .step-card-params:empty { display: none; }
     .step-card-output { flex: 1; min-width: 0; }
     .step-card-output .error-msg { color: #f88; font-size: 0.8rem; white-space: pre-wrap; padding: 0.5rem; background: #300; border-radius: 3px; margin-bottom: 0.5rem; display: none; }
-    .step-card-output img { max-width: 100%; width: auto; display: block; border-radius: 2px; }
+    .step-card-output img { max-width: 100%; width: auto; display: block; border-radius: 2px; margin: 0 auto; }
 
     {% block extra_style %}{% endblock %}
   </style>
