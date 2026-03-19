@@ -156,6 +156,34 @@ class TestParamRegistry:
         schema = param_registry_to_tweakpane(reg)
         assert schema["mode"]["options"] == ["x", "y", "z"]
 
+    def test_bool_coercion_truthy_strings(self) -> None:
+        reg = ParamRegistry()
+        reg.add(ParamDef(name="flag", type=bool, default=False))
+        for truthy in ("true", "True", "TRUE", "1", "yes", "YES", "on", "ON"):
+            reg.set_value("flag", truthy)
+            assert reg.get_value("flag") is True, f"Expected True for {truthy!r}"
+
+    def test_bool_coercion_falsy_strings(self) -> None:
+        reg = ParamRegistry()
+        reg.add(ParamDef(name="flag", type=bool, default=True))
+        for falsy in ("false", "False", "FALSE", "0", "no", "NO", "off", "OFF"):
+            reg.set_value("flag", falsy)
+            assert reg.get_value("flag") is False, f"Expected False for {falsy!r}"
+
+    def test_bool_coercion_unrecognized_string_raises(self) -> None:
+        reg = ParamRegistry()
+        reg.add(ParamDef(name="flag", type=bool, default=False))
+        with pytest.raises(ValueError, match="Cannot coerce"):
+            reg.set_value("flag", "maybe")
+
+    def test_bool_coercion_actual_bool_passthrough(self) -> None:
+        reg = ParamRegistry()
+        reg.add(ParamDef(name="flag", type=bool, default=False))
+        reg.set_value("flag", True)
+        assert reg.get_value("flag") is True
+        reg.set_value("flag", False)
+        assert reg.get_value("flag") is False
+
     def test_serialization_roundtrip(self) -> None:
         reg = ParamRegistry()
         reg.add(ParamDef(name="threshold1", type=float, default=100.0))

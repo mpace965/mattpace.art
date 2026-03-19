@@ -5,6 +5,34 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+_BOOL_TRUE_STRINGS: frozenset[str] = frozenset({"true", "1", "yes", "on"})
+_BOOL_FALSE_STRINGS: frozenset[str] = frozenset({"false", "0", "no", "off"})
+
+
+def _coerce_bool(value: Any) -> bool:
+    """Coerce a value to bool with explicit string handling.
+
+    Accepts actual bools and ints directly. For strings, recognises
+    'true'/'1'/'yes'/'on' → True and 'false'/'0'/'no'/'off' → False
+    (case-insensitive). Raises ValueError for any other string.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return bool(value)
+    if isinstance(value, str):
+        lowered = value.lower()
+        if lowered in _BOOL_TRUE_STRINGS:
+            return True
+        if lowered in _BOOL_FALSE_STRINGS:
+            return False
+        raise ValueError(
+            f"Cannot coerce string '{value}' to bool. "
+            f"Accepted true values: {sorted(_BOOL_TRUE_STRINGS)}. "
+            f"Accepted false values: {sorted(_BOOL_FALSE_STRINGS)}."
+        )
+    return bool(value)
+
 
 @dataclass
 class ParamDef:
@@ -43,7 +71,7 @@ class ParamRegistry:
         if name not in self._params:
             raise KeyError(f"Unknown param '{name}'. Available: {list(self._params)}")
         param = self._params[name]
-        coerced = param.type(value)
+        coerced = _coerce_bool(value) if param.type is bool else param.type(value)
         if param.options is not None and coerced not in param.options:
             raise ValueError(f"Value '{coerced}' is not a valid option for '{name}'. Must be one of: {param.options}")
         self._values[name] = coerced
