@@ -1,25 +1,22 @@
-"""Static site builder.
+"""Output bundle builder.
 
-Discovers SiteOutput nodes in each sketch, iterates saved presets, bakes
-variant images, and renders feed and sketch pages into dist/.
+Discovers OutputBundle nodes in each sketch, iterates saved presets, bakes
+variant images, and writes a JSON bundle file to the output directory.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import shutil
 from pathlib import Path
 from typing import Any
 
-from jinja2 import Environment, FileSystemLoader
-
 from sketchbook.core.executor import execute
 from sketchbook.core.sketch import Sketch
-from sketchbook.steps.site_output import SiteOutput
+from sketchbook.steps.output_bundle import OutputBundle
 
 log = logging.getLogger("sketchbook.site.builder")
-
-_TEMPLATES_DIR = Path(__file__).parent / "templates"
 
 
 def _slug(sketch_id: str) -> str:
@@ -30,10 +27,10 @@ def _slug(sketch_id: str) -> str:
 def _snapshot_variants(
     sketch: Sketch,
     presets: list[str],
-    site_nodes: list[Any],
-    variants_dir: Path,
+    bundle_nodes: list[Any],
+    sketch_output_dir: Path,
 ) -> list[str]:
-    """Execute the pipeline for each preset and save SiteOutput images.
+    """Execute the pipeline for each preset and save OutputBundle images.
 
     Return the list of preset names that were successfully baked.
     """
@@ -45,10 +42,10 @@ def _snapshot_variants(
             log.warning(f"  preset '{preset_name}' failed: {result.errors}")
             continue
 
-        for site_node in site_nodes:
-            if site_node.output is not None:
-                dest = variants_dir / f"{preset_name}.png"
-                site_node.output.save(dest)
+        for bundle_node in bundle_nodes:
+            if bundle_node.output is not None:
+                dest = sketch_output_dir / f"{preset_name}.png"
+                bundle_node.output.save(dest)
                 log.info(f"  baked {preset_name} -> {dest}")
 
         produced.append(preset_name)
@@ -59,21 +56,24 @@ def _build_sketch(
     sketch_id: str,
     sketch_cls: type[Sketch],
     sketches_dir: Path,
-    dist_dir: Path,
-    sketch_tmpl: Any,
+    output_dir: Path,
+    bundle_name: str,
 ) -> dict[str, Any] | None:
-    """Build one sketch: bake variants and render its page.
+    """Build one sketch: bake variants and return its bundle entry dict.
 
-    Return a feed entry dict on success, or None if the sketch should be skipped.
+    Return a bundle entry dict on success, or None if the sketch should be skipped.
     """
     sketch_dir = sketches_dir / sketch_id
     log.info(f"Processing sketch '{sketch_id}'")
 
     sketch = sketch_cls(sketch_dir)
 
-    site_nodes = [n for n in sketch.dag.topo_sort() if isinstance(n.step, SiteOutput)]
-    if not site_nodes:
-        log.info(f"Skipping '{sketch_id}': no SiteOutput node")
+    bundle_nodes = [
+        n for n in sketch.dag.topo_sort()
+        if isinstance(n.step, OutputBundle) and n.step.bundle_name == bundle_name
+    ]
+    if not bundle_nodes:
+        log.info(f"Skipping '{sketch_id}': no OutputBundle node for bundle '{bundle_name}'")
         return None
 
     all_presets = sketch.preset_manager.list_presets()
@@ -94,25 +94,15 @@ def _build_sketch(
         return None
 
     slug = _slug(sketch_id)
-    sketch_dist = dist_dir / slug
-    variants_dir = sketch_dist / "variants"
-    variants_dir.mkdir(parents=True, exist_ok=True)
+    sketch_output_dir = output_dir / slug
+    sketch_output_dir.mkdir(parents=True, exist_ok=True)
 
-    produced = _snapshot_variants(sketch, presets, site_nodes, variants_dir)
+    produced = _snapshot_variants(sketch, presets, bundle_nodes, sketch_output_dir)
 
     if not produced:
         log.warning(f"Skipping '{sketch_id}': all presets failed")
-        shutil.rmtree(sketch_dist)
+        shutil.rmtree(sketch_output_dir)
         return None
-
-    sketch_html = sketch_tmpl.render(
-        name=sketch.name,
-        description=sketch.description,
-        date=sketch.date,
-        slug=slug,
-        variants=produced,
-    )
-    (sketch_dist / "index.html").write_text(sketch_html)
 
     log.info(f"Built '{sketch_id}' with {len(produced)} variant(s)")
     return {
@@ -120,35 +110,36 @@ def _build_sketch(
         "name": sketch.name,
         "description": sketch.description,
         "date": sketch.date,
-        "variants": produced,
+        "variants": [
+            {"name": preset, "image_path": f"{slug}/{preset}.png"}
+            for preset in produced
+        ],
     }
 
 
-def build_site(
+def build_bundle(
     sketch_classes: dict[str, type[Sketch]],
     sketches_dir: Path,
-    dist_dir: Path,
+    output_dir: Path,
+    bundle_name: str,
 ) -> None:
-    """Build the static site from all sketches that have SiteOutput nodes and saved presets.
+    """Build a named output bundle from all sketches that have matching OutputBundle nodes.
 
     For each qualifying sketch, iterates saved presets, executes the full pipeline,
-    and copies the SiteOutput node's image to dist/<slug>/variants/<preset>.png.
-    Renders feed and individual sketch pages using Jinja2 templates.
+    and copies the OutputBundle node's image to <output_dir>/<slug>/<preset>.png.
+    Writes the accumulated entries as a JSON array to <output_dir>/<bundle_name>.json.
     """
-    dist_dir.mkdir(parents=True, exist_ok=True)
-
-    env = Environment(loader=FileSystemLoader(str(_TEMPLATES_DIR)), autoescape=True)
-    feed_tmpl = env.get_template("feed.html")
-    sketch_tmpl = env.get_template("sketch_page.html")
+    output_dir.mkdir(parents=True, exist_ok=True)
 
     entries: list[dict[str, Any]] = []
 
     for sketch_id, sketch_cls in sketch_classes.items():
-        entry = _build_sketch(sketch_id, sketch_cls, sketches_dir, dist_dir, sketch_tmpl)
+        entry = _build_sketch(sketch_id, sketch_cls, sketches_dir, output_dir, bundle_name)
         if entry is not None:
             entries.append(entry)
 
     entries.sort(key=lambda e: e["date"], reverse=True)
-    feed_html = feed_tmpl.render(entries=entries)
-    (dist_dir / "index.html").write_text(feed_html)
-    log.info(f"Built feed with {len(entries)} sketch(es) -> {dist_dir / 'index.html'}")
+
+    bundle_path = output_dir / "manifest.json"
+    bundle_path.write_text(json.dumps(entries, indent=2))
+    log.info(f"Wrote {len(entries)} sketch(es) to {bundle_path}")

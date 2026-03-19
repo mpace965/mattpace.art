@@ -2,27 +2,28 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
-from sketchbook.steps.site_output import SiteOutput
+from sketchbook.steps.output_bundle import OutputBundle
 from tests.conftest import make_test_image
 from tests.steps import EdgeDetect, GaussianBlur, Passthrough
 
 
 class _SiteSketch(Sketch):
     name = "Test Sketch"
-    description = "Site output test."
+    description = "Output bundle test."
     date = "2026-03-18"
 
     def build(self) -> None:
         photo = self.source("photo", "assets/photo.jpg")
         blurred = photo.pipe(GaussianBlur)
         edges = blurred.pipe(EdgeDetect)
-        self.site_output(edges)
+        self.output_bundle(edges, "bundle")
 
 
 @pytest.fixture()
@@ -33,30 +34,72 @@ def sketch_dir(tmp_path: Path) -> Path:
     return d
 
 
-def test_site_output_step_is_passthrough(sketch_dir: Path) -> None:
-    """SiteOutput step passes the input image through unchanged."""
+def test_output_bundle_step_is_passthrough(sketch_dir: Path) -> None:
+    """OutputBundle step passes the input image through unchanged."""
     from sketchbook.core.types import Image
 
     import numpy as np
 
-    step = SiteOutput()
+    step = OutputBundle("bundle")
     arr = np.zeros((4, 4, 3), dtype=np.uint8)
     img = Image(arr)
     result = step.process({"image": img}, {})
     assert result is img
 
 
-def test_sketch_site_output_adds_site_output_node(sketch_dir: Path) -> None:
-    """Sketch.site_output() adds a SiteOutput node to the DAG."""
+def test_output_bundle_dsl_adds_node(sketch_dir: Path) -> None:
+    """Sketch.output_bundle() adds an OutputBundle node to the DAG with the given name."""
     sketch = _SiteSketch(sketch_dir)
-    site_nodes = [n for n in sketch.dag.topo_sort() if isinstance(n.step, SiteOutput)]
-    assert len(site_nodes) == 1
+    bundle_nodes = [n for n in sketch.dag.topo_sort() if isinstance(n.step, OutputBundle)]
+    assert len(bundle_nodes) == 1
+    assert bundle_nodes[0].step.bundle_name == "bundle"
 
 
-def test_builder_discovers_site_output_nodes(sketch_dir: Path, tmp_path: Path) -> None:
-    """build_site skips sketches with no SiteOutput node."""
-    from sketchbook import Sketch
-    from sketchbook.site.builder import build_site
+def test_site_output_bundle_is_no_arg_output_bundle(sketch_dir: Path) -> None:
+    """SiteOutputBundle is an OutputBundle with bundle_name='static_site' and no constructor args."""
+    from sketchbook.steps.output_bundle import OutputBundle
+
+    class _FakeSiteOutputBundle(OutputBundle):
+        def __init__(self) -> None:
+            super().__init__("bundle")
+
+    class _PipeSketch(Sketch):
+        name = "Pipe"
+        description = ""
+        date = "2026-03-18"
+
+        def build(self) -> None:
+            photo = self.source("photo", "assets/photo.jpg")
+            photo.pipe(_FakeSiteOutputBundle)
+
+    sketch = _PipeSketch(sketch_dir)
+    bundle_nodes = [n for n in sketch.dag.topo_sort() if isinstance(n.step, OutputBundle)]
+    assert len(bundle_nodes) == 1
+    assert bundle_nodes[0].step.bundle_name == "bundle"
+
+
+def test_sketch_output_bundle_uses_given_name(sketch_dir: Path) -> None:
+    """Sketch.output_bundle() attaches the given bundle_name to the node."""
+
+    class _CustomBundleSketch(Sketch):
+        name = "Custom"
+        description = ""
+        date = "2026-03-18"
+
+        def build(self) -> None:
+            photo = self.source("photo", "assets/photo.jpg")
+            edges = photo.pipe(GaussianBlur)
+            self.output_bundle(edges, "my_bundle")
+
+    sketch = _CustomBundleSketch(sketch_dir)
+    bundle_nodes = [n for n in sketch.dag.topo_sort() if isinstance(n.step, OutputBundle)]
+    assert len(bundle_nodes) == 1
+    assert bundle_nodes[0].step.bundle_name == "my_bundle"
+
+
+def test_builder_discovers_output_bundle_nodes(sketch_dir: Path, tmp_path: Path) -> None:
+    """build_bundle skips sketches with no OutputBundle node for the given bundle name."""
+    from sketchbook.site.builder import build_bundle
 
     class _NoSiteSketch(Sketch):
         name = "No Site"
@@ -71,77 +114,91 @@ def test_builder_discovers_site_output_nodes(sketch_dir: Path, tmp_path: Path) -
     (no_site_dir / "assets").mkdir(parents=True)
     make_test_image(no_site_dir / "assets" / "photo.jpg")
 
-    dist_dir = tmp_path / "dist"
-    build_site({"no_site": _NoSiteSketch}, tmp_path / "sketches", dist_dir)
+    output_dir = tmp_path / "output"
+    build_bundle({"no_site": _NoSiteSketch}, tmp_path / "sketches", output_dir, "bundle")
 
-    # Feed should be empty (no sketch entries)
-    feed = (dist_dir / "index.html").read_text()
-    assert "no_site" not in feed
-    assert "no-site" not in feed
+    bundle = json.loads((output_dir / "manifest.json").read_text())
+    assert bundle == []
+
+
+def test_builder_ignores_different_bundle_name(sketch_dir: Path, tmp_path: Path) -> None:
+    """build_bundle skips OutputBundle nodes whose name doesn't match the requested bundle."""
+    from sketchbook.site.builder import build_bundle
+
+    class _OtherBundleSketch(Sketch):
+        name = "Other"
+        description = ""
+        date = "2026-03-18"
+
+        def build(self) -> None:
+            photo = self.source("photo", "assets/photo.jpg")
+            edges = photo.pipe(GaussianBlur)
+            self.output_bundle(edges, "other_bundle")
+
+    other_dir = tmp_path / "sketches" / "other"
+    (other_dir / "assets").mkdir(parents=True)
+    make_test_image(other_dir / "assets" / "photo.jpg")
+
+    output_dir = tmp_path / "output"
+    build_bundle({"other": _OtherBundleSketch}, tmp_path / "sketches", output_dir, "bundle")
+
+    bundle = json.loads((output_dir / "manifest.json").read_text())
+    assert bundle == []
 
 
 def test_builder_iterates_presets(sketch_dir: Path, tmp_path: Path) -> None:
-    """build_site produces a variant image for each saved preset."""
-    from sketchbook.site.builder import build_site
+    """build_bundle produces a variant image for each saved preset."""
+    from sketchbook.site.builder import build_bundle
 
     sketch = _SiteSketch(sketch_dir)
     execute(sketch.dag)
     sketch.preset_manager.save_preset("preset_a", sketch.dag)
     sketch.preset_manager.save_preset("preset_b", sketch.dag)
 
-    dist_dir = tmp_path / "dist"
-    build_site({"test_sketch": _SiteSketch}, sketch_dir.parent, dist_dir)
+    output_dir = tmp_path / "output"
+    build_bundle({"test_sketch": _SiteSketch}, sketch_dir.parent, output_dir, "bundle")
 
-    assert (dist_dir / "test-sketch" / "variants" / "preset_a.png").exists()
-    assert (dist_dir / "test-sketch" / "variants" / "preset_b.png").exists()
+    assert (output_dir / "test-sketch" / "preset_a.png").exists()
+    assert (output_dir / "test-sketch" / "preset_b.png").exists()
 
 
-def test_builder_renders_feed_with_sketch_link(sketch_dir: Path, tmp_path: Path) -> None:
-    """Feed page contains a link to the sketch slug."""
-    from sketchbook.site.builder import build_site
+def test_builder_writes_json_bundle(sketch_dir: Path, tmp_path: Path) -> None:
+    """build_bundle writes a JSON file with sketch metadata and variant entries."""
+    from sketchbook.site.builder import build_bundle
 
     sketch = _SiteSketch(sketch_dir)
     execute(sketch.dag)
     sketch.preset_manager.save_preset("only", sketch.dag)
 
-    dist_dir = tmp_path / "dist"
-    build_site({"test_sketch": _SiteSketch}, sketch_dir.parent, dist_dir)
+    output_dir = tmp_path / "output"
+    build_bundle({"test_sketch": _SiteSketch}, sketch_dir.parent, output_dir, "bundle")
 
-    feed = (dist_dir / "index.html").read_text()
-    assert "test-sketch" in feed
-    assert "Test Sketch" in feed
-
-
-def test_builder_renders_sketch_page_with_variants(sketch_dir: Path, tmp_path: Path) -> None:
-    """Sketch page contains variant image references."""
-    from sketchbook.site.builder import build_site
-
-    sketch = _SiteSketch(sketch_dir)
-    execute(sketch.dag)
-    sketch.preset_manager.save_preset("variant_x", sketch.dag)
-
-    dist_dir = tmp_path / "dist"
-    build_site({"test_sketch": _SiteSketch}, sketch_dir.parent, dist_dir)
-
-    sketch_page = (dist_dir / "test-sketch" / "index.html").read_text()
-    assert "variant_x" in sketch_page
+    bundle = json.loads((output_dir / "manifest.json").read_text())
+    assert len(bundle) == 1
+    entry = bundle[0]
+    assert entry["slug"] == "test-sketch"
+    assert entry["name"] == "Test Sketch"
+    assert entry["description"] == "Output bundle test."
+    assert entry["date"] == "2026-03-18"
+    assert len(entry["variants"]) == 1
+    assert entry["variants"][0]["name"] == "only"
+    assert entry["variants"][0]["image_path"] == "test-sketch/only.png"
 
 
 def test_builder_skips_sketch_with_no_presets(sketch_dir: Path, tmp_path: Path) -> None:
-    """A sketch with site_output but no saved presets produces no entry in the feed."""
-    from sketchbook.site.builder import build_site
+    """A sketch with output_bundle but no saved presets produces no entry in the bundle."""
+    from sketchbook.site.builder import build_bundle
 
-    # No presets saved — just build site directly
-    dist_dir = tmp_path / "dist"
-    build_site({"test_sketch": _SiteSketch}, sketch_dir.parent, dist_dir)
+    output_dir = tmp_path / "output"
+    build_bundle({"test_sketch": _SiteSketch}, sketch_dir.parent, output_dir, "bundle")
 
-    feed = (dist_dir / "index.html").read_text()
-    assert "test-sketch" not in feed
+    bundle = json.loads((output_dir / "manifest.json").read_text())
+    assert bundle == []
 
 
 def test_site_presets_filters_to_listed_presets(sketch_dir: Path, tmp_path: Path) -> None:
     """site_presets restricts which presets get baked."""
-    from sketchbook.site.builder import build_site
+    from sketchbook.site.builder import build_bundle
 
     class _FilteredSketch(_SiteSketch):
         site_presets = ["preset_a"]
@@ -151,16 +208,16 @@ def test_site_presets_filters_to_listed_presets(sketch_dir: Path, tmp_path: Path
     sketch.preset_manager.save_preset("preset_a", sketch.dag)
     sketch.preset_manager.save_preset("preset_b", sketch.dag)
 
-    dist_dir = tmp_path / "dist"
-    build_site({"test_sketch": _FilteredSketch}, sketch_dir.parent, dist_dir)
+    output_dir = tmp_path / "output"
+    build_bundle({"test_sketch": _FilteredSketch}, sketch_dir.parent, output_dir, "bundle")
 
-    assert (dist_dir / "test-sketch" / "variants" / "preset_a.png").exists()
-    assert not (dist_dir / "test-sketch" / "variants" / "preset_b.png").exists()
+    assert (output_dir / "test-sketch" / "preset_a.png").exists()
+    assert not (output_dir / "test-sketch" / "preset_b.png").exists()
 
 
 def test_site_presets_unknown_name_does_not_crash(sketch_dir: Path, tmp_path: Path) -> None:
     """site_presets referencing a non-existent preset logs a warning but doesn't crash."""
-    from sketchbook.site.builder import build_site
+    from sketchbook.site.builder import build_bundle
 
     class _BadPresetSketch(_SiteSketch):
         site_presets = ["real_preset", "does_not_exist"]
@@ -169,42 +226,8 @@ def test_site_presets_unknown_name_does_not_crash(sketch_dir: Path, tmp_path: Pa
     execute(sketch.dag)
     sketch.preset_manager.save_preset("real_preset", sketch.dag)
 
-    dist_dir = tmp_path / "dist"
-    build_site({"test_sketch": _BadPresetSketch}, sketch_dir.parent, dist_dir)
+    output_dir = tmp_path / "output"
+    build_bundle({"test_sketch": _BadPresetSketch}, sketch_dir.parent, output_dir, "bundle")
 
-    assert (dist_dir / "test-sketch" / "variants" / "real_preset.png").exists()
-    assert not (dist_dir / "test-sketch" / "variants" / "does_not_exist.png").exists()
-
-
-def test_sketch_page_hides_name_for_single_variant(sketch_dir: Path, tmp_path: Path) -> None:
-    """Sketch page omits the variant name label when there is only one variant."""
-    from sketchbook.site.builder import build_site
-
-    sketch = _SiteSketch(sketch_dir)
-    execute(sketch.dag)
-    sketch.preset_manager.save_preset("only_one", sketch.dag)
-
-    dist_dir = tmp_path / "dist"
-    build_site({"test_sketch": _SiteSketch}, sketch_dir.parent, dist_dir)
-
-    sketch_page = (dist_dir / "test-sketch" / "index.html").read_text()
-    # The anchor id should still be present, but the visible label should not appear
-    assert 'id="only_one"' in sketch_page
-    assert 'href="#only_one"' not in sketch_page
-
-
-def test_sketch_page_shows_name_for_multiple_variants(sketch_dir: Path, tmp_path: Path) -> None:
-    """Sketch page shows linkable variant names when there are multiple variants."""
-    from sketchbook.site.builder import build_site
-
-    sketch = _SiteSketch(sketch_dir)
-    execute(sketch.dag)
-    sketch.preset_manager.save_preset("alpha", sketch.dag)
-    sketch.preset_manager.save_preset("beta", sketch.dag)
-
-    dist_dir = tmp_path / "dist"
-    build_site({"test_sketch": _SiteSketch}, sketch_dir.parent, dist_dir)
-
-    sketch_page = (dist_dir / "test-sketch" / "index.html").read_text()
-    assert 'href="#alpha"' in sketch_page
-    assert 'href="#beta"' in sketch_page
+    assert (output_dir / "test-sketch" / "real_preset.png").exists()
+    assert not (output_dir / "test-sketch" / "does_not_exist.png").exists()

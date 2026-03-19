@@ -10,6 +10,7 @@ import numpy as np
 from sketchbook import Sketch
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
+from sketches import SiteOutputBundle
 
 
 class Cardboard(Sketch):
@@ -31,7 +32,7 @@ class Cardboard(Sketch):
             },
         )
         blended = self.add(DifferenceBlend, inputs={"image": photo, "mask": mask})
-        self.site_output(blended)
+        blended.pipe(SiteOutputBundle)
 
 
 class CircleGridMask(PipelineStep):

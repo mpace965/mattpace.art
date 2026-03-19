@@ -2,7 +2,7 @@
 
 ## Overview
 
-Sketchbook is a reactive, DAG-based creative coding environment for image processing pipelines. Sketches are Python classes that define pipelines of transformations on source assets (primarily photos). In dev mode, a FastAPI server watches source files and propagates changes through the pipeline in real time, with every intermediate step inspectable in the browser. The system also supports static site generation for publishing finished work.
+Sketchbook is a reactive, DAG-based creative coding environment for image processing pipelines. Sketches are Python classes that define pipelines of transformations on source assets (primarily photos). In dev mode, a FastAPI server watches source files and propagates changes through the pipeline in real time, with every intermediate step inspectable in the browser. Finished work is published via output bundles — named JSON manifests that accumulate sketch metadata and baked variant images across all sketches that opt in.
 
 This plan follows the "Growing Object-Oriented Software, Guided by Tests" approach. Instead of building layer by layer (engine → params → server → UI), we grow the system end-to-end from a walking skeleton. Each increment is defined by an acceptance test that drives implementation across all layers simultaneously.
 
@@ -18,7 +18,7 @@ This plan follows the "Growing Object-Oriented Software, Guided by Tests" approa
 | Step authoring | Class-based (`PipelineStep` subclasses) |
 | Pipeline wiring | Both fluent chaining and explicit named-input wiring |
 | Presets | Per-step, JSON-backed, with dirty/untitled draft semantics |
-| Static site | Feed → sketch pages, with variant support (preset-based) |
+| Output bundles | Named JSON manifests + baked images; consumed by any downstream tooling |
 | Intermediates | `.workdir/` per sketch module, `.gitignore`d |
 | Caching | Full re-run for now; revisit later |
 | CLI | `uv` scripts |
@@ -81,17 +81,13 @@ sketchbook/
 │       │   ├── __init__.py
 │       │   ├── source.py           # SourceFile node (reads image from disk)
 │       │   ├── output.py           # FileOutput node (writes to disk)
-│       │   ├── site_output.py      # StaticSiteOutput node (registers for site build)
-│       │   └── opencv/
-│       │       ├── __init__.py
-│       │       ├── edge_detect.py  # Canny edge detection example step
-│       │       └── blur.py         # Gaussian blur example step
+│       │   └── output_bundle.py    # OutputBundle node (marks node for a named bundle)
 │       ├── site/
 │       │   ├── __init__.py
-│       │   ├── builder.py          # Scans sketches for SiteOutput nodes, generates static site
-│       │   └── templates/
-│       │       ├── feed.html       # Main feed page
-│       │       └── sketch_page.html # Individual sketch + variants page
+│       │   ├── builder.py          # Scans sketches for OutputBundle nodes, writes JSON + bakes images
+│       │   └── templates/          # Jinja2 templates kept for future static site work
+│       │       ├── feed.html
+│       │       └── sketch_page.html
 │       └── cli.py                  # Entry points for `uv run dev` and `uv run build`
 ├── tests/
 │   ├── conftest.py                 # Shared fixtures (tmp sketch dirs, test images, FastAPI TestClient)
@@ -104,14 +100,13 @@ sketchbook/
 │       ├── test_executor.py
 │       ├── test_params.py
 │       └── ...
-└── dist/                           # Built static site output
-    ├── index.html
+└── dist/                           # Default output directory for `uv run build`
+    ├── manifest.json            # Bundle manifest (array of sketch entries)
     ├── edge-portrait/
-    │   ├── index.html
-    │   └── variants/
-    │       ├── heavy_edges.png
-    │       └── ...
-    └── assets/                     # Baked images
+    │   ├── heavy_edges.png         # Baked variant images (flat, no variants/ subdir)
+    │   └── soft_edges.png
+    └── cardboard/
+        └── nine.png
 ```
 
 ---
@@ -547,66 +542,87 @@ def test_only_active_sketch_watches_files(two_sketches, test_client, watcher_reg
 
 ---
 
-## Increment 7: Static Site Generation
+## Increment 7: Output Bundle
 
 ### Acceptance test
 
-> I define a sketch with a `site_output()` node and two saved presets. I run `uv run build`. A `dist/` folder appears with an `index.html` feed page linking to the sketch, and a sketch page showing both variants with their baked images. The images are real rendered output, not symlinks.
+> I define a sketch with an `output_bundle` node and two saved presets. I run `uv run build`. A `dist/` folder appears containing `manifest.json` and baked variant images for each preset. The JSON is a structured array of sketch entries with metadata and image paths.
 
 ### What this drives
 
 **Core engine additions:**
 
-- `SiteOutput` step — marks a node for inclusion in the static site build.
-- `Sketch.site_output()` DSL method.
+- `OutputBundle` step — passthrough marker that carries a `bundle_name`. The builder scans for these nodes to discover what to include.
+- `Sketch.output_bundle(node, bundle_name)` DSL method — the primitive.
 
 **Site builder:**
 
-- `site/builder.py` — discovers sketches, finds `SiteOutput` nodes, iterates saved presets, executes pipeline for each, copies output images to `dist/`.
-- `site/templates/feed.html` — renders the feed page.
-- `site/templates/sketch_page.html` — renders individual sketch pages with variant gallery.
+- `site/builder.py` — `build_bundle(sketch_classes, sketches_dir, output_dir, bundle_name)`.
+  - Finds all sketches that have an `OutputBundle` node matching `bundle_name`.
+  - For each qualifying sketch, iterates saved presets, executes the full pipeline, and saves the node's output image to `<output_dir>/<slug>/<preset>.png`.
+  - Writes `<output_dir>/<bundle_name>.json` — a JSON array, one entry per sketch.
+
+**Bundle JSON format:**
+
+```json
+[
+  {
+    "slug": "edge-portrait",
+    "name": "Edge Portrait",
+    "description": "Canny edge detection on a portrait.",
+    "date": "2026-03-18",
+    "variants": [
+      { "name": "heavy_edges", "image_path": "edge-portrait/heavy_edges.png" },
+      { "name": "soft_edges",  "image_path": "edge-portrait/soft_edges.png" }
+    ]
+  }
+]
+```
 
 **CLI:**
 
-- `uv run build` invokes the site builder.
+- `uv run build [--bundle NAME] [--output DIR]` — defaults to bundle `bundle`, output `dist/`.
+- Multiple bundles can coexist; the caller picks which one at build time.
+
+**HTML templates:**
+
+- `site/templates/feed.html` and `sketch_page.html` are kept for future static site work but are not used by the builder.
 
 ### Acceptance test (pytest)
 
 ```python
-def test_build_produces_site_with_variants(tmp_project_with_presets):
-    """uv run build generates a static site with feed and variant images."""
-    result = subprocess.run(["uv", "run", "build"], capture_output=True, cwd=tmp_project_with_presets)
-    assert result.returncode == 0
+def test_build_produces_bundle_with_variants(tmp_sketch_with_presets):
+    """build_bundle generates a JSON manifest and baked images for each preset."""
+    from sketchbook.site.builder import build_bundle
 
-    dist = tmp_project_with_presets / "dist"
-    assert (dist / "index.html").exists()
-    assert (dist / "edge-portrait" / "index.html").exists()
+    build_bundle({"edge_portrait": _EdgePortraitSketch}, sketches_dir, output_dir, "bundle")
 
-    # Both presets should produce variant images
-    assert (dist / "edge-portrait" / "variants" / "heavy_edges.png").exists()
-    assert (dist / "edge-portrait" / "variants" / "soft_edges.png").exists()
+    assert (output_dir / "manifest.json").exists()
+    assert (output_dir / "edge-portrait" / "heavy_edges.png").exists()
+    assert (output_dir / "edge-portrait" / "soft_edges.png").exists()
 
-    # Feed page links to the sketch
-    feed_html = (dist / "index.html").read_text()
-    assert "edge-portrait" in feed_html
+    bundle = json.loads((output_dir / "manifest.json").read_text())
+    assert len(bundle) == 1
+    entry = bundle[0]
+    assert entry["slug"] == "edge-portrait"
+    variant_names = [v["name"] for v in entry["variants"]]
+    assert "heavy_edges" in variant_names
+    assert "soft_edges" in variant_names
 
-    # Variant images are real image files, not empty
-    img_bytes = (dist / "edge-portrait" / "variants" / "heavy_edges.png").read_bytes()
-    assert len(img_bytes) > 100
+def test_build_without_output_bundle_produces_empty_bundle(tmp_path):
+    """A sketch with no output_bundle node doesn't appear in the bundle JSON."""
+    from sketchbook.site.builder import build_bundle
 
-def test_build_without_site_output_produces_empty_feed(tmp_project_no_site_output):
-    """A sketch with no site_output node doesn't appear in the build."""
-    result = subprocess.run(["uv", "run", "build"], capture_output=True, cwd=tmp_project_no_site_output)
-    assert result.returncode == 0
+    build_bundle({"hello": _NoBundleSketch}, sketches_dir, output_dir, "bundle")
 
-    feed_html = (tmp_project_no_site_output / "dist" / "index.html").read_text()
-    assert "hello" not in feed_html
+    bundle = json.loads((output_dir / "manifest.json").read_text())
+    assert bundle == []
 ```
 
 ### Definition of done — Increment 7
 
 - [x] Acceptance tests in `tests/acceptance/test_07_static_site.py` pass
-- [x] `tests/unit/test_builder.py` covers: discovers `SiteOutput` nodes, iterates presets, renders feed and sketch pages, copies baked images to `dist/`, sketch with no `SiteOutput` is absent from feed
+- [x] `tests/unit/test_builder.py` covers: discovers `OutputBundle` nodes by bundle name, ignores nodes with a different bundle name, iterates presets, writes JSON manifest, bakes images, sketch with no matching `OutputBundle` is absent from bundle
 
 ---
 
@@ -686,7 +702,7 @@ class Sketch:
     def source(self, name: str, path: str) -> DAGNode: ...
     def add(self, step_class: type, inputs: dict, id: str = None) -> DAGNode: ...
     def output(self, node: DAGNode, path: str) -> DAGNode: ...
-    def site_output(self, node: DAGNode, **metadata) -> DAGNode: ...
+    def output_bundle(self, node: DAGNode, bundle_name: str) -> DAGNode: ...
 
 class DAGNode:
     def pipe(self, step_class: type, input_name: str = "image", **extra_inputs) -> DAGNode: ...
@@ -801,6 +817,7 @@ dependencies = [
 - **Non-image types**: The architecture supports it (types.py is generic), but the UI and Tweakpane integration assume images for now.
 - **Sketch-level presets**: Layer on top of per-step presets later. Just snapshot which step presets are loaded.
 - **Smart caching**: Hash-based skip for unchanged steps. Add when build times become a problem.
+- **Static site generation**: The bundle JSON can drive a static site builder (Jinja2 templates are already in place). The builder reads the JSON and renders feed/sketch pages. Not built yet.
 - **Custom site templates per sketch**: Allow a sketch module to include its own Jinja2 template.
 - **Video / animation output**: Executing a sketch across a range of param values to produce frames.
 - **Parallel execution**: Independent branches of the DAG could run concurrently. Not needed until pipelines get complex.

@@ -96,11 +96,23 @@ def serve() -> None:
 
 
 def build() -> None:
-    """Build the static site into dist/."""
-    from sketchbook.site.builder import build_site
+    """Build an output bundle into the output directory.
 
+    Usage: uv run build [--bundle NAME] [--output DIR]
+
+    Defaults to bundle 'bundle' written to dist/.
+    """
+    import argparse
+
+    from sketchbook.site.builder import build_bundle
+
+    parser = argparse.ArgumentParser(prog="build")
+    parser.add_argument("--bundle", default="bundle", help="Bundle name to build (default: bundle)")
+    parser.add_argument("--output", default=str(_REPO_ROOT / "dist"), help="Output directory (default: dist/)")
+    args = parser.parse_args()
+
+    output_dir = Path(args.output)
     sketch_classes = discover_sketch_classes()
-    dist_dir = _REPO_ROOT / "dist"
-    log.info(f"Building site for {len(sketch_classes)} sketch(es) -> {dist_dir}")
-    build_site(sketch_classes, _SKETCHES_DIR, dist_dir)
-    print(f"Built {len(sketch_classes)} sketch(es) -> {dist_dir}")
+    log.info(f"Building bundle '{args.bundle}' for {len(sketch_classes)} sketch(es) -> {output_dir}")
+    build_bundle(sketch_classes, _SKETCHES_DIR, output_dir, args.bundle)
+    print(f"Built bundle '{args.bundle}' with {len(sketch_classes)} sketch(es) -> {output_dir}")

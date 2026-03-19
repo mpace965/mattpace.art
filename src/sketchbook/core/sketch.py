@@ -101,14 +101,22 @@ class Sketch:
         log.debug(f"Wired {from_node.id} -> {node_id} via '{input_name}'")
         return node
 
-    def site_output(self, node: _ManagedNode) -> _ManagedNode:
-        """Add a SiteOutput node after the given node and return it.
+    def output_bundle(self, node: _ManagedNode, bundle_name: str) -> _ManagedNode:
+        """Add an OutputBundle node after the given node and return it.
 
-        The site builder scans for SiteOutput nodes to determine what to publish.
+        The builder scans for OutputBundle nodes with a matching bundle_name
+        to determine what to bake and include in the output JSON.
         """
-        from sketchbook.steps.site_output import SiteOutput
+        from sketchbook.steps.output_bundle import OutputBundle
 
-        return self._pipe(node, SiteOutput, "image")
+        node_id = self._next_id(OutputBundle)
+        step = OutputBundle(bundle_name)
+        workdir_path = self._workdir / f"{node_id}.png"
+        managed = _ManagedNode(step, node_id, self, workdir_path=str(workdir_path))
+        self._dag.add_node(managed)
+        self._dag.connect(node.id, node_id, "image")
+        log.debug(f"Wired {node.id} -> {node_id} via 'image' (bundle: {bundle_name!r})")
+        return managed
 
     def add(
         self,

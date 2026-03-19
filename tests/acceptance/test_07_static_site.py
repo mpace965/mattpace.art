@@ -1,7 +1,8 @@
-"""Increment 7 acceptance tests: static site generation."""
+"""Increment 7 acceptance tests: output bundle generation."""
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -13,18 +14,18 @@ from tests.steps import EdgeDetect, GaussianBlur, Passthrough
 
 
 class _EdgePortraitSketch(Sketch):
-    """Sketch with site_output node and named presets."""
+    """Sketch with output_bundle node and named presets."""
 
     name = "Edge Portrait"
     description = "Canny edge detection on a portrait."
     date = "2026-03-18"
 
     def build(self) -> None:
-        """Wire photo through blur, edge detect, then mark as site output."""
+        """Wire photo through blur, edge detect, then mark as bundle output."""
         photo = self.source("photo", "assets/photo.jpg")
         blurred = photo.pipe(GaussianBlur)
         edges = blurred.pipe(EdgeDetect)
-        self.site_output(edges)
+        self.output_bundle(edges, "bundle")
 
 
 @pytest.fixture()
@@ -47,34 +48,42 @@ def tmp_sketch_with_presets(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_build_produces_site_with_variants(tmp_sketch_with_presets: Path) -> None:
-    """build_site generates feed and sketch pages with variant images for each preset."""
-    from sketchbook.site.builder import build_site
+def test_build_produces_bundle_with_variants(tmp_sketch_with_presets: Path) -> None:
+    """build_bundle generates a JSON blob and baked images for each preset."""
+    from sketchbook.site.builder import build_bundle
 
     sketches_dir = tmp_sketch_with_presets / "sketches"
-    dist_dir = tmp_sketch_with_presets / "dist"
+    output_dir = tmp_sketch_with_presets / "output"
 
-    build_site({"edge_portrait": _EdgePortraitSketch}, sketches_dir, dist_dir)
+    build_bundle({"edge_portrait": _EdgePortraitSketch}, sketches_dir, output_dir, "bundle")
 
-    assert (dist_dir / "index.html").exists()
-    assert (dist_dir / "edge-portrait" / "index.html").exists()
-    assert (dist_dir / "edge-portrait" / "variants" / "heavy_edges.png").exists()
-    assert (dist_dir / "edge-portrait" / "variants" / "soft_edges.png").exists()
+    bundle_path = output_dir / "manifest.json"
+    assert bundle_path.exists()
 
-    feed_html = (dist_dir / "index.html").read_text()
-    assert "edge-portrait" in feed_html
+    assert (output_dir / "edge-portrait" / "heavy_edges.png").exists()
+    assert (output_dir / "edge-portrait" / "soft_edges.png").exists()
 
-    img_bytes = (dist_dir / "edge-portrait" / "variants" / "heavy_edges.png").read_bytes()
+    bundle = json.loads(bundle_path.read_text())
+    assert len(bundle) == 1
+    entry = bundle[0]
+    assert entry["slug"] == "edge-portrait"
+    assert entry["name"] == "Edge Portrait"
+
+    variant_names = [v["name"] for v in entry["variants"]]
+    assert "heavy_edges" in variant_names
+    assert "soft_edges" in variant_names
+
+    img_bytes = (output_dir / "edge-portrait" / "heavy_edges.png").read_bytes()
     assert len(img_bytes) > 100
 
 
-def test_build_without_site_output_produces_empty_feed(tmp_path: Path) -> None:
-    """A sketch with no site_output node doesn't appear in the build."""
-    from sketchbook.site.builder import build_site
+def test_build_without_output_bundle_produces_empty_bundle(tmp_path: Path) -> None:
+    """A sketch with no output_bundle node doesn't appear in the bundle JSON."""
+    from sketchbook.site.builder import build_bundle
 
-    class _NoSiteSketch(Sketch):
+    class _NoBundleSketch(Sketch):
         name = "Hello"
-        description = "No site output."
+        description = "No output bundle."
         date = "2026-03-18"
 
         def build(self) -> None:
@@ -85,8 +94,8 @@ def test_build_without_site_output_produces_empty_feed(tmp_path: Path) -> None:
     (sketch_dir / "assets").mkdir(parents=True)
     make_test_image(sketch_dir / "assets" / "photo.jpg")
 
-    dist_dir = tmp_path / "dist"
-    build_site({"hello": _NoSiteSketch}, tmp_path / "sketches", dist_dir)
+    output_dir = tmp_path / "output"
+    build_bundle({"hello": _NoBundleSketch}, tmp_path / "sketches", output_dir, "bundle")
 
-    feed_html = (dist_dir / "index.html").read_text()
-    assert "hello" not in feed_html
+    bundle = json.loads((output_dir / "manifest.json").read_text())
+    assert bundle == []
