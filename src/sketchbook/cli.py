@@ -66,7 +66,7 @@ def dev() -> None:
     uvicorn.run(
         "sketchbook.server._dev:create_dev_app",
         factory=True,
-        host="127.0.0.1",
+        host="0.0.0.0",
         port=8000,
         reload=True,
         reload_dirs=[str(src_dir), str(_SKETCHES_DIR)],
@@ -87,8 +87,8 @@ def serve() -> None:
     os.chdir(dist_dir)
     port = 8080
     handler = http.server.SimpleHTTPRequestHandler
-    with http.server.HTTPServer(("127.0.0.1", port), handler) as httpd:
-        print(f"Serving {dist_dir} at http://127.0.0.1:{port}/")
+    with http.server.HTTPServer(("0.0.0.0", port), handler) as httpd:
+        print(f"Serving {dist_dir} at http://0.0.0.0:{port}/")
         try:
             httpd.serve_forever()
         except KeyboardInterrupt:
