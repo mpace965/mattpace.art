@@ -139,7 +139,7 @@ These should be methods on `DAGNode` or `PipelineStep`, not reached through two 
 | **High** | ~~Encapsulation violations → accessor methods on `PipelineStep`/`DAGNode`~~ ✅ | Cross-cutting |
 | **Medium** | ~~`DAGNode._inputs` / `PipelineStep._inputs` naming collision~~ ✅ | Core |
 | **Medium** | ~~`_pipe()`/`add()` duplication in `Sketch`~~ ✅ | Core |
-| **Medium** | `ParamDef.to_dict` UI concern in core | Core |
+| **Medium** | ~~`ParamDef.to_dict` UI concern in core~~ ✅ | Core |
 | **Medium** | ~~`dag: Any` typing in `PresetManager`~~ ✅ | Core |
 | **Medium** | ~~`InputSpec` should be a `@dataclass`~~ ✅ | Core |
 | **Low** | `DAGNode.pipe()` Liskov violation | Core |

@@ -20,25 +20,6 @@ class ParamDef:
     debounce: int | None = None
     options: list[str] | None = None
 
-    def to_dict(self, current_value: Any) -> dict[str, Any]:
-        """Return a Tweakpane-compatible schema dict for this param."""
-        d: dict[str, Any] = {
-            "type": self.type.__name__,
-            "value": current_value,
-        }
-        if self.min is not None:
-            d["min"] = self.min
-        if self.max is not None:
-            d["max"] = self.max
-        if self.step is not None:
-            d["step"] = self.step
-        if self.label is not None:
-            d["label"] = self.label
-        if self.debounce is not None:
-            d["debounce"] = self.debounce
-        if self.options is not None:
-            d["options"] = self.options
-        return d
 
 
 class ParamRegistry:
@@ -82,6 +63,11 @@ class ParamRegistry:
         for name, param in self._params.items():
             self._values[name] = param.default
 
+    @property
+    def params(self) -> dict[str, ParamDef]:
+        """Return a snapshot of all param definitions, keyed by name."""
+        return dict(self._params)
+
     def override(self, name: str, **fields: Any) -> None:
         """Override specific fields of an existing param definition.
 
@@ -99,10 +85,3 @@ class ParamRegistry:
             setattr(p, field, value)
         if "default" in fields:
             self._values[name] = p.type(fields["default"])
-
-    def to_schema_dict(self) -> dict[str, dict[str, Any]]:
-        """Return a Tweakpane-compatible schema for all params."""
-        return {
-            name: param.to_dict(self._values[name])
-            for name, param in self._params.items()
-        }

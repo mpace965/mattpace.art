@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from sketchbook.core.executor import execute
 from sketchbook.server.deps import get_registry
 from sketchbook.server.registry import SketchRegistry
+from sketchbook.server.tweakpane import param_registry_to_tweakpane
 
 log = logging.getLogger("sketchbook.server.routes.params")
 
@@ -32,7 +33,7 @@ async def get_all_params(sketch_id: str, registry: SketchRegistry = Depends(get_
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
 
     return {
-        node.id: node.step.param_schema()
+        node.id: param_registry_to_tweakpane(node.step.param_registry)
         for node in sketch.dag.topo_sort()
     }
 
@@ -56,7 +57,7 @@ async def get_step_params(
             detail=f"Step '{step_id}' not found in sketch '{sketch_id}'",
         )
 
-    return {"params": node.step.param_schema()}
+    return {"params": param_registry_to_tweakpane(node.step.param_registry)}
 
 
 @router.patch("/api/sketches/{sketch_id}/params")

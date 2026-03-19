@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from sketchbook.core.params import ParamDef, ParamRegistry
+from sketchbook.server.tweakpane import param_def_to_tweakpane, param_registry_to_tweakpane
 
 
 class TestParamDef:
@@ -25,18 +26,18 @@ class TestParamDef:
 
     def test_options_in_to_dict(self) -> None:
         p = ParamDef(name="mode", type=str, default="a", options=["a", "b", "c"])
-        d = p.to_dict(current_value="a")
+        d = param_def_to_tweakpane(p, current_value="a")
         assert d["options"] == ["a", "b", "c"]
         assert d["value"] == "a"
 
     def test_no_options_omitted_from_to_dict(self) -> None:
         p = ParamDef(name="x", type=float, default=1.0)
-        d = p.to_dict(current_value=1.0)
+        d = param_def_to_tweakpane(p, current_value=1.0)
         assert "options" not in d
 
     def test_to_dict_includes_value(self) -> None:
         p = ParamDef(name="x", type=float, default=1.0, min=0.0, max=10.0, step=0.5)
-        d = p.to_dict(current_value=3.0)
+        d = param_def_to_tweakpane(p, current_value=3.0)
         assert d["value"] == 3.0
         assert d["min"] == 0.0
         assert d["max"] == 10.0
@@ -87,7 +88,7 @@ class TestParamRegistry:
     def test_to_schema_dict(self) -> None:
         reg = ParamRegistry()
         reg.add(ParamDef(name="threshold1", type=float, default=100.0, min=0.0, max=500.0))
-        schema = reg.to_schema_dict()
+        schema = param_registry_to_tweakpane(reg)
         assert "threshold1" in schema
         assert schema["threshold1"]["value"] == 100.0
         assert schema["threshold1"]["min"] == 0.0
@@ -97,7 +98,7 @@ class TestParamRegistry:
         reg = ParamRegistry()
         reg.add(ParamDef(name="x", type=float, default=1.0, min=0.0, max=10.0))
         reg.override("x", min=2.0, max=5.0)
-        schema = reg.to_schema_dict()
+        schema = param_registry_to_tweakpane(reg)
         assert schema["x"]["min"] == 2.0
         assert schema["x"]["max"] == 5.0
 
@@ -139,20 +140,20 @@ class TestParamRegistry:
     def test_options_in_schema_dict(self) -> None:
         reg = ParamRegistry()
         reg.add(ParamDef(name="mode", type=str, default="a", options=["a", "b", "c"]))
-        schema = reg.to_schema_dict()
+        schema = param_registry_to_tweakpane(reg)
         assert schema["mode"]["options"] == ["a", "b", "c"]
 
     def test_no_options_not_in_schema_dict(self) -> None:
         reg = ParamRegistry()
         reg.add(ParamDef(name="x", type=float, default=1.0))
-        schema = reg.to_schema_dict()
+        schema = param_registry_to_tweakpane(reg)
         assert "options" not in schema["x"]
 
     def test_override_options(self) -> None:
         reg = ParamRegistry()
         reg.add(ParamDef(name="mode", type=str, default="a", options=["a", "b"]))
         reg.override("mode", options=["x", "y", "z"])
-        schema = reg.to_schema_dict()
+        schema = param_registry_to_tweakpane(reg)
         assert schema["mode"]["options"] == ["x", "y", "z"]
 
     def test_serialization_roundtrip(self) -> None:
