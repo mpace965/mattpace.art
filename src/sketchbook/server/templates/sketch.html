@@ -23,7 +23,8 @@
     .dag-arrow .arrow-label { font-size: 0.65rem; color: #555; margin-left: 0.25rem; vertical-align: middle; }
     .dag-arrow:hover .arrow-label { color: #7af; }
 
-    details.step-card { border: 1px solid #2a2a2a; border-radius: 4px; background: #161616; overflow: hidden; width: fit-content; min-width: 50vw; }
+    details.step-card { border: 1px solid #2a2a2a; border-radius: 4px; background: #161616; overflow: hidden; width: fit-content; min-width: 50vw; transition: border-color 0.1s; }
+    details.step-card:hover { border-color: #555; }
     details.step-card[open] summary { border-bottom: 1px solid #2a2a2a; }
 
     summary.step-card-header {
