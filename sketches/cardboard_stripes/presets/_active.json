@@ -1,0 +1,14 @@
+{
+  "_meta": {
+    "dirty": false,
+    "based_on": "steps"
+  },
+  "stripes_mask_0": {
+    "count": 5,
+    "vert_margin": 0.39,
+    "horz_margin": 0.11,
+    "width_fn": "linear",
+    "invert_fn": true,
+    "align": "left"
+  }
+}

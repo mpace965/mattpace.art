@@ -1,0 +1,10 @@
+{
+  "stripes_mask_0": {
+    "count": 3,
+    "vert_margin": 0.45,
+    "horz_margin": 0.2,
+    "width_fn": "uniform",
+    "invert_fn": false,
+    "align": "center"
+  }
+}
