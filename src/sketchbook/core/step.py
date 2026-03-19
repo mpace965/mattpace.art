@@ -2,18 +2,19 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any
 
 from sketchbook.core.params import ParamDef, ParamRegistry
 
 
+@dataclass
 class InputSpec:
     """Declares an input slot on a step."""
 
-    def __init__(self, name: str, type: type, optional: bool = False) -> None:
-        self.name = name
-        self.type = type
-        self.optional = optional
+    name: str
+    type: type
+    optional: bool = False
 
 
 class PipelineStep:
@@ -44,13 +45,14 @@ class PipelineStep:
         """Return declared input specs."""
         return dict(self._inputs)
 
+    @property
+    def param_registry(self) -> ParamRegistry:
+        """Return the param registry for this step."""
+        return self._param_registry
+
     def param_values(self) -> dict[str, Any]:
         """Return a snapshot of all current param values."""
         return self._param_registry.values()
-
-    def param_schema(self) -> dict[str, dict[str, Any]]:
-        """Return the UI schema dict for all params."""
-        return self._param_registry.to_schema_dict()
 
     def load_params(self, data: dict[str, Any]) -> None:
         """Bulk-load param values from a dict, coercing each to its declared type."""

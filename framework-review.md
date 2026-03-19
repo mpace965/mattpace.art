@@ -141,7 +141,7 @@ These should be methods on `DAGNode` or `PipelineStep`, not reached through two 
 | **Medium** | `_pipe()`/`add()` duplication in `Sketch` | Core |
 | **Medium** | `ParamDef.to_dict` UI concern in core | Core |
 | **Medium** | `dag: Any` typing in `PresetManager` | Core |
-| **Medium** | `InputSpec` should be a `@dataclass` | Core |
+| **Medium** | ~~`InputSpec` should be a `@dataclass`~~ ✅ | Core |
 | **Low** | `DAGNode.pipe()` Liskov violation | Core |
 | **Low** | ~~Deferred imports in route handlers (symptom of globals)~~ ✅ | Server |
 | **Low** | `build_site` function length | Site |
