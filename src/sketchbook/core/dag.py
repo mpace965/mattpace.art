@@ -16,13 +16,13 @@ class DAGNode:
         self.step = step
         self.id = node_id
         self.workdir_path = workdir_path
-        self._inputs: dict[str, DAGNode] = {}  # input_name -> source node
+        self._sources: dict[str, DAGNode] = {}  # input_name -> source node
         self.output: Any = None
 
     @property
     def source_nodes(self) -> dict[str, DAGNode]:
         """Return the mapping of input name to source node."""
-        return dict(self._inputs)
+        return dict(self._sources)
 
     def pipe(self, step_class: type, input_name: str = "image") -> DAGNode:
         """Connect this node's output to a new step and return the new node."""
@@ -50,7 +50,7 @@ class DAG:
         if to_id not in self._nodes:
             raise ValueError(f"Target node '{to_id}' not in DAG")
         self._edges.append((from_id, to_id, input_name))
-        self._nodes[to_id]._inputs[input_name] = self._nodes[from_id]
+        self._nodes[to_id]._sources[input_name] = self._nodes[from_id]
 
     def topo_sort(self) -> list[DAGNode]:
         """Return nodes in topological order."""

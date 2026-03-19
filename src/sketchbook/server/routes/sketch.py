@@ -48,7 +48,7 @@ async def sketch_view(
                 "id": nid,
                 "type": type(sketch.dag.node(nid).step).__name__,
                 "depth": depths[nid],
-                "input_ids": [src.id for src in sketch.dag.node(nid)._inputs.values()],
+                "input_ids": [src.id for src in sketch.dag.node(nid).source_nodes.values()],
             }
             for nid in component
         ]

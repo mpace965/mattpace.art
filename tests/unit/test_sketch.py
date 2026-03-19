@@ -117,7 +117,7 @@ def test_pipe_wires_edge(tmp_path: Path) -> None:
     sketch = _PipeSketch(tmp_path)
     dst_node = sketch.dag.node("fake_step_0")
     # The "image" input of the piped node should point back to the source
-    assert dst_node._inputs["image"].id == "source_photo"
+    assert dst_node._sources["image"].id == "source_photo"
 
 
 def test_pipe_chain_produces_correct_order(tmp_path: Path) -> None:
@@ -211,7 +211,7 @@ def test_add_wires_explicit_input(tmp_path: Path) -> None:
     _make_asset(tmp_path)
     sketch = _AddSketch(tmp_path)
     node = sketch.dag.node("fake_step_0")
-    assert node._inputs["image"].id == "source_photo"
+    assert node._sources["image"].id == "source_photo"
 
 
 def test_add_two_explicit_inputs(tmp_path: Path) -> None:
@@ -219,8 +219,8 @@ def test_add_two_explicit_inputs(tmp_path: Path) -> None:
     (tmp_path / "assets" / "mask.png")  # already exists from _make_asset
     sketch = _AddTwoInputsSketch(tmp_path)
     node = sketch.dag.node("fake_step_0")
-    assert node._inputs["image"].id == "source_photo"
-    assert node._inputs["mask"].id == "source_mask"
+    assert node._sources["image"].id == "source_photo"
+    assert node._sources["mask"].id == "source_mask"
 
 
 def test_add_with_custom_id(tmp_path: Path) -> None:

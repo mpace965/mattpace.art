@@ -48,7 +48,7 @@ def test_connect_adds_edge() -> None:
     dag.add_node(_node("dst"))
     dag.connect("src", "dst", "image")
     # The destination node should have its input wired
-    assert dag.node("dst")._inputs["image"] is dag.node("src")
+    assert dag.node("dst")._sources["image"] is dag.node("src")
 
 
 def test_connect_missing_source_raises() -> None:
