@@ -142,8 +142,8 @@ These should be methods on `DAGNode` or `PipelineStep`, not reached through two 
 | **Medium** | ~~`ParamDef.to_dict` UI concern in core~~ ✅ | Core |
 | **Medium** | ~~`dag: Any` typing in `PresetManager`~~ ✅ | Core |
 | **Medium** | ~~`InputSpec` should be a `@dataclass`~~ ✅ | Core |
-| **Low** | `DAGNode.pipe()` Liskov violation | Core |
+| **Low** | `DAGNode.pipe()` Liskov violation ✅ | Core |
 | **Low** | ~~Deferred imports in route handlers (symptom of globals)~~ ✅ | Server |
-| **Low** | `build_site` function length | Site |
-| **Low** | Edge adjacency dict for graph traversals | Core |
-| **Low** | `bool` coercion bug in `ParamRegistry.set_value` | Core |
+| **Low** | `build_site` function length✅  | Site |
+| **Low** | Edge adjacency dict for graph traversals ✅ | Core |
+| **Low** | `bool` coercion bug in `ParamRegistry.set_value` ✅ | Core |
