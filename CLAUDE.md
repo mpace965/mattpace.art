@@ -16,6 +16,7 @@ This is a modern Python project. Target Python 3.14.
 - **f-strings** for all string formatting. Never `.format()`, never `%`.
 - **pathlib.Path** for all filesystem operations. Never `os.path`. Accept `str | Path` at public API boundaries, convert to `Path` immediately.
 - **`uv`** for package management. No pip, no poetry, no conda.
+- **`uv run`** for all Python execution. Never use bare `python`, `python3`, or `mise exec -- python`. Examples: `uv run python`, `uv run pytest`.
 - **Ruff** for linting and formatting. No black, no isort, no flake8.
 - **Strict imports.** No wildcard imports. No `from module import *`.
 - **Docstrings** on every public class and every public method. One-liner is fine if the intent is obvious. Use imperative mood ("Return the image" not "Returns the image").
