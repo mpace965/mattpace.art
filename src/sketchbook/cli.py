@@ -2,56 +2,18 @@
 
 from __future__ import annotations
 
-import importlib
-import inspect
 import logging
-import pkgutil
-import sys
-import time
-import types
 from pathlib import Path
 
 import uvicorn
 
-from sketchbook.core.sketch import Sketch
+from sketchbook.discovery import discover_sketches
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("sketchbook.cli")
 
 _REPO_ROOT = Path(__file__).parent.parent.parent
-_SKETCHES_PACKAGE = "sketches"
 _SKETCHES_DIR = _REPO_ROOT / "sketches"
-
-
-def _find_sketch_class_in_module(module: types.ModuleType) -> type[Sketch] | None:
-    """Return the first Sketch subclass found in module, or None."""
-    for _, obj in inspect.getmembers(module, inspect.isclass):
-        if issubclass(obj, Sketch) and obj is not Sketch:
-            return obj
-    return None
-
-
-def discover_sketch_classes() -> dict[str, type[Sketch]]:
-    """Scan sketches/ submodules for Sketch subclasses.
-
-    Only imports modules and collects classes — does not instantiate or execute.
-    Instantiation and DAG execution happen lazily on first request.
-    """
-    repo_root = str(_REPO_ROOT)
-    if repo_root not in sys.path:
-        sys.path.insert(0, repo_root)
-    import sketches  # noqa: F401
-
-    t0 = time.perf_counter()
-    candidates: dict[str, type[Sketch]] = {}
-    for mod_info in pkgutil.iter_modules([str(_SKETCHES_DIR)]):
-        slug = mod_info.name
-        module = importlib.import_module(f"{_SKETCHES_PACKAGE}.{slug}")
-        cls = _find_sketch_class_in_module(module)
-        if cls is not None:
-            candidates[slug] = cls
-    log.info(f"Discovered {len(candidates)} sketch modules in {time.perf_counter() - t0:.2f}s")
-    return candidates
 
 
 def dev() -> None:
@@ -112,7 +74,7 @@ def build() -> None:
     args = parser.parse_args()
 
     output_dir = Path(args.output)
-    sketch_classes = discover_sketch_classes()
+    sketch_classes = discover_sketches(_SKETCHES_DIR)
     log.info(f"Building bundle '{args.bundle}' for {len(sketch_classes)} sketch(es) -> {output_dir}")
     build_bundle(sketch_classes, _SKETCHES_DIR, output_dir, args.bundle)
     print(f"Built bundle '{args.bundle}' with {len(sketch_classes)} sketch(es) -> {output_dir}")
