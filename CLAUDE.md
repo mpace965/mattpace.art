@@ -24,7 +24,7 @@ This is a modern Python project. Target Python 3.14.
 
 ## Userland vs framework
 
-**Framework** is everything under `src/sketchbook/` and `tests/`. It is the engine, server, site builder, CLI, and test infrastructure. It knows nothing about any specific sketch.
+**Framework** is everything under `framework/`. It is the engine, server, site builder, CLI, and test infrastructure. It knows nothing about any specific sketch.
 
 **Userland** is everything under `sketches/`. Each sketch directory is a self-contained creative module. Sketches depend on the framework. The framework never depends on sketches.
 
@@ -34,7 +34,7 @@ The framework provides the `PipelineStep` base class and the infrastructure to r
 
 ### The hard rule: framework never imports from sketches
 
-`src/sketchbook/` must never import from `sketches.*`. `tests/` must never import from `sketches.*`. Tests that need concrete steps define them in `tests/steps.py` or inline. Violating this collapses the dependency boundary and makes sketches load-order dependencies of the framework itself.
+`framework/src/sketchbook/` must never import from `sketches.*`. `framework/tests/` must never import from `sketches.*`. Tests that need concrete steps define them in `framework/tests/steps.py` or inline. Violating this collapses the dependency boundary and makes sketches load-order dependencies of the framework itself.
 
 ## Architecture principles
 
@@ -118,6 +118,7 @@ If you need a utility function that exists in a library, consider whether it's s
 
 ## Git
 
+- **`mise run lint` must pass before every commit.** No exceptions. Fix all violations first.
 - `.workdir/` directories are always gitignored.
 - `dist/` is gitignored on main. It gets force-pushed to `gh-pages` for deployment.
 - Source assets under `sketches/*/assets/` are **not** committed (too large). The repo works without them — you just can't build until you have the assets locally.

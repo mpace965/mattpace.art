@@ -12,9 +12,7 @@ from __future__ import annotations
 import queue
 import threading
 
-import pytest
 from fastapi.testclient import TestClient
-
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -46,7 +44,9 @@ def test_param_change_triggers_reexecution(edge_test_client: TestClient) -> None
     assert schema["params"]["low_threshold"]["value"] == 50.0
 
 
-def test_param_change_triggers_websocket_update(edge_test_client: TestClient, edge_ws_client) -> None:
+def test_param_change_triggers_websocket_update(
+    edge_test_client: TestClient, edge_ws_client
+) -> None:
     """Changing a param via PATCH pushes a step_updated message over WebSocket."""
     received: queue.Queue = queue.Queue()
 

@@ -17,7 +17,6 @@ from fastapi.testclient import TestClient
 
 from tests.conftest import write_test_image
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -51,11 +50,12 @@ def test_step_image_url_resolves_to_image_bytes(test_client: TestClient) -> None
     assert img_response.headers["content-type"].startswith("image/")
 
 
-def test_file_change_triggers_websocket_update(tmp_sketch: Path, test_client: TestClient, ws_client) -> None:
+def test_file_change_triggers_websocket_update(
+    tmp_sketch: Path, test_client: TestClient, ws_client
+) -> None:
     """Overwriting the source image pushes a step_updated message over WebSocket."""
     import queue
     import threading
-    import time
 
     received: queue.Queue = queue.Queue()
 

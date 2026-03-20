@@ -36,9 +36,21 @@ class PipelineStep:
         """Declare an input slot."""
         self._inputs[name] = InputSpec(name, type, optional)
 
-    def add_param(self, name: str, type: type, default: Any, label: str | None = None, debounce: int | None = None, **constraints: Any) -> None:
-        """Declare a parameter with its type, default, optional label, optional debounce (ms), and optional constraints."""
-        self._param_registry.add(ParamDef(name=name, type=type, default=default, label=label, debounce=debounce, **constraints))
+    def add_param(
+        self,
+        name: str,
+        type: type,
+        default: Any,
+        label: str | None = None,
+        debounce: int | None = None,
+        **constraints: Any,
+    ) -> None:
+        """Declare a parameter: type, default, optional label, debounce (ms), and constraints."""
+        self._param_registry.add(
+            ParamDef(
+                name=name, type=type, default=default, label=label, debounce=debounce, **constraints
+            )
+        )
 
     @property
     def input_specs(self) -> dict[str, InputSpec]:

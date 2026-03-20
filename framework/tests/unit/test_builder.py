@@ -36,9 +36,9 @@ def sketch_dir(tmp_path: Path) -> Path:
 
 def test_output_bundle_step_is_passthrough(sketch_dir: Path) -> None:
     """OutputBundle step passes the input image through unchanged."""
-    from sketchbook.core.types import Image
-
     import numpy as np
+
+    from sketchbook.core.types import Image
 
     step = OutputBundle("bundle")
     arr = np.zeros((4, 4, 3), dtype=np.uint8)
@@ -56,7 +56,7 @@ def test_output_bundle_dsl_adds_node(sketch_dir: Path) -> None:
 
 
 def test_site_output_bundle_is_no_arg_output_bundle(sketch_dir: Path) -> None:
-    """SiteOutputBundle is an OutputBundle with bundle_name='static_site' and no constructor args."""
+    """SiteOutputBundle is an OutputBundle with bundle_name='static_site' and no args."""
     from sketchbook.steps.output_bundle import OutputBundle
 
     class _FakeSiteOutputBundle(OutputBundle):

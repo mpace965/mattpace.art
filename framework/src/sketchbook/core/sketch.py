@@ -21,7 +21,12 @@ class _ManagedNode(DAGNode):
         super().__init__(step, node_id, **kwargs)
         self._sketch = sketch
 
-    def pipe(self, step_class: type[PipelineStep], input_name: str = "image", params: dict[str, dict] | None = None) -> _ManagedNode:
+    def pipe(
+        self,
+        step_class: type[PipelineStep],
+        input_name: str = "image",
+        params: dict[str, dict] | None = None,
+    ) -> _ManagedNode:
         """Connect this node's output to a new step instance."""
         return self._sketch._pipe(self, step_class, input_name, param_overrides=params)
 
@@ -82,8 +87,13 @@ class Sketch:
         self._step_counts[base_name] = count + 1
         return f"{base_name}_{count}"
 
-    def _make_node(self, step_class: type[PipelineStep], node_id: str, param_overrides: dict[str, dict] | None = None) -> _ManagedNode:
-        """Instantiate step_class, apply param overrides, create a workdir path, and register the node in the DAG."""
+    def _make_node(
+        self,
+        step_class: type[PipelineStep],
+        node_id: str,
+        param_overrides: dict[str, dict] | None = None,
+    ) -> _ManagedNode:
+        """Instantiate step_class, apply param overrides, create a workdir path, register in DAG."""
         step = step_class()
         if param_overrides:
             for param_name, fields in param_overrides.items():
@@ -93,7 +103,13 @@ class Sketch:
         self._dag.add_node(node)
         return node
 
-    def _pipe(self, from_node: _ManagedNode, step_class: type[PipelineStep], input_name: str, param_overrides: dict[str, dict] | None = None) -> _ManagedNode:
+    def _pipe(
+        self,
+        from_node: _ManagedNode,
+        step_class: type[PipelineStep],
+        input_name: str,
+        param_overrides: dict[str, dict] | None = None,
+    ) -> _ManagedNode:
         """Internal: instantiate step_class, add node, wire edge, apply param overrides."""
         node_id = self._next_id(step_class)
         node = self._make_node(step_class, node_id, param_overrides)

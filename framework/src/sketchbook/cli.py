@@ -70,11 +70,14 @@ def build() -> None:
 
     parser = argparse.ArgumentParser(prog="build")
     parser.add_argument("--bundle", default="bundle", help="Bundle name to build (default: bundle)")
-    parser.add_argument("--output", default=str(_REPO_ROOT / "dist"), help="Output directory (default: dist/)")
+    parser.add_argument(
+        "--output", default=str(_REPO_ROOT / "dist"), help="Output directory (default: dist/)"
+    )
     args = parser.parse_args()
 
     output_dir = Path(args.output)
     sketch_classes = discover_sketches(_SKETCHES_DIR)
-    log.info(f"Building bundle '{args.bundle}' for {len(sketch_classes)} sketch(es) -> {output_dir}")
+    n = len(sketch_classes)
+    log.info(f"Building bundle '{args.bundle}' for {n} sketch(es) -> {output_dir}")
     build_bundle(sketch_classes, _SKETCHES_DIR, output_dir, args.bundle)
     print(f"Built bundle '{args.bundle}' with {len(sketch_classes)} sketch(es) -> {output_dir}")

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import numpy as np
 import pytest
@@ -12,7 +12,6 @@ from fastapi.testclient import TestClient
 from sketchbook import Sketch
 from sketchbook.server.app import create_app
 from tests.steps import EdgeDetect, GaussianBlur, Passthrough
-
 
 # ---------------------------------------------------------------------------
 # Test sketch definitions
@@ -59,7 +58,7 @@ def _make_image(path: Path) -> None:
 
 
 @pytest.fixture()
-def two_sketches_client(tmp_path: Path) -> Generator[TestClient, None, None]:
+def two_sketches_client(tmp_path: Path) -> Generator[TestClient]:
     """Return a TestClient with two sketch candidates (neither pre-loaded)."""
     _make_image(tmp_path / "hello" / "assets" / "hello.jpg")
     _make_image(tmp_path / "edge_portrait" / "assets" / "photo.jpg")

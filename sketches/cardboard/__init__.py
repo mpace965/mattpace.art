@@ -6,10 +6,10 @@ from typing import Any
 
 import cv2
 import numpy as np
-
 from sketchbook import Sketch
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
+
 from sketches import SiteOutputBundle
 
 

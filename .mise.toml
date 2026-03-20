@@ -7,8 +7,11 @@ run = "uv run --directory framework pytest"
 description = "Run framework tests"
 
 [tasks.lint]
-run = "uv run --directory framework ruff check src tests"
-description = "Lint framework source and tests"
+run = [
+    "uv run --directory framework ruff check src tests",
+    "uv run --directory sketches ruff check .",
+]
+description = "Lint framework and sketches"
 
 [tasks.dev]
 run = "uv run dev"

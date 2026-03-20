@@ -6,12 +6,10 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pytest
 
 from sketchbook.core.sketch import Sketch, _step_id_base
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
-
 
 # ---------------------------------------------------------------------------
 # Helpers

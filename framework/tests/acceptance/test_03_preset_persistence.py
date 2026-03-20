@@ -17,9 +17,7 @@ import threading
 import time
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -114,7 +112,9 @@ def test_dirty_tracking(edge_test_client: TestClient) -> None:
     assert presets["active"]["dirty"] is True
 
 
-def test_active_json_written_on_param_change(tmp_edge_sketch: Path, edge_test_client: TestClient) -> None:
+def test_active_json_written_on_param_change(
+    tmp_edge_sketch: Path, edge_test_client: TestClient
+) -> None:
     """Changing a param via PATCH writes the new value to _active.json."""
     import json
 

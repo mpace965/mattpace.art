@@ -1,4 +1,4 @@
-"""Unit tests for the pipeline executor: full execution, failure propagation, workdir write, stale file deletion."""
+"""Unit tests for the pipeline executor: execution, failure propagation, stale file deletion."""
 
 from __future__ import annotations
 
@@ -6,13 +6,11 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pytest
 
 from sketchbook.core.dag import DAG, DAGNode
 from sketchbook.core.executor import execute, execute_partial
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
-
 
 # ---------------------------------------------------------------------------
 # Helpers

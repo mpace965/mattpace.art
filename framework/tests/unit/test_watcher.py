@@ -7,7 +7,6 @@ from unittest.mock import MagicMock
 
 import cv2
 import numpy as np
-import pytest
 
 from sketchbook import Sketch
 from sketchbook.core.executor import execute

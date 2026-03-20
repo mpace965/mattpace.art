@@ -6,7 +6,13 @@ import logging
 from collections.abc import Callable
 from pathlib import Path
 
-from watchdog.events import FileCreatedEvent, FileDeletedEvent, FileModifiedEvent, FileMovedEvent, FileSystemEventHandler
+from watchdog.events import (
+    FileCreatedEvent,
+    FileDeletedEvent,
+    FileModifiedEvent,
+    FileMovedEvent,
+    FileSystemEventHandler,
+)
 from watchdog.observers import Observer
 
 log = logging.getLogger("sketchbook.watcher")

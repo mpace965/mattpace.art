@@ -7,10 +7,10 @@ from typing import Any
 
 import cv2
 import numpy as np
-
 from sketchbook import Sketch
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
+
 from sketches import SiteOutputBundle
 
 _WIDTH_FNS: dict[str, Any] = {
@@ -47,7 +47,9 @@ class StripesMask(PipelineStep):
         """Declare image input for sizing and stripe layout parameters."""
         self.add_input("image", Image)
         self.add_param("count", int, default=3, debounce=150, min=1, max=50, step=1)
-        self.add_param("vert_margin", float, default=0.45, debounce=150, min=0.0, max=1.0, step=0.01)
+        self.add_param(
+            "vert_margin", float, default=0.45, debounce=150, min=0.0, max=1.0, step=0.01
+        )
         self.add_param("horz_margin", float, default=0.2, debounce=150, min=0.0, max=1.0, step=0.01)
         self.add_param("width_fn", str, default="uniform", options=_WIDTH_FN_OPTIONS)
         self.add_param("invert_fn", bool, default=False)

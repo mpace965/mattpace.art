@@ -73,7 +73,9 @@ class ParamRegistry:
         param = self._params[name]
         coerced = _coerce_bool(value) if param.type is bool else param.type(value)
         if param.options is not None and coerced not in param.options:
-            raise ValueError(f"Value '{coerced}' is not a valid option for '{name}'. Must be one of: {param.options}")
+            raise ValueError(
+                f"Value '{coerced}' is not a valid option for '{name}'. Options: {param.options}"
+            )
         self._values[name] = coerced
 
     def values(self) -> dict[str, Any]:

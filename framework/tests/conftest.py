@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Generator
 from pathlib import Path
-from typing import Generator
 
 import numpy as np
 import pytest
@@ -13,7 +13,6 @@ from sketchbook import Sketch
 from sketchbook.core.executor import execute
 from sketchbook.server.app import create_app
 from tests.steps import EdgeDetect, GaussianBlur, Passthrough
-
 
 # ---------------------------------------------------------------------------
 # Image helpers
@@ -45,7 +44,7 @@ def write_test_image(path: Path, color: str = "red") -> None:
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
-def tmp_sketch(tmp_path: Path) -> Generator[Path, None, None]:
+def tmp_sketch(tmp_path: Path) -> Generator[Path]:
     """Create a temporary sketch directory with a test source image."""
     sketch_dir = tmp_path / "hello"
     assets_dir = sketch_dir / "assets"
@@ -72,7 +71,7 @@ class _HelloSketch(Sketch):
 
 
 @pytest.fixture()
-def test_client(tmp_sketch: Path) -> Generator[TestClient, None, None]:
+def test_client(tmp_sketch: Path) -> Generator[TestClient]:
     """Build the Hello sketch and return a FastAPI TestClient."""
     sketch = _HelloSketch(tmp_sketch)
     execute(sketch.dag)
@@ -99,7 +98,7 @@ def ws_client(test_client: TestClient):
 # ---------------------------------------------------------------------------
 
 @pytest.fixture()
-def tmp_edge_sketch(tmp_path: Path) -> Generator[Path, None, None]:
+def tmp_edge_sketch(tmp_path: Path) -> Generator[Path]:
     """Create a temporary sketch directory for EdgeHello with a test source image."""
     sketch_dir = tmp_path / "edge_hello"
     assets_dir = sketch_dir / "assets"
@@ -122,7 +121,7 @@ class _EdgeHelloSketch(Sketch):
 
 
 @pytest.fixture()
-def edge_test_client(tmp_edge_sketch: Path) -> Generator[TestClient, None, None]:
+def edge_test_client(tmp_edge_sketch: Path) -> Generator[TestClient]:
     """Build the EdgeHello sketch and return a FastAPI TestClient."""
     sketch = _EdgeHelloSketch(tmp_edge_sketch)
     execute(sketch.dag)
@@ -159,7 +158,7 @@ class _MultiStepSketch(Sketch):
 
 
 @pytest.fixture()
-def tmp_multi_step_sketch(tmp_path: Path) -> Generator[Path, None, None]:
+def tmp_multi_step_sketch(tmp_path: Path) -> Generator[Path]:
     """Create a temporary sketch directory for the multi-step pipeline tests."""
     sketch_dir = tmp_path / "multi_step"
     assets_dir = sketch_dir / "assets"
@@ -169,7 +168,7 @@ def tmp_multi_step_sketch(tmp_path: Path) -> Generator[Path, None, None]:
 
 
 @pytest.fixture()
-def multi_step_client(tmp_multi_step_sketch: Path) -> Generator[TestClient, None, None]:
+def multi_step_client(tmp_multi_step_sketch: Path) -> Generator[TestClient]:
     """Build the multi-step sketch and return a FastAPI TestClient."""
     sketch = _MultiStepSketch(tmp_multi_step_sketch)
     execute(sketch.dag)
@@ -214,7 +213,7 @@ class _NoMaskEdgeSketch(Sketch):
 
 
 @pytest.fixture()
-def tmp_masked_sketch(tmp_path: Path) -> Generator[Path, None, None]:
+def tmp_masked_sketch(tmp_path: Path) -> Generator[Path]:
     """Create a sketch directory with both photo and mask assets."""
     sketch_dir = tmp_path / "edge_portrait"
     assets_dir = sketch_dir / "assets"
@@ -225,7 +224,7 @@ def tmp_masked_sketch(tmp_path: Path) -> Generator[Path, None, None]:
 
 
 @pytest.fixture()
-def masked_client(tmp_masked_sketch: Path) -> Generator[TestClient, None, None]:
+def masked_client(tmp_masked_sketch: Path) -> Generator[TestClient]:
     """Build the masked edge sketch and return a FastAPI TestClient."""
     sketch = _MaskedEdgeSketch(tmp_masked_sketch)
     execute(sketch.dag)
@@ -244,7 +243,7 @@ def masked_ws_client(masked_client: TestClient):
 
 
 @pytest.fixture()
-def tmp_no_mask_sketch(tmp_path: Path) -> Generator[Path, None, None]:
+def tmp_no_mask_sketch(tmp_path: Path) -> Generator[Path]:
     """Create a sketch directory with only a photo asset (no mask)."""
     sketch_dir = tmp_path / "edge_portrait_no_mask"
     assets_dir = sketch_dir / "assets"
@@ -254,7 +253,7 @@ def tmp_no_mask_sketch(tmp_path: Path) -> Generator[Path, None, None]:
 
 
 @pytest.fixture()
-def no_mask_client(tmp_no_mask_sketch: Path) -> Generator[TestClient, None, None]:
+def no_mask_client(tmp_no_mask_sketch: Path) -> Generator[TestClient]:
     """Build the no-mask edge sketch and return a FastAPI TestClient."""
     sketch = _NoMaskEdgeSketch(tmp_no_mask_sketch)
     execute(sketch.dag)

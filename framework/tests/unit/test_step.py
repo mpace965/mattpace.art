@@ -1,4 +1,4 @@
-"""Unit tests for PipelineStep: add_input, setup/process contract, Passthrough output equals input."""
+"""Unit tests for PipelineStep: add_input, setup/process contract, Passthrough output."""
 
 from __future__ import annotations
 
@@ -10,7 +10,6 @@ import pytest
 from sketchbook.core.step import InputSpec, PipelineStep
 from sketchbook.core.types import Image
 from tests.steps import Passthrough
-
 
 # ---------------------------------------------------------------------------
 # add_input

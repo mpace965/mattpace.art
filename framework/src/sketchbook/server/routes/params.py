@@ -84,7 +84,9 @@ async def update_param(
     except KeyError as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
-    log.info(f"Param updated: sketch='{sketch_id}' step='{body.step_id}' {body.param_name}={body.value}")
+    log.info(
+        f"Param updated: sketch='{sketch_id}' step='{body.step_id}' {body.param_name}={body.value}"
+    )
 
     sketch.preset_manager.mark_dirty()
     sketch.preset_manager.save_active(sketch.dag)

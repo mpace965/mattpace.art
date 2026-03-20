@@ -10,7 +10,6 @@ import pytest
 from sketchbook.core.presets import PresetManager
 from tests.steps import EdgeDetect
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

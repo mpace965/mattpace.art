@@ -13,7 +13,6 @@ import threading
 import time
 from pathlib import Path
 
-import pytest
 from fastapi.testclient import TestClient
 
 from tests.conftest import write_test_image

@@ -20,7 +20,6 @@ from fastapi.testclient import TestClient
 
 from tests.conftest import write_test_image
 
-
 # ---------------------------------------------------------------------------
 # Factory
 # ---------------------------------------------------------------------------
