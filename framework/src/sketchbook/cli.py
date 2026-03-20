@@ -12,7 +12,7 @@ from sketchbook.discovery import discover_sketches
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("sketchbook.cli")
 
-_REPO_ROOT = Path(__file__).parent.parent.parent
+_REPO_ROOT = Path(__file__).parent.parent.parent.parent
 _SKETCHES_DIR = _REPO_ROOT / "sketches"
 
 

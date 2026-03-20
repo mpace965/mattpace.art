@@ -1,0 +1,8 @@
+[project]
+name = "sketches"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = ["sketchbook"]
+
+[tool.uv.sources]
+sketchbook = { workspace = true }

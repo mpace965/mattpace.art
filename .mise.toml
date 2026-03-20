@@ -1,3 +1,23 @@
 [tools]
 python = "3.14.3"
 uv = "latest"
+
+[tasks.test]
+run = "uv run --directory framework pytest"
+description = "Run framework tests"
+
+[tasks.lint]
+run = "uv run --directory framework ruff check src tests"
+description = "Lint framework source and tests"
+
+[tasks.dev]
+run = "uv run dev"
+description = "Start dev server"
+
+[tasks.build]
+run = "uv run build"
+description = "Build static site"
+
+[tasks.serve]
+run = "uv run serve"
+description = "Serve built static site"
