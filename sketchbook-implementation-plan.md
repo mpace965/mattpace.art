@@ -29,84 +29,82 @@ This plan follows the "Growing Object-Oriented Software, Guided by Tests" approa
 
 ## Project Structure
 
+This is a `uv` workspace monorepo. The root `pyproject.toml` declares the workspace members; each member has its own `pyproject.toml`. The framework never imports from sketches.
+
 ```
-sketchbook/
-├── pyproject.toml
+mattpace.art/                       # Repo root
+├── pyproject.toml                  # uv workspace root (members: framework, sketches)
+├── uv.lock
 ├── .mise.toml
 ├── .gitignore
 ├── CLAUDE.md
-├── sketches/                       # User sketch modules (convention-based, outside src/)
-│   └── edge_portrait/
+├── framework/                      # The engine, server, CLI, and test infra
+│   ├── pyproject.toml
+│   ├── src/
+│   │   └── sketchbook/
+│   │       ├── __init__.py
+│   │       ├── cli.py              # Entry points for `uv run dev` and `uv run build`
+│   │       ├── discovery.py        # Scans sketches.* for Sketch subclasses
+│   │       ├── core/
+│   │       │   ├── dag.py          # DAG graph, node types, topology sort, change propagation
+│   │       │   ├── step.py         # PipelineStep base class
+│   │       │   ├── sketch.py       # Sketch base class with build() DSL
+│   │       │   ├── params.py       # Parameter definitions, preset load/save/dirty tracking
+│   │       │   ├── presets.py      # Preset file I/O and active-preset management
+│   │       │   ├── watcher.py      # watchdog integration, per-source-node file monitoring
+│   │       │   ├── executor.py     # Pipeline execution engine (run DAG in topo order)
+│   │       │   └── types.py        # Shared types (Image wrapper, etc.)
+│   │       ├── server/
+│   │       │   ├── app.py          # FastAPI app, route registration
+│   │       │   ├── deps.py         # FastAPI dependency providers
+│   │       │   ├── registry.py     # In-process sketch/watcher registry
+│   │       │   ├── tweakpane.py    # Tweakpane schema generation from param definitions
+│   │       │   ├── _dev.py         # Dev server startup (uvicorn + watcher bootstrap)
+│   │       │   ├── routes/
+│   │       │   │   ├── sketch.py   # Sketch list, sketch detail, step detail views
+│   │       │   │   ├── params.py   # Param read/write API
+│   │       │   │   ├── presets.py  # Preset CRUD API
+│   │       │   │   ├── dag.py      # DAG structure endpoint
+│   │       │   │   └── ws.py       # WebSocket endpoint for live updates
+│   │       │   ├── templates/
+│   │       │   │   ├── base.html
+│   │       │   │   ├── macros.html
+│   │       │   │   ├── index.html  # Sketch browser/list
+│   │       │   │   ├── sketch.html # Single sketch: DAG + params + preview
+│   │       │   │   └── step.html   # Fullscreen step output view
+│   │       │   └── static/
+│   │       │       └── main.js     # WebSocket client, Tweakpane init, live reload
+│   │       ├── steps/
+│   │       │   ├── source.py       # SourceFile node (reads image from disk)
+│   │       │   ├── output_bundle.py # OutputBundle marker node (named bundle output)
+│   │       │   └── site_output.py  # SiteOutput node (writes to dist/)
+│   │       └── site/
+│   │           ├── builder.py      # Scans sketches for OutputBundle nodes, bakes images, writes JSON
+│   │           └── templates/      # Jinja2 templates for future static site work
+│   │               ├── feed.html
+│   │               └── sketch_page.html
+│   └── tests/
+│       ├── conftest.py             # Shared fixtures (tmp sketch dirs, test images, FastAPI TestClient)
+│       ├── steps.py                # Concrete test steps used by framework tests (no sketch imports)
+│       ├── acceptance/             # End-to-end acceptance tests (one per increment)
+│       │   ├── test_01_walking_skeleton.py
+│       │   ├── test_02_real_step.py
+│       │   └── ...
+│       └── unit/                   # Focused unit tests driven out by acceptance tests
+│           ├── test_dag.py
+│           ├── test_executor.py
+│           ├── test_params.py
+│           └── ...
+├── sketches/                       # Userland — sketch modules (never imported by framework)
+│   ├── pyproject.toml              # Declares sketchbook as a workspace dependency
+│   ├── __init__.py
+│   └── <slug>/                     # One directory per sketch
 │       ├── __init__.py             # Contains the Sketch subclass
-│       ├── assets/
-│       │   ├── portrait.jpg
-│       │   └── mask.png
+│       ├── assets/                 # Source images (not committed — too large)
 │       ├── presets/
-│       │   ├── heavy_edges.json
+│       │   ├── <name>.json         # Named saved presets
 │       │   └── _active.json        # Current working state (may be unsaved "untitled")
 │       └── .workdir/               # Intermediate outputs, gitignored
-│           ├── edge_detect_out.png
-│           └── ...
-├── src/
-│   └── sketchbook/
-│       ├── __init__.py
-│       ├── core/
-│       │   ├── __init__.py
-│       │   ├── dag.py              # DAG graph, node types, topology sort, change propagation
-│       │   ├── step.py             # PipelineStep base class
-│       │   ├── sketch.py           # Sketch base class with build() DSL
-│       │   ├── params.py           # Parameter definitions, preset load/save/dirty tracking
-│       │   ├── watcher.py          # watchdog integration, per-source-node file monitoring
-│       │   ├── executor.py         # Pipeline execution engine (run DAG in topo order)
-│       │   └── types.py            # Shared types (Image wrapper, etc.)
-│       ├── server/
-│       │   ├── __init__.py
-│       │   ├── app.py              # FastAPI app, route registration
-│       │   ├── routes/
-│       │   │   ├── __init__.py
-│       │   │   ├── sketch.py       # Sketch list, sketch detail, step detail views
-│       │   │   ├── params.py       # Preset CRUD API, Tweakpane data endpoints
-│       │   │   ├── dag.py          # DAG overview page
-│       │   │   └── ws.py           # WebSocket endpoint for live updates
-│       │   ├── templates/
-│       │   │   ├── base.html
-│       │   │   ├── index.html      # Sketch browser/list
-│       │   │   ├── sketch.html     # Single sketch: DAG + params + preview
-│       │   │   ├── step.html       # Fullscreen step output view
-│       │   │   └── dag.html        # DAG overview component
-│       │   └── static/
-│       │       ├── main.js         # WebSocket client, Tweakpane init, live reload
-│       │       └── style.css
-│       ├── steps/
-│       │   ├── __init__.py
-│       │   ├── source.py           # SourceFile node (reads image from disk)
-│       │   ├── output.py           # FileOutput node (writes to disk)
-│       │   └── output_bundle.py    # OutputBundle node (marks node for a named bundle)
-│       ├── site/
-│       │   ├── __init__.py
-│       │   ├── builder.py          # Scans sketches for OutputBundle nodes, writes JSON + bakes images
-│       │   └── templates/          # Jinja2 templates kept for future static site work
-│       │       ├── feed.html
-│       │       └── sketch_page.html
-│       └── cli.py                  # Entry points for `uv run dev` and `uv run build`
-├── tests/
-│   ├── conftest.py                 # Shared fixtures (tmp sketch dirs, test images, FastAPI TestClient)
-│   ├── acceptance/                 # End-to-end acceptance tests (one per increment)
-│   │   ├── test_01_walking_skeleton.py
-│   │   ├── test_02_real_step.py
-│   │   ├── ...
-│   └── unit/                       # Focused unit tests driven out by acceptance tests
-│       ├── test_dag.py
-│       ├── test_executor.py
-│       ├── test_params.py
-│       └── ...
-└── dist/                           # Default output directory for `uv run build`
-    ├── manifest.json            # Bundle manifest (array of sketch entries)
-    ├── edge-portrait/
-    │   ├── heavy_edges.png         # Baked variant images (flat, no variants/ subdir)
-    │   └── soft_edges.png
-    └── cardboard/
-        └── nine.png
 ```
 
 ---
