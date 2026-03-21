@@ -1,6 +1,7 @@
 [tools]
 python = "3.14.3"
 uv = "latest"
+node = "lts"
 
 [tasks.test]
 run = "uv run --directory framework pytest"
@@ -18,9 +19,9 @@ run = "uv run dev"
 description = "Start dev server"
 
 [tasks.build]
-run = "uv run build"
-description = "Build static site"
+run = ["uv run build", "npm --prefix site run build"]
+description = "Build bundle then generate static site"
 
 [tasks.serve]
-run = "uv run serve"
-description = "Serve built static site"
+run = "npm --prefix site run dev"
+description = "Serve static site with 11ty dev server"

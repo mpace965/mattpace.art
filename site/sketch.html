@@ -1,9 +1,17 @@
+---
+pagination:
+  data: manifest
+  size: 1
+  alias: sketch
+permalink: "{{ sketch.slug }}/"
+---
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{{ name }} — matt's pixel library</title>
+    <title>{{ sketch.name }} — matt's pixel library</title>
+    <link rel="icon" href="/favicon.png" type="image/png" />
     <style>
       body {
         font-family: monospace;
@@ -81,26 +89,26 @@
   <body>
     <nav><a href="/">← matt's pixel library</a></nav>
     <header>
-      <h1>{{ name }}</h1>
-      {% if description %}
-      <p class="meta">{{ description }}</p>
-      {% endif %}
-      <p class="meta">{{ date }}</p>
+      <h1>{{ sketch.name }}</h1>
+      {%- if sketch.description %}
+      <p class="meta">{{ sketch.description }}</p>
+      {%- endif %}
+      <p class="meta">{{ sketch.date }}</p>
     </header>
 
-    {% if variants %}
+    {%- if sketch.variants %}
     <div class="variants">
-      {% for v in variants %}
-      <div class="variant" id="{{ v }}">
-        {% if variants | length > 1 %}
-        <span class="variant-name"><a href="#{{ v }}">{{ v }}</a></span>
-        {% endif %}
-        <img src="variants/{{ v }}.png" alt="{{ v }}" loading="lazy" />
+      {%- for variant in sketch.variants %}
+      <div class="variant" id="{{ variant.name }}">
+        {%- if sketch.variants.size > 1 %}
+        <span class="variant-name"><a href="#{{ variant.name }}">{{ variant.name }}</a></span>
+        {%- endif %}
+        <img src="{{ variant.name }}.png" alt="{{ variant.name }}" loading="lazy" />
       </div>
-      {% endfor %}
+      {%- endfor %}
     </div>
-    {% else %}
+    {%- else %}
     <p class="empty">no variants</p>
-    {% endif %}
+    {%- endif %}
   </body>
 </html>
