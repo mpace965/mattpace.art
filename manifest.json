@@ -1,0 +1,30 @@
+[
+  {
+    "slug": "cardboard-stripes",
+    "name": "cardboard-stripes",
+    "description": "greyscale cardboard texture with a stack of inverted horizontal bars.",
+    "date": "2026-03-12",
+    "variants": [
+      {
+        "name": "three",
+        "image_path": "cardboard-stripes/three.png"
+      },
+      {
+        "name": "steps",
+        "image_path": "cardboard-stripes/steps.png"
+      }
+    ]
+  },
+  {
+    "slug": "cardboard",
+    "name": "cardboard",
+    "description": "greyscale cardboard texture with a grid of inverted circles.",
+    "date": "2026-03-09",
+    "variants": [
+      {
+        "name": "nine",
+        "image_path": "cardboard/nine.png"
+      }
+    ]
+  }
+]
