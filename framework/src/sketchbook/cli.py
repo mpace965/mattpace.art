@@ -25,11 +25,13 @@ def dev() -> None:
     reloaded worker.
     """
     src_dir = _REPO_ROOT / "src"
+    port = 8000
+    log.info(f"Dev server: http://localhost:{port}")
     uvicorn.run(
         "sketchbook.server._dev:create_dev_app",
         factory=True,
         host="0.0.0.0",
-        port=8000,
+        port=port,
         reload=True,
         reload_dirs=[str(src_dir), str(_SKETCHES_DIR)],
         reload_includes=["*.py", "*.html"],
@@ -50,7 +52,9 @@ def build() -> None:
     parser = argparse.ArgumentParser(prog="build")
     parser.add_argument("--bundle", default="bundle", help="Bundle name to build (default: bundle)")
     parser.add_argument(
-        "--output", default=str(_SKETCHES_DIR / "bundle"), help="Output directory (default: sketches/bundle/)"
+        "--output",
+        default=str(_SKETCHES_DIR / "bundle"),
+        help="Output directory (default: sketches/bundle/)",
     )
     args = parser.parse_args()
 

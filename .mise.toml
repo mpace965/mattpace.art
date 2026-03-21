@@ -14,14 +14,34 @@ run = [
 ]
 description = "Lint framework and sketches"
 
-[tasks.dev]
+[tasks."sketches:dev"]
 run = "uv run dev"
-description = "Start dev server"
+description = "Start sketch dev server"
 
-[tasks.build]
-run = ["uv run build", "npm --prefix site run build"]
-description = "Build bundle then generate static site"
-
-[tasks.serve]
+[tasks."site:dev"]
 run = "npm --prefix site run dev"
 description = "Serve static site with 11ty dev server"
+
+[tasks."sketches:build"]
+run = "uv run build"
+description = "Build sketch bundles"
+
+[tasks."site:build"]
+run = "npm --prefix site run build"
+description = "Generate static site"
+
+[tasks.build]
+depends = ["sketches:build", "site:build"]
+description = "Build sketch bundles then generate static site"
+
+[tasks."sketches:clean"]
+run = "rm -rf sketches/bundle"
+description = "Delete all sketch bundle directories"
+
+[tasks."site:clean"]
+run = "rm -rf site/dist"
+description = "Delete built site output"
+
+[tasks.clean]
+depends = ["sketches:clean", "site:clean"]
+description = "Delete all build outputs (sketches .workdir + site dist)"
