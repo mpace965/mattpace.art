@@ -12,6 +12,7 @@ export default function (eleventyConfig) {
   }
 
   eleventyConfig.addPassthroughCopy("favicon.png");
+  eleventyConfig.addPassthroughCopy("assets");
 
   return {
     dir: {
