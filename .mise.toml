@@ -45,3 +45,8 @@ description = "Delete built site output"
 [tasks.clean]
 depends = ["sketches:clean", "site:clean"]
 description = "Delete all build outputs (sketches .workdir + site dist)"
+
+[tasks.deploy]
+depends = ["build"]
+run = "site/scripts/deploy.sh"
+description = "Build and force-push site/dist to gh-pages branch"

@@ -13,6 +13,7 @@ export default function (eleventyConfig) {
 
   eleventyConfig.addPassthroughCopy("favicon.png");
   eleventyConfig.addPassthroughCopy("assets");
+  eleventyConfig.addPassthroughCopy("CNAME");
 
   return {
     dir: {
