@@ -76,16 +76,23 @@ def _build_sketch(
         log.info(f"Skipping '{sketch_id}': no OutputBundle node for bundle '{bundle_name}'")
         return None
 
+    if len(bundle_nodes) > 1:
+        log.warning(
+            f"  '{sketch_id}' has multiple OutputBundle nodes for bundle '{bundle_name}'; "
+            f"using the first node's presets filter"
+        )
+
     all_presets = sketch.preset_manager.list_presets()
     if not all_presets:
         log.info(f"Skipping '{sketch_id}': no saved presets")
         return None
 
-    if sketch.site_presets is not None:
-        presets = [p for p in sketch.site_presets if p in all_presets]
-        missing = [p for p in sketch.site_presets if p not in all_presets]
+    node_presets = bundle_nodes[0].step.presets
+    if node_presets is not None:
+        presets = [p for p in node_presets if p in all_presets]
+        missing = [p for p in node_presets if p not in all_presets]
         if missing:
-            log.warning(f"  site_presets references unknown preset(s): {missing}")
+            log.warning(f"  OutputBundle.presets references unknown preset(s): {missing}")
     else:
         presets = all_presets
 

@@ -102,7 +102,7 @@ The dev server (`uv run dev`) starts a FastAPI app that:
 
 ## Build system
 
-`uv run build` scans sketches for `OutputBundle` nodes, iterates their `site_presets`, executes the full pipeline for each preset, and writes baked images + a `manifest.json` to the output directory. This manifest is consumed by downstream tooling (e.g., an 11ty static site).
+`uv run build` scans sketches for `OutputBundle` nodes, iterates their `presets` list (or all saved presets if `presets=None`), executes the full pipeline for each preset, and writes baked images + a `manifest.json` to the output directory. This manifest is consumed by downstream tooling (e.g., an 11ty static site).
 
 ## Package structure
 

@@ -196,38 +196,102 @@ def test_builder_skips_sketch_with_no_presets(sketch_dir: Path, tmp_path: Path) 
     assert bundle == []
 
 
-def test_site_presets_filters_to_listed_presets(sketch_dir: Path, tmp_path: Path) -> None:
-    """site_presets restricts which presets get baked."""
+def test_output_bundle_stores_presets_kwarg(sketch_dir: Path) -> None:
+    """OutputBundle stores the presets list when provided."""
+    node = OutputBundle("bundle", presets=["a", "b"])
+    assert node.presets == ["a", "b"]
+
+
+def test_output_bundle_default_presets_is_none(sketch_dir: Path) -> None:
+    """OutputBundle.presets defaults to None (meaning all saved presets)."""
+    node = OutputBundle("bundle")
+    assert node.presets is None
+
+
+def test_builder_uses_node_presets_to_filter(sketch_dir: Path, tmp_path: Path) -> None:
+    """OutputBundle.presets restricts which presets get baked."""
     from sketchbook.site.builder import build_bundle
 
-    class _FilteredSketch(_SiteSketch):
-        site_presets = ["preset_a"]
+    class _FilteredBundleSketch(Sketch):
+        name = "Filtered"
+        description = ""
+        date = "2026-03-18"
 
-    sketch = _FilteredSketch(sketch_dir)
+        def build(self) -> None:
+            photo = self.source("photo", "assets/photo.jpg")
+            blurred = photo.pipe(GaussianBlur)
+            edges = blurred.pipe(EdgeDetect)
+            self.output_bundle(edges, "bundle", presets=["preset_a"])
+
+    sketch = _FilteredBundleSketch(sketch_dir)
     execute(sketch.dag)
     sketch.preset_manager.save_preset("preset_a", sketch.dag)
     sketch.preset_manager.save_preset("preset_b", sketch.dag)
 
     output_dir = tmp_path / "output"
-    build_bundle({"test_sketch": _FilteredSketch}, sketch_dir.parent, output_dir, "bundle")
+    build_bundle({"test_sketch": _FilteredBundleSketch}, sketch_dir.parent, output_dir, "bundle")
 
     assert (output_dir / "test-sketch" / "preset_a.png").exists()
     assert not (output_dir / "test-sketch" / "preset_b.png").exists()
 
 
-def test_site_presets_unknown_name_does_not_crash(sketch_dir: Path, tmp_path: Path) -> None:
-    """site_presets referencing a non-existent preset logs a warning but doesn't crash."""
+def test_builder_node_presets_unknown_name_does_not_crash(sketch_dir: Path, tmp_path: Path) -> None:
+    """OutputBundle.presets referencing a non-existent preset logs a warning but doesn't crash."""
     from sketchbook.site.builder import build_bundle
 
-    class _BadPresetSketch(_SiteSketch):
-        site_presets = ["real_preset", "does_not_exist"]
+    class _BadNodePresetSketch(Sketch):
+        name = "Bad"
+        description = ""
+        date = "2026-03-18"
 
-    sketch = _BadPresetSketch(sketch_dir)
+        def build(self) -> None:
+            photo = self.source("photo", "assets/photo.jpg")
+            blurred = photo.pipe(GaussianBlur)
+            edges = blurred.pipe(EdgeDetect)
+            self.output_bundle(edges, "bundle", presets=["real_preset", "does_not_exist"])
+
+    sketch = _BadNodePresetSketch(sketch_dir)
     execute(sketch.dag)
     sketch.preset_manager.save_preset("real_preset", sketch.dag)
 
     output_dir = tmp_path / "output"
-    build_bundle({"test_sketch": _BadPresetSketch}, sketch_dir.parent, output_dir, "bundle")
+    build_bundle({"test_sketch": _BadNodePresetSketch}, sketch_dir.parent, output_dir, "bundle")
 
     assert (output_dir / "test-sketch" / "real_preset.png").exists()
     assert not (output_dir / "test-sketch" / "does_not_exist.png").exists()
+
+
+def test_builder_warns_on_duplicate_bundle_nodes(
+    sketch_dir: Path, tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A sketch with two OutputBundle nodes for the same bundle name emits a warning."""
+    import logging
+
+    from sketchbook.site.builder import build_bundle
+
+    class _DuplicateOutputSketch(Sketch):
+        name = "Duplicate"
+        description = ""
+        date = "2026-03-18"
+
+        def build(self) -> None:
+            photo = self.source("photo", "assets/photo.jpg")
+            blurred = photo.pipe(GaussianBlur)
+            self.output_bundle(blurred, "bundle")
+            edges = blurred.pipe(EdgeDetect)
+            self.output_bundle(edges, "bundle")
+
+    sketch = _DuplicateOutputSketch(sketch_dir)
+    execute(sketch.dag)
+    sketch.preset_manager.save_preset("p", sketch.dag)
+
+    output_dir = tmp_path / "output"
+    with caplog.at_level(logging.WARNING, logger="sketchbook.site.builder"):
+        build_bundle(
+            {"test_sketch": _DuplicateOutputSketch},
+            sketch_dir.parent,
+            output_dir,
+            "bundle",
+        )
+
+    assert any("multiple OutputBundle" in r.message for r in caplog.records)

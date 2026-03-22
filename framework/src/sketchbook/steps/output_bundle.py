@@ -15,8 +15,9 @@ class OutputBundle(PipelineStep):
     The bundle JSON is written to <output_dir>/<bundle_name>.json.
     """
 
-    def __init__(self, bundle_name: str) -> None:
+    def __init__(self, bundle_name: str, presets: list[str] | None = None) -> None:
         self.bundle_name = bundle_name
+        self.presets = presets  # None = all saved presets
         super().__init__()
 
     def setup(self) -> None:

@@ -10,7 +10,7 @@ from sketchbook import Sketch
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
 
-from sketches import SiteOutputBundle
+from sketches import SITE_BUNDLE
 
 
 class Cardboard(Sketch):
@@ -19,7 +19,6 @@ class Cardboard(Sketch):
     name = "cardboard"
     description = "greyscale cardboard texture with a grid of inverted circles."
     date = "2026-03-09"
-    site_presets = ["nine"]
 
     def build(self) -> None:
         """Load the cardboard photo, generate a circle grid mask, and apply DIFFERENCE blend."""
@@ -32,7 +31,7 @@ class Cardboard(Sketch):
             },
         )
         blended = self.add(DifferenceBlend, inputs={"image": photo, "mask": mask})
-        blended.pipe(SiteOutputBundle)
+        self.output_bundle(blended, SITE_BUNDLE, presets=["nine"])
 
 
 class CircleGridMask(PipelineStep):

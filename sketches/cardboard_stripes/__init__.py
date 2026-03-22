@@ -11,7 +11,7 @@ from sketchbook import Sketch
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
 
-from sketches import SiteOutputBundle
+from sketches import SITE_BUNDLE
 
 _WIDTH_FNS: dict[str, Any] = {
     "uniform": lambda i, n: 1.0,
@@ -30,14 +30,12 @@ class CardboardStripes(Sketch):
     name = "cardboard-stripes"
     description = "greyscale cardboard texture with a stack of inverted horizontal bars."
     date = "2026-03-12"
-    site_presets = ["three", "steps"]
-
     def build(self) -> None:
         """Load cardboard photo, generate a stripe mask, and apply DIFFERENCE blend."""
         photo = self.source("photo", "assets/cardboard.jpg")
         mask = photo.pipe(StripesMask)
         blended = self.add(DifferenceBlend, inputs={"image": photo, "mask": mask})
-        blended.pipe(SiteOutputBundle)
+        self.output_bundle(blended, SITE_BUNDLE, presets=["three", "steps"])
 
 
 class StripesMask(PipelineStep):

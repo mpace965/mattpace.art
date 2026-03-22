@@ -37,7 +37,6 @@ class Sketch:
     name: str = ""
     description: str = ""
     date: str = ""
-    site_presets: list[str] | None = None  # None = all saved presets
 
     def __init__(self, sketch_dir: str | Path) -> None:
         self._sketch_dir = Path(sketch_dir)
@@ -117,16 +116,26 @@ class Sketch:
         log.debug(f"Wired {from_node.id} -> {node_id} via '{input_name}'")
         return node
 
-    def output_bundle(self, node: _ManagedNode, bundle_name: str) -> _ManagedNode:
+    def output_bundle(
+        self,
+        node: _ManagedNode,
+        bundle_name: str,
+        presets: list[str] | None = None,
+    ) -> _ManagedNode:
         """Add an OutputBundle node after the given node and return it.
 
         The builder scans for OutputBundle nodes with a matching bundle_name
         to determine what to bake and include in the output JSON.
+
+        Args:
+            node: The upstream node whose output to bundle.
+            bundle_name: The name of the output bundle.
+            presets: Preset names to include in the site build. None = all saved presets.
         """
         from sketchbook.steps.output_bundle import OutputBundle
 
         node_id = self._next_id(OutputBundle)
-        step = OutputBundle(bundle_name)
+        step = OutputBundle(bundle_name, presets=presets)
         workdir_path = self._workdir / f"{node_id}.png"
         managed = _ManagedNode(step, node_id, self, workdir_path=str(workdir_path))
         self._dag.add_node(managed)
