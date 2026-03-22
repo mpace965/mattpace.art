@@ -2,9 +2,13 @@
 
 ## What is this project?
 
-Sketchbook is a reactive, DAG-based creative coding environment for image processing pipelines. Sketches are Python classes that wire together pipeline steps (transformations on images). In dev mode, a FastAPI server watches source files and propagates changes through the pipeline in real time, with every intermediate step inspectable in the browser.
+Sketchbook is a reactive, DAG-based creative coding framework designed for an agentic workflow. You write pipeline steps in Python — by hand or with an AI agent — and the framework handles execution, file watching, live preview, and static site generation. The browser is a viewer and parameter tuner, not an editor. The editing experience is just editing code.
 
-The full implementation plan is in `sketchbook-implementation-plan.md`.
+The framework intentionally does not ship reusable image-processing steps. Steps belong in userland (sketches). The framework provides the DAG engine, executor, dev server, and build tooling — everything needed to run and publish pipelines, but none of the domain-specific transforms. This keeps the framework generic and eventually publishable as an independent package.
+
+There is currently an OpenCV dependency in the framework (for `Image` load/save in `core/types.py`). This should eventually be replaced with something lighter so the framework has no opinion on image libraries.
+
+The initial implementation plan is archived at `docs/initial-implementation-plan.md`.
 
 ## Python standards
 

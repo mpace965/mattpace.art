@@ -199,11 +199,11 @@ async def test_file_change_triggers_websocket_update(tmp_sketch, test_client, ws
 ### Definition of done — Increment 1
 
 - [x] Acceptance tests in `tests/acceptance/test_01_walking_skeleton.py` pass
-- [ ] `tests/unit/test_dag.py` covers `DAG.add_node`, `connect`, `topo_sort`, cycle detection, duplicate node error
-- [ ] `tests/unit/test_executor.py` covers full execution, failure propagation, workdir write, stale file deletion
-- [ ] `tests/unit/test_step.py` covers `PipelineStep.add_input`, `setup`/`process` contract, `Passthrough` output equals input
-- [ ] `tests/unit/test_types.py` covers `Image.load`, `Image.save`, round-trip integrity
-- [ ] `tests/unit/test_sketch.py` covers `Sketch.source`, `.pipe`, DAG wiring, node ID assignment
+- [x] `tests/unit/test_dag.py` covers `DAG.add_node`, `connect`, `topo_sort`, cycle detection, duplicate node error
+- [x] `tests/unit/test_executor.py` covers full execution, failure propagation, workdir write, stale file deletion
+- [x] `tests/unit/test_step.py` covers `PipelineStep.add_input`, `setup`/`process` contract, `Passthrough` output equals input
+- [x] `tests/unit/test_types.py` covers `Image.load`, `Image.save`, round-trip integrity
+- [x] `tests/unit/test_sketch.py` covers `Sketch.source`, `.pipe`, DAG wiring, node ID assignment
 
 ---
 
@@ -275,11 +275,11 @@ def test_param_schema_endpoint(tmp_sketch, test_client):
 
 ### Definition of done — Increment 2
 
-- [ ] Acceptance tests in `tests/acceptance/test_02_real_step.py` pass
-- [ ] `tests/unit/test_params.py` covers `ParamRegistry.add`, default values, type coercion, serialization to/from dict, min/max constraints
-- [ ] `tests/unit/test_step.py` updated: `add_param` registers in registry, params passed to `process()`
-- [ ] `tests/unit/test_executor.py` updated: executor gathers params from registry and passes them to `process()`
-- [ ] `tests/unit/test_edge_detect.py` covers `EdgeDetect.setup` declares correct params, `process` returns an image of the same shape
+- [x] Acceptance tests in `tests/acceptance/test_02_real_step.py` pass
+- [x] `tests/unit/test_params.py` covers `ParamRegistry.add`, default values, type coercion, serialization to/from dict, min/max constraints
+- [x] `tests/unit/test_step.py` updated: `add_param` registers in registry, params passed to `process()`
+- [x] `tests/unit/test_executor.py` updated: executor gathers params from registry and passes them to `process()`
+- [x] `tests/unit/test_edge_detect.py` covers `EdgeDetect.setup` declares correct params, `process` returns an image of the same shape
 
 ---
 
@@ -656,8 +656,8 @@ def test_deploy_pushes_to_gh_pages(tmp_project_with_git):
 
 ### Definition of done — Increment 8
 
-- [ ] Acceptance tests in `tests/acceptance/test_08_deploy.py` pass
-- [ ] `tests/unit/test_deploy.py` covers: build runs before push, `gh-pages` branch updated, `main` branch unaffected
+- [x] Acceptance tests in `tests/acceptance/test_08_deploy.py` pass
+- [x] `tests/unit/test_deploy.py` covers: build runs before push, `gh-pages` branch updated, `main` branch unaffected
 
 ---
 
