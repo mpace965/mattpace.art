@@ -71,11 +71,8 @@ class Sketch:
         """Add a SourceFile node to the DAG."""
         from sketchbook.steps.source import SourceFile
 
-        step = SourceFile(self._sketch_dir / path)
         node_id = f"source_{name}"
-        workdir_path = self._workdir / f"{node_id}.png"
-        node = _ManagedNode(step, node_id, self, workdir_path=str(workdir_path))
-        self._dag.add_node(node)
+        node = self._register_node(SourceFile(self._sketch_dir / path), node_id)
         log.debug(f"Added source node '{node_id}' watching {self._sketch_dir / path}")
         return node
 
@@ -86,21 +83,25 @@ class Sketch:
         self._step_counts[base_name] = count + 1
         return f"{base_name}_{count}"
 
+    def _register_node(self, step: PipelineStep, node_id: str) -> _ManagedNode:
+        """Wrap step in a _ManagedNode with a workdir path and register it in the DAG."""
+        workdir_path = self._workdir / f"{node_id}.png"
+        node = _ManagedNode(step, node_id, self, workdir_path=str(workdir_path))
+        self._dag.add_node(node)
+        return node
+
     def _make_node(
         self,
         step_class: type[PipelineStep],
         node_id: str,
         param_overrides: dict[str, dict] | None = None,
     ) -> _ManagedNode:
-        """Instantiate step_class, apply param overrides, create a workdir path, register in DAG."""
+        """Instantiate step_class, apply param overrides, and register in the DAG."""
         step = step_class()
         if param_overrides:
             for param_name, fields in param_overrides.items():
                 step._param_registry.override(param_name, **fields)
-        workdir_path = self._workdir / f"{node_id}.png"
-        node = _ManagedNode(step, node_id, self, workdir_path=str(workdir_path))
-        self._dag.add_node(node)
-        return node
+        return self._register_node(step, node_id)
 
     def _pipe(
         self,
@@ -135,10 +136,7 @@ class Sketch:
         from sketchbook.steps.output_bundle import OutputBundle
 
         node_id = self._next_id(OutputBundle)
-        step = OutputBundle(bundle_name, presets=presets)
-        workdir_path = self._workdir / f"{node_id}.png"
-        managed = _ManagedNode(step, node_id, self, workdir_path=str(workdir_path))
-        self._dag.add_node(managed)
+        managed = self._register_node(OutputBundle(bundle_name, presets=presets), node_id)
         self._dag.connect(node.id, node_id, "image")
         log.debug(f"Wired {node.id} -> {node_id} via 'image' (bundle: {bundle_name!r})")
         return managed
