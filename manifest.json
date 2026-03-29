@@ -1,5 +1,17 @@
 [
   {
+    "slug": "fence-torn-paper",
+    "name": "fence-torn-paper",
+    "description": "weathered fence with torn paper and emphasized edges.",
+    "date": "2026-03-29",
+    "variants": [
+      {
+        "name": "default",
+        "image_path": "fence-torn-paper/default.png"
+      }
+    ]
+  },
+  {
     "slug": "cardboard-stripes",
     "name": "cardboard-stripes",
     "description": "greyscale cardboard texture with a stack of inverted horizontal bars.",
