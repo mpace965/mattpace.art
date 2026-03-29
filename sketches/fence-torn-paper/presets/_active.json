@@ -1,0 +1,17 @@
+{
+  "_meta": {
+    "dirty": false,
+    "based_on": "default"
+  },
+  "gaussian_blur_0": {
+    "kernel": 5,
+    "sigma": 1.4
+  },
+  "canny_edge_0": {
+    "low": 150,
+    "high": 400
+  },
+  "canny_composite_0": {
+    "weight": 7
+  }
+}
