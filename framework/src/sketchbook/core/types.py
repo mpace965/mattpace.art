@@ -2,31 +2,41 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+import io
+from abc import ABC, abstractmethod
 
-import cv2
 import numpy as np
+from PIL import Image as PILImage
 
 
-class Image:
+class PipelineValue(ABC):
+    """Abstract base class for values that flow through the pipeline.
+
+    Subclasses declare their serialisation format via class attributes and
+    implement to_bytes() to produce the wire representation written to the
+    workdir. from_bytes() is reserved for future use (Increment B).
+    """
+
+    extension: str
+    mime_type: str
+
+    @abstractmethod
+    def to_bytes(self) -> bytes:
+        """Return the serialised representation of this value."""
+
+
+class Image(PipelineValue):
     """Wraps a numpy array representing an image."""
+
+    extension = "png"
+    mime_type = "image/png"
 
     def __init__(self, data: np.ndarray) -> None:
         self.data = data
 
-    @classmethod
-    def load(cls, path: str | Path) -> Image:
-        """Load an image from disk."""
-        path = Path(path)
-        if not path.exists():
-            raise FileNotFoundError(f"Image not found: {path}")
-        data = cv2.imread(str(path))
-        if data is None:
-            raise ValueError(f"Could not decode image: {path}")
-        return cls(data)
-
-    def save(self, path: str | Path) -> None:
-        """Write the image to disk."""
-        path = Path(path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        cv2.imwrite(str(path), self.data)
+    def to_bytes(self) -> bytes:
+        """Encode the image array as PNG bytes using Pillow."""
+        pil = PILImage.fromarray(self.data)
+        buf = io.BytesIO()
+        pil.save(buf, format="PNG")
+        return buf.getvalue()

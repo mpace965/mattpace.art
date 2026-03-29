@@ -5,14 +5,21 @@ from __future__ import annotations
 from collections.abc import Generator
 from pathlib import Path
 
+import cv2
 import numpy as np
 import pytest
 from fastapi.testclient import TestClient
 
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
+from sketchbook.core.types import Image
 from sketchbook.server.app import create_app
 from tests.steps import EdgeDetect, GaussianBlur, Passthrough
+
+
+def _cv2_loader(path: Path) -> Image:
+    """Load an image using cv2 — for use in test fixture sketches."""
+    return Image(cv2.imread(str(path)))
 
 # ---------------------------------------------------------------------------
 # Image helpers
@@ -66,7 +73,7 @@ class _HelloSketch(Sketch):
 
     def build(self) -> None:
         """Wire a source image through a passthrough step."""
-        photo = self.source("photo", "assets/fence-torn-paper.png")
+        photo = self.source("photo", "assets/fence-torn-paper.png", loader=_cv2_loader)
         photo.pipe(Passthrough)
 
 
@@ -116,7 +123,7 @@ class _EdgeHelloSketch(Sketch):
 
     def build(self) -> None:
         """Wire a source image through blur then edge detection."""
-        photo = self.source("photo", "assets/hello.jpg")
+        photo = self.source("photo", "assets/hello.jpg", loader=_cv2_loader)
         photo.pipe(GaussianBlur, params={"sigma": {"max": 3.0, "step": 0.05}}).pipe(EdgeDetect)
 
 
@@ -153,7 +160,7 @@ class _MultiStepSketch(Sketch):
 
     def build(self) -> None:
         """Wire photo through blur then edge detection."""
-        photo = self.source("photo", "assets/photo.jpg")
+        photo = self.source("photo", "assets/photo.jpg", loader=_cv2_loader)
         photo.pipe(GaussianBlur).pipe(EdgeDetect)
 
 
@@ -192,8 +199,8 @@ class _MaskedEdgeSketch(Sketch):
 
     def build(self) -> None:
         """Wire photo through blur, with mask as optional second input to edge detect."""
-        photo = self.source("photo", "assets/photo.jpg")
-        mask = self.source("mask", "assets/mask.png")
+        photo = self.source("photo", "assets/photo.jpg", loader=_cv2_loader)
+        mask = self.source("mask", "assets/mask.png", loader=_cv2_loader)
         blur = photo.pipe(GaussianBlur)
         self.add(EdgeDetect, inputs={"image": blur, "mask": mask})
 
@@ -207,7 +214,7 @@ class _NoMaskEdgeSketch(Sketch):
 
     def build(self) -> None:
         """Wire photo through blur then edge detect (no mask)."""
-        photo = self.source("photo", "assets/photo.jpg")
+        photo = self.source("photo", "assets/photo.jpg", loader=_cv2_loader)
         blur = photo.pipe(GaussianBlur)
         blur.pipe(EdgeDetect)
 

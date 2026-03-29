@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -67,12 +68,21 @@ class Sketch:
         """Override to define the pipeline."""
         raise NotImplementedError(f"{type(self).__name__} must implement build()")
 
-    def source(self, name: str, path: str) -> _ManagedNode:
-        """Add a SourceFile node to the DAG."""
+    def source(self, name: str, path: str, loader: Callable[[Path], Any] | None = None) -> _ManagedNode:
+        """Add a SourceFile node to the DAG.
+
+        Args:
+            name: Node name suffix (becomes source_{name}).
+            path: Path relative to the sketch directory.
+            loader: Callable that accepts a Path and returns a pipeline value.
+                    The framework provides no default — image-library choices belong in userland.
+        """
         from sketchbook.steps.source import SourceFile
 
         node_id = f"source_{name}"
-        node = self._register_node(SourceFile(self._sketch_dir / path), node_id)
+        node = self._register_node(
+            SourceFile(self._sketch_dir / path, loader=loader), node_id
+        )
         log.debug(f"Added source node '{node_id}' watching {self._sketch_dir / path}")
         return node
 

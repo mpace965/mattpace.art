@@ -10,8 +10,13 @@ import numpy as np
 
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
+from sketchbook.core.types import Image
 from sketchbook.server.registry import SketchRegistry
 from tests.steps import EdgeDetect, GaussianBlur, Passthrough
+
+
+def _cv2_loader(path: Path) -> Image:
+    return Image(cv2.imread(str(path)))
 
 
 class _SingleSourceSketch(Sketch):
@@ -22,7 +27,7 @@ class _SingleSourceSketch(Sketch):
     date = "2026-03-18"
 
     def build(self) -> None:
-        photo = self.source("photo", "assets/test.jpg")
+        photo = self.source("photo", "assets/test.jpg", loader=_cv2_loader)
         photo.pipe(Passthrough)
 
 
@@ -34,8 +39,8 @@ class _TwoSourceSketch(Sketch):
     date = "2026-03-18"
 
     def build(self) -> None:
-        photo = self.source("photo", "assets/photo.jpg")
-        mask = self.source("mask", "assets/mask.jpg")
+        photo = self.source("photo", "assets/photo.jpg", loader=_cv2_loader)
+        mask = self.source("mask", "assets/mask.jpg", loader=_cv2_loader)
         blur = photo.pipe(GaussianBlur)
         self.add(EdgeDetect, inputs={"image": blur, "mask": mask})
 

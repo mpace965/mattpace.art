@@ -6,9 +6,9 @@ dependencies = [
     "fastapi",
     "uvicorn[standard]",
     "jinja2",
-    "watchdog",
-    "opencv-python-headless",
     "numpy",
+    "pillow",
+    "watchdog",
     "websockets",
 ]
 
@@ -38,6 +38,7 @@ select = ["E", "F", "I", "UP"]
 [dependency-groups]
 dev = [
     "httpx>=0.28.1",
+    "opencv-python-headless",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
     "ruff>=0.9",

@@ -5,10 +5,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import cv2
 import pytest
 
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
+from sketchbook.core.types import Image
 from tests.conftest import make_test_image
 from tests.steps import EdgeDetect, GaussianBlur, Passthrough
 
@@ -22,7 +24,7 @@ class _EdgePortraitSketch(Sketch):
 
     def build(self) -> None:
         """Wire photo through blur, edge detect, then mark as bundle output."""
-        photo = self.source("photo", "assets/photo.jpg")
+        photo = self.source("photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p))))
         blurred = photo.pipe(GaussianBlur)
         edges = blurred.pipe(EdgeDetect)
         self.output_bundle(edges, "bundle")
@@ -74,7 +76,7 @@ def test_build_produces_bundle_with_variants(tmp_sketch_with_presets: Path) -> N
     assert "soft_edges" in variant_names
 
     img_bytes = (output_dir / "edge-portrait" / "heavy_edges.png").read_bytes()
-    assert len(img_bytes) > 100
+    assert img_bytes[:8] == b"\x89PNG\r\n\x1a\n"
 
 
 def test_build_without_output_bundle_produces_empty_bundle(tmp_path: Path) -> None:

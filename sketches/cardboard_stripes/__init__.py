@@ -30,9 +30,10 @@ class CardboardStripes(Sketch):
     name = "cardboard-stripes"
     description = "greyscale cardboard texture with a stack of inverted horizontal bars."
     date = "2026-03-12"
+
     def build(self) -> None:
         """Load cardboard photo, generate a stripe mask, and apply DIFFERENCE blend."""
-        photo = self.source("photo", "assets/cardboard.jpg")
+        photo = self.source("photo", "assets/cardboard.jpg", loader=lambda p: Image(cv2.imread(str(p))))
         mask = photo.pipe(StripesMask)
         blended = self.add(DifferenceBlend, inputs={"image": photo, "mask": mask})
         self.output_bundle(blended, SITE_BUNDLE, presets=["three", "steps"])

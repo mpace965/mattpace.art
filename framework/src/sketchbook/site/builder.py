@@ -45,7 +45,7 @@ def _snapshot_variants(
         for bundle_node in bundle_nodes:
             if bundle_node.output is not None:
                 dest = sketch_output_dir / f"{preset_name}.png"
-                bundle_node.output.save(dest)
+                dest.write_bytes(bundle_node.output.to_bytes())
                 log.info(f"  baked {preset_name} -> {dest}")
 
         produced.append(preset_name)

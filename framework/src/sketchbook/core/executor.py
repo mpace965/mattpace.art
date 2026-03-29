@@ -79,7 +79,7 @@ def _execute_nodes(dag: DAG, subset: set[str] | None) -> ExecutionResult:
             node.output = node.step.process(inputs, params)
             result.executed.add(node.id)
             if node.workdir_path and node.output is not None:
-                node.output.save(node.workdir_path)
+                Path(node.workdir_path).write_bytes(node.output.to_bytes())
                 log.debug(f"Wrote output for '{node.id}' to {node.workdir_path}")
         except Exception as exc:
             result.errors[node.id] = exc

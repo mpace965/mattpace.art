@@ -7,6 +7,7 @@ from typing import Any
 
 import numpy as np
 
+from sketchbook.core.executor import execute
 from sketchbook.core.sketch import Sketch, _step_id_base
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
@@ -235,3 +236,45 @@ def test_add_with_custom_id(tmp_path: Path) -> None:
 
     sketch = _CustomIdSketch(tmp_path)
     assert "my_step" in sketch.dag.nodes
+
+
+# ---------------------------------------------------------------------------
+# loader= parameter on source()
+# ---------------------------------------------------------------------------
+
+def test_sketch_source_without_loader_fails_on_execute(tmp_path: Path) -> None:
+    """A source() call with no loader produces a ValueError in the execution result."""
+    _make_asset(tmp_path)
+
+    class _NoLoaderSketch(Sketch):
+        name = "no loader"
+        description = ""
+        date = ""
+
+        def build(self) -> None:
+            self.source("photo", "assets/photo.png")
+
+    sketch = _NoLoaderSketch(tmp_path)
+    result = execute(sketch.dag)
+    assert not result.ok
+    err = result.errors["source_photo"]
+    assert isinstance(err, ValueError)
+    assert "loader" in str(err)
+
+
+def test_sketch_source_loader_is_called(tmp_path: Path) -> None:
+    """loader= passed to source() is invoked during execution."""
+    _make_asset(tmp_path)
+    sentinel = Image(np.zeros((2, 2, 3), dtype=np.uint8))
+
+    class _WithLoaderSketch(Sketch):
+        name = "with loader"
+        description = ""
+        date = ""
+
+        def build(self) -> None:
+            self.source("photo", "assets/photo.png", loader=lambda _p: sentinel)
+
+    sketch = _WithLoaderSketch(tmp_path)
+    execute(sketch.dag)
+    assert sketch.dag.node("source_photo").output is sentinel

@@ -11,6 +11,7 @@ from sketchbook.core.dag import DAG, DAGNode
 from sketchbook.core.executor import execute, execute_partial
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
+from sketchbook.steps.source import SourceFile
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -289,6 +290,26 @@ def test_optional_input_receives_image_when_connected() -> None:
     execute(dag)
 
     assert step.received_mask is mask_img
+
+
+# ---------------------------------------------------------------------------
+# Workdir write via to_bytes
+# ---------------------------------------------------------------------------
+
+def test_executor_writes_workdir_via_to_bytes(tmp_path: Path) -> None:
+    """Executor writes workdir files using to_bytes(), not a save() method."""
+    sentinel = Image(np.zeros((4, 4, 3), dtype=np.uint8))
+
+    dag = DAG()
+    step = SourceFile(tmp_path / "photo.png", loader=lambda _: sentinel)
+    workdir_path = tmp_path / "out.png"
+    node = DAGNode(step, "source_photo", workdir_path=str(workdir_path))
+    dag.add_node(node)
+
+    execute(dag)
+
+    assert workdir_path.exists()
+    assert workdir_path.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"
 
 
 # ---------------------------------------------------------------------------

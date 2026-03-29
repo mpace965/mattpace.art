@@ -16,8 +16,7 @@ image-library choices.
       instead of `node.output.save(path)`
 - [ ] `SourceFile` accepts an optional `loader` callable; raises a descriptive error if
       executed without one
-- [ ] `Sketch._source_loader` class attribute wires a default loader through to every
-      `SourceFile` node created by `source()`
+- [ ] `Sketch.source()` accepts an optional `loader` parameter and forwards it to `SourceFile`
 - [ ] `pillow` added to `[dependencies]`; `opencv-python-headless` moved to
       `[dependency-groups] dev`
 - [ ] All existing tests pass
@@ -35,7 +34,7 @@ Acceptance criteria:
     Image is a PipelineValue with extension and mime_type.
     Image.to_bytes() produces valid PNG bytes without cv2.
     Image has no load or save methods.
-    A sketch that declares _source_loader runs end-to-end and the result is
+    A sketch that passes loader= to source() runs end-to-end and the result is
     visible in the browser — identical to the walking skeleton, but image
     loading is entirely the sketch's responsibility and the workdir write
     goes through to_bytes(), not cv2.
@@ -153,7 +152,7 @@ Expected failures:
 - `test_image_to_bytes_produces_valid_png` — `Image` has no `to_bytes()` method
 - `test_image_has_no_load_method` — `Image.load` currently exists
 - `test_image_has_no_save_method` — `Image.save` currently exists
-- `test_sketch_with_loader_runs_end_to_end` — `Sketch._source_loader` does not exist yet
+- `test_sketch_with_loader_runs_end_to_end` — `source()` does not yet accept `loader=`
 - `test_workdir_file_written_via_to_bytes` — same root cause
 - `test_sketch_with_loader_result_visible_in_browser` — same root cause
 
@@ -466,15 +465,15 @@ All four tests must pass.
 
 ---
 
-## Inner loop 4 — `Sketch._source_loader` wires through to `SourceFile`
+## Inner loop 4 — `source()` accepts a `loader=` parameter
 
 ### Step 15: add tests to `tests/unit/test_sketch.py`
 
 Add the following tests (do not remove existing ones):
 
 ```python
-def test_sketch_source_without_loader_raises_on_execute(tmp_path: Path) -> None:
-    """A Sketch with no _source_loader raises ValueError when the source step runs."""
+def test_sketch_source_without_loader_fails_on_execute(tmp_path: Path) -> None:
+    """A source() call with no loader produces a ValueError in the execution result."""
     _make_asset(tmp_path)
 
     class _NoLoaderSketch(Sketch):
@@ -486,12 +485,15 @@ def test_sketch_source_without_loader_raises_on_execute(tmp_path: Path) -> None:
             self.source("photo", "assets/photo.png")
 
     sketch = _NoLoaderSketch(tmp_path)
-    with pytest.raises(ValueError, match="loader"):
-        execute(sketch.dag)
+    result = execute(sketch.dag)
+    assert not result.ok
+    err = result.errors["source_photo"]
+    assert isinstance(err, ValueError)
+    assert "loader" in str(err)
 
 
-def test_sketch_source_loader_is_passed_to_source_file(tmp_path: Path) -> None:
-    """When _source_loader is set, source() wires it through to SourceFile."""
+def test_sketch_source_loader_is_called(tmp_path: Path) -> None:
+    """loader= passed to source() is invoked during execution."""
     import numpy as np
 
     _make_asset(tmp_path)
@@ -501,18 +503,14 @@ def test_sketch_source_loader_is_passed_to_source_file(tmp_path: Path) -> None:
         name = "with loader"
         description = ""
         date = ""
-        _source_loader = staticmethod(lambda _p: sentinel)
 
         def build(self) -> None:
-            self.source("photo", "assets/photo.png")
+            self.source("photo", "assets/photo.png", loader=lambda _p: sentinel)
 
     sketch = _WithLoaderSketch(tmp_path)
-    results = execute(sketch.dag)
-    assert results["source_photo"] is sentinel
+    execute(sketch.dag)
+    assert sketch.dag.node("source_photo").output is sentinel
 ```
-
-You'll also need `from sketchbook.core.executor import execute` and `pytest` at the top if
-not already imported. Check the existing imports in `test_sketch.py` before adding.
 
 ### Step 16: run unit tests — confirm RED
 
@@ -520,33 +518,33 @@ not already imported. Check the existing imports in `test_sketch.py` before addi
 uv run pytest tests/unit/test_sketch.py -v -k "loader"
 ```
 
-Both new tests should fail: `_source_loader` does not exist on `Sketch` yet.
+Both new tests should fail: `source()` does not yet accept a `loader=` parameter.
 
-### Step 17: implement — add `_source_loader` to `Sketch`
+### Step 17: implement — add `loader=` to `Sketch.source()`
 
 Update `framework/src/sketchbook/core/sketch.py`:
 
-- Add class attribute `_source_loader: Callable[[Path], Any] | None = None`
-- Update `source()` to pass `self._source_loader` as the `loader` kwarg to `SourceFile`
+- Update `source()` to accept an optional `loader` parameter and forward it to `SourceFile`
+- No class attribute needed — the loader is per-call
 
 ```python
-from collections.abc import Callable
-from typing import Any
+def source(self, name: str, path: str, loader: Callable[[Path], Any] | None = None) -> _ManagedNode:
+    """Add a SourceFile node to the DAG.
 
-class Sketch:
-    ...
-    _source_loader: Callable[[Path], Any] | None = None
+    Args:
+        name: Node name suffix (becomes source_{name}).
+        path: Path relative to the sketch directory.
+        loader: Callable that accepts a Path and returns a pipeline value.
+                The framework provides no default — image-library choices belong in userland.
+    """
+    from sketchbook.steps.source import SourceFile
 
-    def source(self, name: str, path: str) -> _ManagedNode:
-        """Add a SourceFile node to the DAG."""
-        from sketchbook.steps.source import SourceFile
-
-        node_id = f"source_{name}"
-        node = self._register_node(
-            SourceFile(self._sketch_dir / path, loader=self._source_loader), node_id
-        )
-        log.debug(f"Added source node '{node_id}' watching {self._sketch_dir / path}")
-        return node
+    node_id = f"source_{name}"
+    node = self._register_node(
+        SourceFile(self._sketch_dir / path, loader=loader), node_id
+    )
+    log.debug(f"Added source node '{node_id}' watching {self._sketch_dir / path}")
+    return node
 ```
 
 ### Step 18: run unit tests — confirm GREEN
@@ -576,12 +574,9 @@ Each failing test falls into one of these categories:
 `_HelloSketch`, `_EdgeHelloSketch`, `_MultiStepSketch`, `_MaskedEdgeSketch`,
 `_NoMaskEdgeSketch` all call `self.source()` without a loader.
 
-Fix: add `_source_loader` to each fixture sketch:
+Fix: pass `loader=` directly to each `source()` call:
 ```python
-import cv2
-from sketchbook.core.types import Image
-
-_source_loader = staticmethod(lambda p: Image(cv2.imread(str(p))))
+photo = self.source("photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p))))
 ```
 
 **b) Sketch subclasses in watcher tests (`test_watcher.py`)**
@@ -593,8 +588,9 @@ These tests only build a DAG and never execute it — `process()` is never calle
 fix is needed. They should pass as-is.
 
 **d) `test_sketch.py` — `_SingleSourceSketch`, `_PipeSketch`, etc.**
-These call `execute(sketch.dag)`. Add `_source_loader` to each inline sketch class in the
-test file, or update `_make_asset` + `Sketch` test classes together.
+Most inline sketch classes in this file only build the DAG and never execute it, so no
+loader is needed. Only the two `loader` tests (added in Step 15) call `execute()`, and
+those already supply a loader via `source(loader=...)`.
 
 There is no unit test to write for this step — it is purely adapting test fixtures to the
 new API. Do not write new implementation. Just update the fixtures.
