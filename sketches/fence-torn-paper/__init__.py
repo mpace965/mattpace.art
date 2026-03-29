@@ -18,7 +18,7 @@ class FenceTornPaper(Sketch):
     """Canny edge detection composited in hot pink over the source photo."""
 
     name = "fence-torn-paper"
-    description = "canny edge detection on a weathered fence with torn paper."
+    description = "weathered fence with torn paper and emphasized edges."
     date = "2026-03-29"
 
     def build(self) -> None:
