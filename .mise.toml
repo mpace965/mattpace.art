@@ -31,7 +31,7 @@ run = "npm --prefix site run build"
 description = "Generate static site"
 
 [tasks.build]
-depends = ["sketches:build", "site:build"]
+run = "mise run sketches:build && mise run site:build"
 description = "Build sketch bundles then generate static site"
 
 [tasks."sketches:clean"]
