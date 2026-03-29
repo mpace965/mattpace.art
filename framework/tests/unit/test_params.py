@@ -1,10 +1,10 @@
-"""Unit tests for ParamDef and ParamRegistry."""
+"""Unit tests for ParamDef, ParamRegistry, and Color."""
 
 from __future__ import annotations
 
 import pytest
 
-from sketchbook.core.params import ParamDef, ParamRegistry
+from sketchbook.core.params import Color, ParamDef, ParamRegistry
 from sketchbook.server.tweakpane import param_def_to_tweakpane, param_registry_to_tweakpane
 
 
@@ -184,6 +184,16 @@ class TestParamRegistry:
         reg.set_value("flag", False)
         assert reg.get_value("flag") is False
 
+    def test_color_set_value_coerces_hex_string(self) -> None:
+        reg = ParamRegistry()
+        reg.add(ParamDef(name="tint", type=Color, default=Color("#000000")))
+        reg.set_value("tint", "#ff69b4")
+        val = reg.get_value("tint")
+        assert isinstance(val, Color)
+        assert val.r == 0xFF
+        assert val.g == 0x69
+        assert val.b == 0xB4
+
     def test_serialization_roundtrip(self) -> None:
         reg = ParamRegistry()
         reg.add(ParamDef(name="threshold1", type=float, default=100.0))
@@ -194,3 +204,36 @@ class TestParamRegistry:
         reg2.add(ParamDef(name="threshold1", type=float, default=100.0))
         reg2.load_values(data)
         assert reg2.get_value("threshold1") == 42.0
+
+
+class TestColor:
+    def test_parses_hex_string(self) -> None:
+        c = Color("#ff69b4")
+        assert c.r == 0xFF
+        assert c.g == 0x69
+        assert c.b == 0xB4
+
+    def test_to_bgr(self) -> None:
+        c = Color("#ff69b4")
+        assert c.to_bgr() == (0xB4, 0x69, 0xFF)
+
+    def test_str_round_trips(self) -> None:
+        original = Color("#ff69b4")
+        restored = Color(str(original))
+        assert restored.r == original.r
+        assert restored.g == original.g
+        assert restored.b == original.b
+
+    def test_str_is_lowercase_hex(self) -> None:
+        c = Color("#FF69B4")
+        assert str(c) == "#ff69b4"
+
+    def test_invalid_hex_raises(self) -> None:
+        with pytest.raises(ValueError):
+            Color("not-a-color")
+
+    def test_tweakpane_emits_hex_string(self) -> None:
+        p = ParamDef(name="tint", type=Color, default=Color("#ff69b4"))
+        d = param_def_to_tweakpane(p, current_value=Color("#ff69b4"))
+        assert d["value"] == "#ff69b4"
+        assert isinstance(d["value"], str)

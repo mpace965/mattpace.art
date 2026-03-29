@@ -11,7 +11,7 @@ def param_def_to_tweakpane(param: ParamDef, current_value: Any) -> dict[str, Any
     """Return a Tweakpane-compatible schema dict for a single param definition."""
     d: dict[str, Any] = {
         "type": param.type.__name__,
-        "value": current_value,
+        "value": param.tweakpane_value(current_value),
     }
     if param.min is not None:
         d["min"] = param.min

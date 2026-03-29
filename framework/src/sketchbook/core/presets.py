@@ -8,8 +8,19 @@ from pathlib import Path
 from typing import Any
 
 from sketchbook.core.dag import DAG
+from sketchbook.core.params import Color
 
 log = logging.getLogger("sketchbook.core.presets")
+
+
+class _Encoder(json.JSONEncoder):
+    """JSON encoder that serializes Color instances as hex strings."""
+
+    def default(self, o: Any) -> Any:
+        """Encode Color as its hex string representation."""
+        if isinstance(o, Color):
+            return str(o)
+        return super().default(o)
 
 
 def _snapshot_params(dag: DAG) -> dict[str, Any]:
@@ -89,13 +100,14 @@ class PresetManager:
             },
             **_snapshot_params(dag),
         }
-        (self._dir / "_active.json").write_text(json.dumps(data, indent=2))
+        (self._dir / "_active.json").write_text(json.dumps(data, indent=2, cls=_Encoder))
         log.debug(f"Saved _active.json (dirty={self._dirty})")
 
     def save_preset(self, name: str, dag: DAG) -> None:
         """Save current params as a named preset and mark active as clean."""
         self._dir.mkdir(parents=True, exist_ok=True)
-        (self._dir / f"{name}.json").write_text(json.dumps(_snapshot_params(dag), indent=2))
+        snapshot = json.dumps(_snapshot_params(dag), indent=2, cls=_Encoder)
+        (self._dir / f"{name}.json").write_text(snapshot)
         self._dirty = False
         self._based_on = name
         self.save_active(dag)

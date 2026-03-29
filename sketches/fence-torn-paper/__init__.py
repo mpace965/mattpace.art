@@ -7,12 +7,11 @@ from typing import Any
 import cv2
 import numpy as np
 from sketchbook import Sketch
+from sketchbook.core.params import Color
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
 
 from sketches import SITE_BUNDLE
-
-_HOT_PINK_RGB = (255, 105, 180)
 
 
 class FenceTornPaper(Sketch):
@@ -48,6 +47,7 @@ class FenceTornPaper(Sketch):
             inputs={"source": photo, "edges": edges},
             params={
                 "weight": {"min": 1, "max": 21, "step": 2},
+                "color": {},
             },
         )
         self.output_bundle(composite, SITE_BUNDLE)
@@ -93,13 +93,14 @@ class CannyComposite(PipelineStep):
     """Composite hot-pink Canny edges over the source image."""
 
     def setup(self) -> None:
-        """Declare source and edge mask inputs, and stroke weight parameter."""
+        """Declare source and edge mask inputs, stroke weight and edge color parameters."""
         self.add_input("source", Image)
         self.add_input("edges", Image)
         self.add_param("weight", int, default=1, debounce=150, min=1, max=21, step=2)
+        self.add_param("color", Color, default=Color("#ff69b4"), debounce=150)
 
     def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
-        """Return source image with hot-pink edges composited on top."""
+        """Return source image with colored edges composited on top."""
         src = inputs["source"].data
         mask = inputs["edges"].data
 
@@ -108,7 +109,8 @@ class CannyComposite(PipelineStep):
             kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (weight, weight))
             mask = cv2.dilate(mask, kernel)
 
-        pink_layer = np.full_like(src, _HOT_PINK_RGB, dtype=np.uint8)
+        color: Color = params["color"]
+        color_layer = np.full_like(src, (color.r, color.g, color.b), dtype=np.uint8)
         edge_mask_3ch = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-        result = np.where(edge_mask_3ch > 0, pink_layer, src)
+        result = np.where(edge_mask_3ch > 0, color_layer, src)
         return Image(result.astype(np.uint8))

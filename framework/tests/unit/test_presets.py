@@ -251,3 +251,42 @@ def test_reset_writes_active_json(tmp_path: Path, minimal_dag) -> None:
     data = json.loads((tmp_path / "presets" / "_active.json").read_text())
     assert data["_meta"]["dirty"] is False
     assert data["_meta"]["based_on"] is None
+
+
+# ---------------------------------------------------------------------------
+# Color param serialization
+# ---------------------------------------------------------------------------
+
+
+def test_snapshot_params_serializes_color_as_hex(tmp_path: Path) -> None:
+    """_snapshot_params with a Color param produces JSON-serializable output."""
+    import json
+    from typing import Any
+
+    from sketchbook.core.dag import DAG, DAGNode
+    from sketchbook.core.params import Color
+    from sketchbook.core.step import PipelineStep
+    from sketchbook.core.types import Image
+    from sketchbook.steps.source import SourceFile
+
+    class TintStep(PipelineStep):
+        def setup(self) -> None:
+            self.add_input("image", Image)
+            self.add_param("tint", Color, default=Color("#ff69b4"))
+
+        def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
+            return inputs["image"]
+
+    dag = DAG()
+    source = SourceFile(tmp_path / "img.png")
+    dag.add_node(DAGNode(source, "source"))
+    step = TintStep()
+    dag.add_node(DAGNode(step, "tint_step"))
+    dag.connect("source", "tint_step", "image")
+
+    pm = PresetManager(tmp_path / "presets")
+    # Should not raise — Color must be serializable
+    pm.save_active(dag)
+
+    data = json.loads((tmp_path / "presets" / "_active.json").read_text())
+    assert data["tint_step"]["tint"] == "#ff69b4"
