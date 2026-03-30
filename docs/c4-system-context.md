@@ -1,78 +1,98 @@
 # C4 System Context Diagram
 
 ```mermaid
-C4Context
-    title System Context Diagram — mattpace.art Monorepo
+---
+title: System Context — mattpace.art Monorepo
+---
+flowchart TD
+    artist["🧑‍🎨 Artist/Developer\n\nAuthors sketches, tunes\nparameters, deploys site"]
+    agent["🤖 Coding Agent\n\nWrites framework and sketch\ncode, runs tests and linter"]
+    visitor["👤 Site Visitor\n\nViews published\ngenerative art"]
 
-    Person(artist, "Artist/Developer", "Authors sketches, tunes parameters, deploys site")
-    Person_Ext(agent, "Coding Agent", "Writes framework and sketch code, runs tests and linter")
-    Person(visitor, "Site Visitor", "Views published generative art")
+    sketchbook["Sketchbook\n\nReactive DAG-based creative\ncoding framework: pipeline engine,\nexecutor, dev server, build tooling, CLI"]
+    userland["mattpace.art\n\nUserland sketches, static site,\npresets, and deployment config"]
 
-    System(sketchbook, "Sketchbook", "Reactive DAG-based creative coding framework: pipeline engine, executor, dev server, build tooling, CLI")
-    System(userland, "mattpace.art", "Userland sketches, static site, presets, and deployment config")
+    github[("GitHub\n\nCode hosting, PRs,\nGitHub Pages")]
 
-    System_Ext(github, "GitHub", "Code hosting, pull requests, GitHub Pages deployment")
+    artist -->|"Runs dev server\nand build CLI"| sketchbook
+    artist -->|"Authors sketches,\ntunes parameters"| userland
+    artist -->|"Deploys site"| github
 
-    Rel_D(artist, sketchbook, "Runs dev server and build CLI")
-    Rel_D(artist, userland, "Authors sketches, tunes parameters")
-    Rel_R(artist, github, "Deploys site")
+    agent -->|"Writes framework\ncode, runs tests"| sketchbook
+    agent -->|"Writes pipeline\nsteps"| userland
+    agent -->|"Pushes branches,\ncreates PRs"| github
 
-    Rel_D(agent, sketchbook, "Writes framework code, runs tests")
-    Rel_D(agent, userland, "Writes pipeline steps")
-    Rel_R(agent, github, "Pushes branches, creates PRs")
+    visitor -->|"Views published art"| userland
 
-    Rel_D(visitor, userland, "Views published art")
+    userland -->|"Depends on\n(Python package)"| sketchbook
+    userland -->|"Deployed via\nGitHub Pages"| github
 
-    Rel_R(userland, sketchbook, "Depends on", "Python package")
-    Rel_D(userland, github, "Deployed via", "GitHub Pages")
-
-    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="2")
+    style artist fill:#08427b,color:#fff,stroke:#073b6e
+    style agent fill:#999,color:#fff,stroke:#777
+    style visitor fill:#08427b,color:#fff,stroke:#073b6e
+    style sketchbook fill:#1168bd,color:#fff,stroke:#0e5aa7
+    style userland fill:#1168bd,color:#fff,stroke:#0e5aa7
+    style github fill:#666,color:#fff,stroke:#555
 ```
 
 # C4 Container Diagram
 
 ```mermaid
-C4Container
-    title Container Diagram — mattpace.art Monorepo
+---
+title: Container Diagram — mattpace.art Monorepo
+---
+flowchart TD
+    artist["🧑‍🎨 Artist/Developer"]
+    agent["🤖 Coding Agent"]
+    visitor["👤 Site Visitor"]
+    github[("GitHub\nCode hosting, PRs, GitHub Pages")]
 
-    Person(artist, "Artist/Developer", "Authors sketches, tunes parameters, deploys site")
-    Person_Ext(agent, "Coding Agent", "Writes framework and sketch code")
-    Person(visitor, "Site Visitor", "Views published generative art")
+    subgraph sketchbook ["Sketchbook (Framework)"]
+        dag_engine["DAG Engine\n\nPython\nDAG, executor, pipeline steps,\ntypes, params, presets"]
+        dev_server["Dev Server\n\nFastAPI\nPipeline outputs, Tweakpane UI,\nWebSocket live reload"]
+        bundle_builder["Bundle Builder\n\nPython\nExecutes presets, writes output\nimages and manifest"]
+    end
 
-    System_Ext(github, "GitHub", "Code hosting, PRs, GitHub Pages")
+    subgraph userland ["mattpace.art (Userland)"]
+        sketches["Sketches\n\nPython\nPipeline step implementations,\nassets, presets"]
+        static_site["Static Site\n\n11ty\nPublished art pages,\nreads bundle manifest"]
+        mise["Mise Task Runner\n\nTOML, shell\nOrchestrates dev, build,\ndeploy tasks"]
+    end
 
-    System_Boundary(sketchbook, "Sketchbook (Framework)") {
-        Container(dag_engine, "DAG Engine", "Python", "DAG, executor, pipeline steps, types, params, presets")
-        Container(dev_server, "Dev Server", "FastAPI", "Pipeline outputs, Tweakpane UI, WebSocket live reload")
-        Container(bundle_builder, "Bundle Builder", "Python", "Executes presets, writes output images and manifest")
-    }
+    artist -->|"Tunes params,\nviews outputs (Browser)"| dev_server
+    artist -->|"Runs dev, build,\ndeploy (CLI)"| mise
 
-    System_Boundary(userland, "mattpace.art (Userland)") {
-        Container(sketches, "Sketches", "Python", "Pipeline step implementations, assets, presets")
-        Container(static_site, "Static Site", "11ty", "Published art pages, reads bundle manifest")
-        Container(mise, "Mise Task Runner", "TOML, shell", "Orchestrates dev, build, deploy tasks")
-    }
+    agent -->|"Writes pipeline steps"| sketches
+    agent -->|"Writes framework code"| dag_engine
+    agent -->|"Pushes branches,\ncreates PRs"| github
 
-    Rel_D(artist, dev_server, "Tunes parameters, views outputs", "Browser")
-    Rel_D(artist, mise, "Runs dev, build, deploy", "CLI")
+    visitor -->|"Views published\nart (HTTPS)"| static_site
 
-    Rel_D(agent, sketches, "Writes pipeline steps")
-    Rel_D(agent, dag_engine, "Writes framework code")
-    Rel_L(agent, github, "Pushes branches, creates PRs")
+    dev_server -->|"Executes pipelines"| dag_engine
+    bundle_builder -->|"Executes pipelines"| dag_engine
 
-    Rel_D(visitor, static_site, "Views published art", "HTTPS")
+    sketches -->|"Imports base classes\n(Python package)"| dag_engine
+    static_site -->|"Reads manifest\nand images"| bundle_builder
 
-    Rel_R(dev_server, dag_engine, "Executes pipelines")
-    Rel_R(bundle_builder, dag_engine, "Executes pipelines")
+    mise -->|"uv run dev"| dev_server
+    mise -->|"uv run build"| bundle_builder
+    mise -->|"npm build,\ndeploy.sh"| static_site
 
-    Rel_R(sketches, dag_engine, "Imports base classes", "Python package")
-    Rel_L(static_site, bundle_builder, "Reads manifest and images", "Filesystem")
+    static_site -->|"Deployed via\nGitHub Pages"| github
 
-    Rel_D(mise, dev_server, "Starts", "uv run dev")
-    Rel_D(mise, bundle_builder, "Runs", "uv run build")
-    Rel_D(mise, static_site, "Builds and deploys", "npm, deploy.sh")
+    style artist fill:#08427b,color:#fff,stroke:#073b6e
+    style agent fill:#999,color:#fff,stroke:#777
+    style visitor fill:#08427b,color:#fff,stroke:#073b6e
+    style github fill:#666,color:#fff,stroke:#555
 
-    Rel_D(static_site, github, "Deployed via", "GitHub Pages")
+    style dag_engine fill:#1168bd,color:#fff,stroke:#0e5aa7
+    style dev_server fill:#1168bd,color:#fff,stroke:#0e5aa7
+    style bundle_builder fill:#1168bd,color:#fff,stroke:#0e5aa7
 
-    UpdateLayoutConfig($c4ShapeInRow="3", $c4BoundaryInRow="2")
+    style sketches fill:#438dd5,color:#fff,stroke:#3c7fc0
+    style static_site fill:#438dd5,color:#fff,stroke:#3c7fc0
+    style mise fill:#438dd5,color:#fff,stroke:#3c7fc0
+
+    style sketchbook fill:none,stroke:#0e5aa7,stroke-width:2px,color:#0e5aa7
+    style userland fill:none,stroke:#3c7fc0,stroke-width:2px,color:#3c7fc0
 ```
