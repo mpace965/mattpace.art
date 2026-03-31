@@ -31,12 +31,13 @@ class Image(PipelineValue):
     extension = "png"
     mime_type = "image/png"
 
-    def __init__(self, data: np.ndarray) -> None:
+    def __init__(self, data: np.ndarray, compress_level: int = 0) -> None:
         self.data = data
+        self.compress_level = compress_level
 
     def to_bytes(self) -> bytes:
         """Encode the image array as PNG bytes using Pillow."""
         pil = PILImage.fromarray(self.data)
         buf = io.BytesIO()
-        pil.save(buf, format="PNG", compress_level=0)
+        pil.save(buf, format="PNG", compress_level=self.compress_level)
         return buf.getvalue()
