@@ -38,5 +38,5 @@ class Image(PipelineValue):
         """Encode the image array as PNG bytes using Pillow."""
         pil = PILImage.fromarray(self.data)
         buf = io.BytesIO()
-        pil.save(buf, format="PNG")
+        pil.save(buf, format="PNG", compress_level=0)
         return buf.getvalue()
