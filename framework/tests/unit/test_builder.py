@@ -220,7 +220,9 @@ def test_builder_uses_node_presets_to_filter(sketch_dir: Path, tmp_path: Path) -
         date = "2026-03-18"
 
         def build(self) -> None:
-            photo = self.source("photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p))))
+            photo = self.source(
+                "photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p)))
+            )
             blurred = photo.pipe(GaussianBlur)
             edges = blurred.pipe(EdgeDetect)
             self.output_bundle(edges, "bundle", presets=["preset_a"])
@@ -247,7 +249,9 @@ def test_builder_node_presets_unknown_name_does_not_crash(sketch_dir: Path, tmp_
         date = "2026-03-18"
 
         def build(self) -> None:
-            photo = self.source("photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p))))
+            photo = self.source(
+                "photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p)))
+            )
             blurred = photo.pipe(GaussianBlur)
             edges = blurred.pipe(EdgeDetect)
             self.output_bundle(edges, "bundle", presets=["real_preset", "does_not_exist"])

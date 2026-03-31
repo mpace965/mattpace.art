@@ -15,6 +15,7 @@ dependencies = [
 [project.scripts]
 dev = "sketchbook.cli:dev"
 build = "sketchbook.cli:build"
+new-sketch = "sketchbook.cli:new_sketch"
 
 [build-system]
 requires = ["hatchling"]

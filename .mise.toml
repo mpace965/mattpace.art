@@ -14,6 +14,10 @@ run = [
 ]
 description = "Lint framework and sketches"
 
+[tasks."sketches:new"]
+run = "uv run new-sketch"
+description = "Scaffold a new sketch: mise run sketches:new -- <name>"
+
 [tasks."sketches:dev"]
 run = "uv run dev"
 description = "Start sketch dev server"
