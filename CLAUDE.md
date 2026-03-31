@@ -114,11 +114,22 @@ If you need a utility function that exists in a library, consider whether it's s
 ## File conventions
 
 - Sketch modules: `sketches/<slug>/__init__.py`
-- Sketch assets: `sketches/<slug>/assets/`
+- Sketch assets: `sketches/<slug>/assets/` (see below)
 - Presets: `sketches/<slug>/presets/*.json`
 - Active params: `sketches/<slug>/presets/_active.json`
 - Intermediates: `sketches/<slug>/.workdir/` (gitignored)
 - Built site: `dist/` (gitignored)
+
+## Asset library
+
+`sketches/assets/` is the shared source image library. It holds any image that could reasonably be used by more than one sketch — photographs, textures, scans, reference images. All assets in this directory are gitignored (too large), but they are the canonical source of truth on disk.
+
+Each sketch's `assets/` directory is always a real directory. Files inside it are either:
+
+- **Symlinks into `../../assets/<file>`** — for files that come from the shared library (source photographs, textures, scans). The sketch code uses relative paths like `assets/cardboard.jpg`, which resolve through the symlink to the shared library.
+- **Real files** — for sketch-specific inputs that don't belong in the shared library: masks, hand-painted overlays, anything meaningful only within this sketch.
+
+The rule: if an asset makes sense outside the context of a single sketch, it lives in `sketches/assets/` and is symlinked into each sketch that needs it. If it's only meaningful for one sketch, it lives as a real file in `sketches/<slug>/assets/` and is never promoted to the shared library.
 
 ## Git
 
