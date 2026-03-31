@@ -9,6 +9,7 @@ export default function (eleventyConfig) {
   // Copy built images and manifest from the bundle symlink into dist/
   if (existsSync(bundleDir)) {
     eleventyConfig.addPassthroughCopy({ "bundle": "." });
+    eleventyConfig.addWatchTarget(bundleDir);
   }
 
   eleventyConfig.addPassthroughCopy("favicon.png");
