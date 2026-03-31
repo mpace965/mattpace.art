@@ -7,3 +7,4 @@
 - Authoring utility CLI tasks via Mise — userland tasks for common workflows like scaffolding a new sketch or generating a mask image with the same dimensions as a target image
 - maybe I do need to think about compression for the build - but it should be full quality locally
 - support for tweakpane parameter groups or folders. some sort of organization
+- build sketches in parallel
