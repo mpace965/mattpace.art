@@ -101,7 +101,7 @@ def test_sketch_output_bundle_uses_given_name(sketch_dir: Path) -> None:
 
 def test_builder_discovers_output_bundle_nodes(sketch_dir: Path, tmp_path: Path) -> None:
     """build_bundle skips sketches with no OutputBundle node for the given bundle name."""
-    from sketchbook.site.builder import build_bundle
+    from sketchbook.bundle.builder import build_bundle
 
     class _NoSiteSketch(Sketch):
         name = "No Site"
@@ -125,7 +125,7 @@ def test_builder_discovers_output_bundle_nodes(sketch_dir: Path, tmp_path: Path)
 
 def test_builder_ignores_different_bundle_name(sketch_dir: Path, tmp_path: Path) -> None:
     """build_bundle skips OutputBundle nodes whose name doesn't match the requested bundle."""
-    from sketchbook.site.builder import build_bundle
+    from sketchbook.bundle.builder import build_bundle
 
     class _OtherBundleSketch(Sketch):
         name = "Other"
@@ -150,7 +150,7 @@ def test_builder_ignores_different_bundle_name(sketch_dir: Path, tmp_path: Path)
 
 def test_builder_iterates_presets(sketch_dir: Path, tmp_path: Path) -> None:
     """build_bundle produces a variant image for each saved preset."""
-    from sketchbook.site.builder import build_bundle
+    from sketchbook.bundle.builder import build_bundle
 
     sketch = _SiteSketch(sketch_dir)
     execute(sketch.dag)
@@ -166,7 +166,7 @@ def test_builder_iterates_presets(sketch_dir: Path, tmp_path: Path) -> None:
 
 def test_builder_writes_json_bundle(sketch_dir: Path, tmp_path: Path) -> None:
     """build_bundle writes a JSON file with sketch metadata and variant entries."""
-    from sketchbook.site.builder import build_bundle
+    from sketchbook.bundle.builder import build_bundle
 
     sketch = _SiteSketch(sketch_dir)
     execute(sketch.dag)
@@ -189,7 +189,7 @@ def test_builder_writes_json_bundle(sketch_dir: Path, tmp_path: Path) -> None:
 
 def test_builder_skips_sketch_with_no_presets(sketch_dir: Path, tmp_path: Path) -> None:
     """A sketch with output_bundle but no saved presets produces no entry in the bundle."""
-    from sketchbook.site.builder import build_bundle
+    from sketchbook.bundle.builder import build_bundle
 
     output_dir = tmp_path / "output"
     build_bundle({"test_sketch": _SiteSketch}, sketch_dir.parent, output_dir, "bundle")
@@ -212,7 +212,7 @@ def test_output_bundle_default_presets_is_none(sketch_dir: Path) -> None:
 
 def test_builder_uses_node_presets_to_filter(sketch_dir: Path, tmp_path: Path) -> None:
     """OutputBundle.presets restricts which presets get baked."""
-    from sketchbook.site.builder import build_bundle
+    from sketchbook.bundle.builder import build_bundle
 
     class _FilteredBundleSketch(Sketch):
         name = "Filtered"
@@ -241,7 +241,7 @@ def test_builder_uses_node_presets_to_filter(sketch_dir: Path, tmp_path: Path) -
 
 def test_builder_node_presets_unknown_name_does_not_crash(sketch_dir: Path, tmp_path: Path) -> None:
     """OutputBundle.presets referencing a non-existent preset logs a warning but doesn't crash."""
-    from sketchbook.site.builder import build_bundle
+    from sketchbook.bundle.builder import build_bundle
 
     class _BadNodePresetSketch(Sketch):
         name = "Bad"
@@ -273,7 +273,7 @@ def test_builder_warns_on_duplicate_bundle_nodes(
     """A sketch with two OutputBundle nodes for the same bundle name emits a warning."""
     import logging
 
-    from sketchbook.site.builder import build_bundle
+    from sketchbook.bundle.builder import build_bundle
 
     class _DuplicateOutputSketch(Sketch):
         name = "Duplicate"
@@ -292,7 +292,7 @@ def test_builder_warns_on_duplicate_bundle_nodes(
     sketch.preset_manager.save_preset("p", sketch.dag)
 
     output_dir = tmp_path / "output"
-    with caplog.at_level(logging.WARNING, logger="sketchbook.site.builder"):
+    with caplog.at_level(logging.WARNING, logger="sketchbook.bundle.builder"):
         build_bundle(
             {"test_sketch": _DuplicateOutputSketch},
             sketch_dir.parent,

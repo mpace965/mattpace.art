@@ -16,7 +16,7 @@ from sketchbook.core.executor import execute
 from sketchbook.core.sketch import Sketch
 from sketchbook.steps.output_bundle import OutputBundle
 
-log = logging.getLogger("sketchbook.site.builder")
+log = logging.getLogger("sketchbook.bundle.builder")
 
 
 def _slug(sketch_id: str) -> str:

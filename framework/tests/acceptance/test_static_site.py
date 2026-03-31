@@ -52,7 +52,7 @@ def tmp_sketch_with_presets(tmp_path: Path) -> Path:
 
 def test_build_produces_bundle_with_variants(tmp_sketch_with_presets: Path) -> None:
     """build_bundle generates a JSON blob and baked images for each preset."""
-    from sketchbook.site.builder import build_bundle
+    from sketchbook.bundle.builder import build_bundle
 
     sketches_dir = tmp_sketch_with_presets / "sketches"
     output_dir = tmp_sketch_with_presets / "output"
@@ -81,7 +81,7 @@ def test_build_produces_bundle_with_variants(tmp_sketch_with_presets: Path) -> N
 
 def test_build_without_output_bundle_produces_empty_bundle(tmp_path: Path) -> None:
     """A sketch with no output_bundle node doesn't appear in the bundle JSON."""
-    from sketchbook.site.builder import build_bundle
+    from sketchbook.bundle.builder import build_bundle
 
     class _NoBundleSketch(Sketch):
         name = "Hello"
