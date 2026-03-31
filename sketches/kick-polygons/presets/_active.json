@@ -1,0 +1,13 @@
+{
+  "_meta": {
+    "dirty": true,
+    "based_on": "flower-star"
+  },
+  "radial_arrange_0": {
+    "n": 16,
+    "offset": -90.0,
+    "s_rotation": -9.0,
+    "s_flip_h": true,
+    "s_flip_v": false
+  }
+}
