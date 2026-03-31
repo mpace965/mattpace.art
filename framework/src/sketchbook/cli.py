@@ -1,4 +1,4 @@
-"""Entry points for uv run dev and uv run build."""
+"""Entry points for uv run dev, uv run build, and uv run new-sketch."""
 
 from __future__ import annotations
 
@@ -64,3 +64,27 @@ def build() -> None:
     log.info(f"Building bundle '{args.bundle}' for {n} sketch(es) -> {output_dir}")
     build_bundle(sketch_classes, _SKETCHES_DIR, output_dir, args.bundle)
     print(f"Built bundle '{args.bundle}' with {n} sketch(es) -> {output_dir}")
+
+
+def new_sketch() -> None:
+    """Scaffold a new sketch directory.
+
+    Usage: uv run new-sketch <name>
+
+    Creates sketches/<name>/ with __init__.py, assets/, and presets/_active.json.
+    Any files in sketches/assets/ (the shared asset library) are symlinked in.
+    """
+    import argparse
+
+    from sketchbook.scaffold import scaffold_sketch
+
+    parser = argparse.ArgumentParser(prog="new-sketch")
+    parser.add_argument("name", help="Sketch name / slug (kebab-case, e.g. my-sketch)")
+    args = parser.parse_args()
+
+    try:
+        sketch_dir = scaffold_sketch(args.name, sketches_dir=_SKETCHES_DIR)
+        print(f"Created {sketch_dir.relative_to(_SKETCHES_DIR.parent)}")
+    except FileExistsError as exc:
+        print(f"Error: {exc}")
+        raise SystemExit(1) from exc

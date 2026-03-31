@@ -68,7 +68,9 @@ class Sketch:
         """Override to define the pipeline."""
         raise NotImplementedError(f"{type(self).__name__} must implement build()")
 
-    def source(self, name: str, path: str, loader: Callable[[Path], Any] | None = None) -> _ManagedNode:
+    def source(
+        self, name: str, path: str, loader: Callable[[Path], Any] | None = None
+    ) -> _ManagedNode:
         """Add a SourceFile node to the DAG.
 
         Args:

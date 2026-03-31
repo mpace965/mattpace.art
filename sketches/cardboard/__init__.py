@@ -22,7 +22,9 @@ class Cardboard(Sketch):
 
     def build(self) -> None:
         """Load the cardboard photo, generate a circle grid mask, and apply DIFFERENCE blend."""
-        photo = self.source("photo", "assets/cardboard.jpg", loader=lambda p: Image(cv2.imread(str(p))))
+        photo = self.source(
+            "photo", "assets/cardboard.jpg", loader=lambda p: Image(cv2.imread(str(p)))
+        )
         mask = photo.pipe(
             CircleGridMask,
             params={
