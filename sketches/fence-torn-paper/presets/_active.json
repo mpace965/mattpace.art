@@ -12,6 +12,7 @@
     "high": 400
   },
   "canny_composite_0": {
-    "weight": 7
+    "weight": 7,
+    "color": "#ff69b4"
   }
 }
