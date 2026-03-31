@@ -72,28 +72,37 @@ class TestNewSketchScaffold:
         assert len(sketch_classes) == 1
         assert sketch_classes[0].name == "my-sketch"
 
-    def test_symlinks_shared_assets(self, tmp_path: Path) -> None:
-        """Assets from a shared assets/ dir are symlinked into the sketch."""
+    def test_no_assets_symlinked_by_default(self, tmp_path: Path) -> None:
+        """Default scaffold leaves assets/ empty even when the shared library exists."""
+        shared = tmp_path / "assets"
+        shared.mkdir()
+        (shared / "texture.jpg").write_bytes(b"fake")
+
+        scaffold_sketch("my-sketch", sketches_dir=tmp_path)
+
+        sketch_assets = tmp_path / "my-sketch" / "assets"
+        assert list(sketch_assets.iterdir()) == []
+
+    def test_symlinks_requested_assets(self, tmp_path: Path) -> None:
+        """Only the requested assets are symlinked into the sketch."""
         shared = tmp_path / "assets"
         shared.mkdir()
         (shared / "texture.jpg").write_bytes(b"fake")
         (shared / "grain.png").write_bytes(b"fake")
 
-        scaffold_sketch("my-sketch", sketches_dir=tmp_path)
+        scaffold_sketch("my-sketch", sketches_dir=tmp_path, assets=["texture.jpg"])
 
         sketch_assets = tmp_path / "my-sketch" / "assets"
         assert (sketch_assets / "texture.jpg").is_symlink()
-        assert (sketch_assets / "grain.png").is_symlink()
-        # Symlinks resolve back to the shared library
         assert (sketch_assets / "texture.jpg").resolve() == (shared / "texture.jpg").resolve()
+        assert not (sketch_assets / "grain.png").exists()
 
-    def test_no_symlinks_when_no_shared_assets(self, tmp_path: Path) -> None:
-        """When there's no shared assets/ dir, the sketch assets/ is still created."""
-        scaffold_sketch("my-sketch", sketches_dir=tmp_path)
+    def test_raises_on_missing_asset(self, tmp_path: Path) -> None:
+        """scaffold_sketch raises FileNotFoundError for an asset not in the shared library."""
+        (tmp_path / "assets").mkdir()
 
-        sketch_assets = tmp_path / "my-sketch" / "assets"
-        assert sketch_assets.is_dir()
-        assert list(sketch_assets.iterdir()) == []
+        with pytest.raises(FileNotFoundError, match="nope.jpg"):
+            scaffold_sketch("my-sketch", sketches_dir=tmp_path, assets=["nope.jpg"])
 
     def test_raises_on_duplicate_name(self, tmp_path: Path) -> None:
         """scaffold_sketch refuses to overwrite an existing sketch directory."""

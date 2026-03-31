@@ -37,18 +37,25 @@ def slug_to_class_name(slug: str) -> str:
     return "".join(part.capitalize() for part in slug.split("-"))
 
 
-def scaffold_sketch(name: str, sketches_dir: str | Path) -> Path:
+def scaffold_sketch(
+    name: str,
+    sketches_dir: str | Path,
+    assets: list[str] | None = None,
+) -> Path:
     """Create a new sketch directory with the standard structure.
 
     Args:
         name: The sketch slug (kebab-case, e.g. "my-sketch").
         sketches_dir: The directory containing all sketch folders.
+        assets: Filenames to symlink from the shared sketches/assets/ library.
+                Defaults to none. Pass an explicit list to opt in.
 
     Returns:
         The path to the newly created sketch directory.
 
     Raises:
         FileExistsError: If a directory with the given name already exists.
+        FileNotFoundError: If a requested asset is not in the shared library.
     """
     sketches_dir = Path(sketches_dir)
     sketch_dir = sketches_dir / name
@@ -67,21 +74,22 @@ def scaffold_sketch(name: str, sketches_dir: str | Path) -> Path:
     init_content = _INIT_TEMPLATE.format(slug=name, class_name=class_name, date=today)
     (sketch_dir / "__init__.py").write_text(init_content)
 
-    _symlink_shared_assets(sketches_dir, sketch_dir)
+    if assets:
+        _symlink_assets(sketches_dir, sketch_dir, assets)
 
     log.info(f"Scaffolded new sketch '{name}' at {sketch_dir}")
     return sketch_dir
 
 
-def _symlink_shared_assets(sketches_dir: Path, sketch_dir: Path) -> None:
-    """Symlink all files from the shared assets library into the sketch's assets dir."""
+def _symlink_assets(sketches_dir: Path, sketch_dir: Path, filenames: list[str]) -> None:
+    """Symlink the named files from the shared asset library into the sketch's assets dir."""
     shared_assets = sketches_dir / "assets"
-    if not shared_assets.is_dir():
-        return
-
     sketch_assets = sketch_dir / "assets"
-    for asset in shared_assets.iterdir():
-        if asset.is_file():
-            link = sketch_assets / asset.name
-            link.symlink_to(asset.resolve())
-            log.debug(f"Symlinked {asset.name} -> {asset.resolve()}")
+    for filename in filenames:
+        source = shared_assets / filename
+        if not source.exists():
+            raise FileNotFoundError(
+                f"Asset '{filename}' not found in shared library at {shared_assets}"
+            )
+        (sketch_assets / filename).symlink_to(source.resolve())
+        log.debug(f"Symlinked {filename} -> {source.resolve()}")

@@ -69,10 +69,10 @@ def build() -> None:
 def new_sketch() -> None:
     """Scaffold a new sketch directory.
 
-    Usage: uv run new-sketch <name>
+    Usage: uv run new-sketch <name> [--assets file1.jpg file2.png ...]
 
     Creates sketches/<name>/ with __init__.py, assets/, and presets/_active.json.
-    Any files in sketches/assets/ (the shared asset library) are symlinked in.
+    Pass --assets to symlink specific files from the shared sketches/assets/ library.
     """
     import argparse
 
@@ -80,11 +80,18 @@ def new_sketch() -> None:
 
     parser = argparse.ArgumentParser(prog="new-sketch")
     parser.add_argument("name", help="Sketch name / slug (kebab-case, e.g. my-sketch)")
+    parser.add_argument(
+        "--assets",
+        nargs="+",
+        metavar="FILE",
+        default=[],
+        help="Filenames to symlink from the shared sketches/assets/ library",
+    )
     args = parser.parse_args()
 
     try:
-        sketch_dir = scaffold_sketch(args.name, sketches_dir=_SKETCHES_DIR)
+        sketch_dir = scaffold_sketch(args.name, sketches_dir=_SKETCHES_DIR, assets=args.assets)
         print(f"Created {sketch_dir.relative_to(_SKETCHES_DIR.parent)}")
-    except FileExistsError as exc:
+    except (FileExistsError, FileNotFoundError) as exc:
         print(f"Error: {exc}")
         raise SystemExit(1) from exc
