@@ -47,7 +47,7 @@ def build() -> None:
     """
     import argparse
 
-    from sketchbook.site.builder import build_bundle
+    from sketchbook.bundle.builder import build_bundle
 
     parser = argparse.ArgumentParser(prog="build")
     parser.add_argument("--bundle", default="bundle", help="Bundle name to build (default: bundle)")
