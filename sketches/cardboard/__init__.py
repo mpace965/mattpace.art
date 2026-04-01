@@ -78,4 +78,4 @@ class DifferenceBlend(PipelineStep):
     def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
         """Return the per-pixel absolute difference of image and mask."""
         result = cv2.absdiff(inputs["image"].data, inputs["mask"].data)
-        return Image(result)
+        return Image(result, compress_level=9)

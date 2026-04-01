@@ -116,7 +116,7 @@ class DifferenceBlend(PipelineStep):
         # Resize mask to match image if needed
         if img.shape != mask.shape:
             mask = cv2.resize(mask, (img.shape[1], img.shape[0]))
-        return Image(cv2.absdiff(img, mask))
+        return Image(cv2.absdiff(img, mask), compress_level=9)
 
 
 def _lerp(t: float, a: float, b: float) -> float:

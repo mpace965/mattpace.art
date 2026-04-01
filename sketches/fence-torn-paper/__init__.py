@@ -113,4 +113,4 @@ class CannyComposite(PipelineStep):
         color_layer = np.full_like(src, (color.r, color.g, color.b), dtype=np.uint8)
         edge_mask_3ch = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
         result = np.where(edge_mask_3ch > 0, color_layer, src)
-        return Image(result.astype(np.uint8))
+        return Image(result.astype(np.uint8), compress_level=9)
