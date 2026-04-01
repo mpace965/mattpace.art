@@ -56,13 +56,20 @@ def build() -> None:
         default=str(_SKETCHES_DIR / "bundle"),
         help="Output directory (default: sketches/bundle/)",
     )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Number of parallel worker threads (default: auto)",
+    )
     args = parser.parse_args()
 
     output_dir = Path(args.output)
     sketch_classes = discover_sketches(_SKETCHES_DIR)
     n = len(sketch_classes)
     log.info(f"Building bundle '{args.bundle}' for {n} sketch(es) -> {output_dir}")
-    build_bundle(sketch_classes, _SKETCHES_DIR, output_dir, args.bundle)
+    build_bundle(sketch_classes, _SKETCHES_DIR, output_dir, args.bundle, workers=args.workers)
     print(f"Built bundle '{args.bundle}' with {n} sketch(es) -> {output_dir}")
 
 

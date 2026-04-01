@@ -301,3 +301,126 @@ def test_builder_warns_on_duplicate_bundle_nodes(
         )
 
     assert any("multiple OutputBundle" in r.message for r in caplog.records)
+
+
+# ---------------------------------------------------------------------------
+# Parallel variants tests
+# ---------------------------------------------------------------------------
+
+
+class _ParallelSketch(Sketch):
+    name = "Parallel"
+    description = "Two-preset parallel test sketch."
+    date = "2026-03-31"
+
+    def build(self) -> None:
+        photo = self.source(
+            "photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p)))
+        )
+        blurred = photo.pipe(GaussianBlur)
+        self.output_bundle(blurred, "bundle")
+
+
+def test_workers_1_matches_workers_2(sketch_dir: Path, tmp_path: Path) -> None:
+    """build_bundle with workers=2 produces the same files as workers=1."""
+    from sketchbook.bundle.builder import build_bundle
+
+    sketch = _ParallelSketch(sketch_dir)
+    execute(sketch.dag)
+    sketch.preset_manager.save_preset("alpha", sketch.dag)
+    sketch.preset_manager.save_preset("beta", sketch.dag)
+
+    out1 = tmp_path / "out1"
+    out2 = tmp_path / "out2"
+
+    build_bundle({"test_sketch": _ParallelSketch}, sketch_dir.parent, out1, "bundle", workers=1)
+    build_bundle({"test_sketch": _ParallelSketch}, sketch_dir.parent, out2, "bundle", workers=2)
+
+    manifest1 = json.loads((out1 / "manifest.json").read_text())
+    manifest2 = json.loads((out2 / "manifest.json").read_text())
+
+    assert manifest1 == manifest2
+    assert (out1 / "test-sketch" / "alpha.png").exists()
+    assert (out2 / "test-sketch" / "alpha.png").exists()
+    assert (out1 / "test-sketch" / "beta.png").exists()
+    assert (out2 / "test-sketch" / "beta.png").exists()
+
+
+def test_failing_preset_does_not_block_others(sketch_dir: Path, tmp_path: Path) -> None:
+    """A variant that raises an exception does not prevent other variants from completing."""
+    import threading
+
+    from sketchbook.bundle.builder import build_bundle
+
+    call_count = 0
+    lock = threading.Lock()
+
+    class _SometimesFailSketch(Sketch):
+        name = "Sometimes Fail"
+        description = ""
+        date = "2026-03-31"
+
+        def build(self) -> None:
+            photo = self.source(
+                "photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p)))
+            )
+            blurred = photo.pipe(GaussianBlur)
+            self.output_bundle(blurred, "bundle")
+
+    # Patch _build_variant to fail on the first call
+    import sketchbook.bundle.builder as builder_mod
+
+    original = builder_mod._build_variant
+
+    def _patched(task):  # type: ignore[no-untyped-def]
+        nonlocal call_count
+        with lock:
+            call_count += 1
+            fail = call_count == 1
+        if fail and task.preset_name == "fail_preset":
+            raise RuntimeError("injected failure")
+        return original(task)
+
+    sketch = _SometimesFailSketch(sketch_dir)
+    execute(sketch.dag)
+    sketch.preset_manager.save_preset("fail_preset", sketch.dag)
+    sketch.preset_manager.save_preset("ok_preset", sketch.dag)
+
+    output_dir = tmp_path / "output"
+    builder_mod._build_variant = _patched
+    try:
+        build_bundle(
+            {"test_sketch": _SometimesFailSketch},
+            sketch_dir.parent,
+            output_dir,
+            "bundle",
+            workers=2,
+        )
+    finally:
+        builder_mod._build_variant = original
+
+    # ok_preset must be produced even though fail_preset raised
+    assert (output_dir / "test-sketch" / "ok_preset.png").exists()
+
+
+def test_workers_1_sequential_regression(sketch_dir: Path, tmp_path: Path) -> None:
+    """workers=1 is behaviourally identical to the old sequential implementation."""
+    from sketchbook.bundle.builder import build_bundle
+
+    sketch = _ParallelSketch(sketch_dir)
+    execute(sketch.dag)
+    sketch.preset_manager.save_preset("only", sketch.dag)
+
+    output_dir = tmp_path / "output"
+    build_bundle(
+        {"test_sketch": _ParallelSketch}, sketch_dir.parent, output_dir, "bundle", workers=1
+    )
+
+    manifest = json.loads((output_dir / "manifest.json").read_text())
+    assert len(manifest) == 1
+    entry = manifest[0]
+    assert entry["slug"] == "test-sketch"
+    assert entry["name"] == "Parallel"
+    assert len(entry["variants"]) == 1
+    assert entry["variants"][0]["name"] == "only"
+    assert (output_dir / "test-sketch" / "only.png").exists()
