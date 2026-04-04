@@ -34,7 +34,7 @@ class KickPolygons(Sketch):
         result = thumb.pipe(
             RadialArrange,
             params={
-                "n": {"min": 0, "max": 16, "step": 1},
+                "n": {"min": 0, "max": 100, "step": 1},
                 "offset": {"min": -180.0, "max": 180.0, "step": 1.0},
                 "s_rotation": {"min": -180.0, "max": 180.0, "step": 1.0},
                 "s_flip_h": {},
