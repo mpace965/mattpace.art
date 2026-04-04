@@ -37,6 +37,7 @@ class KickPolygons(Sketch):
                 "n": {"min": 0, "max": 100, "step": 1},
                 "offset": {"min": -180.0, "max": 180.0, "step": 1.0},
                 "s_rotation": {"min": -180.0, "max": 180.0, "step": 1.0},
+                "s_radial": {"min": -2.0, "max": 2.0, "step": 0.01},
                 "s_flip_h": {},
                 "s_flip_v": {},
             },
@@ -82,6 +83,9 @@ class RadialArrange(PipelineStep):
         self.add_param(
             "s_rotation", float, default=0.0, debounce=150, min=-180.0, max=180.0, step=1.0
         )
+        self.add_param(
+            "s_radial", float, default=0.0, debounce=150, min=-2.0, max=2.0, step=0.05
+        )
         self.add_param("s_flip_h", bool, default=False)
         self.add_param("s_flip_v", bool, default=False)
 
@@ -91,22 +95,19 @@ class RadialArrange(PipelineStep):
         n: int = params["n"]
         offset: float = params["offset"]
         s_rotation: float = params["s_rotation"]
+        s_radial: float = params["s_radial"]
         s_flip_h: bool = params["s_flip_h"]
         s_flip_v: bool = params["s_flip_v"]
 
         sh, sw = src.shape[:2]
-        # Canvas spans [-1, 1] in both axes; side = 2 * longest image dimension
-        canvas_size = int(max(sh, sw) * 2)
-        cx = canvas_size // 2
-        cy = canvas_size // 2
-
-        canvas = np.zeros((canvas_size, canvas_size, 3), dtype=np.uint8)
 
         if n == 0:
-            return Image(canvas)
+            canvas_size = int(max(sh, sw) * 2)
+            return Image(np.zeros((canvas_size, canvas_size, 3), dtype=np.uint8))
 
-        # Scale source so its width fills exactly 1 unit (center to edge)
-        unit = canvas_size // 2
+        # Scale source so its width fills exactly 1 unit (center to edge).
+        # unit is the scale reference; canvas_size is determined after rotation.
+        unit = max(sh, sw)
         scale = unit / sw
         scaled_w = max(1, int(sw * scale))
         scaled_h = max(1, int(sh * scale))
@@ -119,21 +120,43 @@ class RadialArrange(PipelineStep):
         if s_flip_v:
             stamp = cv2.flip(stamp, 0)
         pre_h, pre_w = stamp.shape[:2]
+        angle_rad = np.deg2rad(s_rotation)
+        cos_a = abs(np.cos(angle_rad))
+        sin_a = abs(np.sin(angle_rad))
+        new_w = int(np.ceil(pre_w * cos_a + pre_h * sin_a))
+        new_h = int(np.ceil(pre_w * sin_a + pre_h * cos_a))
         rot_mat = cv2.getRotationMatrix2D((pre_w / 2.0, pre_h / 2.0), s_rotation, 1.0)
+        rot_mat[0, 2] += (new_w - pre_w) / 2.0
+        rot_mat[1, 2] += (new_h - pre_h) / 2.0
         src_prerot = cv2.warpAffine(
-            stamp, rot_mat, (pre_w, pre_h),
+            stamp, rot_mat, (new_w, new_h),
             flags=cv2.INTER_LANCZOS4, borderMode=cv2.BORDER_CONSTANT,
         )
         pr_h, pr_w = src_prerot.shape[:2]
+
+        # Radial shift in pixels: positive = outward, negative = inward.
+        radial_px = int(s_radial * pr_w)
+
+        # Canvas half must fit the stamp at its shifted position and centered vertically.
+        # Stamp occupies x in [cx + radial_px, cx + radial_px + pr_w], so:
+        #   cx >= pr_w + radial_px  (right edge fits)
+        #   cx >= -radial_px        (left edge fits when shifted inward)
+        #   cx >= pr_h // 2         (vertical centering fits)
+        canvas_half = max(pr_w + radial_px, -radial_px, (pr_h + 1) // 2)
+        canvas_size = canvas_half * 2
+        cx = canvas_half
+        cy = canvas_half
+
+        canvas = np.zeros((canvas_size, canvas_size, 3), dtype=np.uint8)
 
         for i in range(n - 1, -1, -1):
             angle_deg = i * 360.0 / n + offset
 
             # Stamp the pre-rotated image into a blank canvas:
-            #   left edge at (cx, cy), vertically centered on cy
+            #   left edge at (cx + radial_px, cy), vertically centered on cy
             tmp = np.zeros((canvas_size, canvas_size, 4), dtype=np.uint8)
 
-            x0 = cx
+            x0 = cx + radial_px
             y0 = cy - pr_h // 2
 
             sx = max(0, -x0)
