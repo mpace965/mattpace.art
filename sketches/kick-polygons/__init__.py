@@ -125,7 +125,7 @@ class RadialArrange(PipelineStep):
         sin_a = abs(np.sin(angle_rad))
         new_w = int(np.ceil(pre_w * cos_a + pre_h * sin_a))
         new_h = int(np.ceil(pre_w * sin_a + pre_h * cos_a))
-        rot_mat = cv2.getRotationMatrix2D((pre_w / 2.0, pre_h / 2.0), s_rotation, 1.0)
+        rot_mat = cv2.getRotationMatrix2D((pre_w / 2.0, pre_h / 2.0), -s_rotation, 1.0)
         rot_mat[0, 2] += (new_w - pre_w) / 2.0
         rot_mat[1, 2] += (new_h - pre_h) / 2.0
         src_prerot = cv2.warpAffine(
