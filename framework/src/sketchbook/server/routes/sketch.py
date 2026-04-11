@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import traceback
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.requests import Request
@@ -38,6 +39,15 @@ async def sketch_view(
     """Render the sketch overview page (DAG + all-step Tweakpane)."""
     sketch = registry.get_sketch(sketch_id)
     if sketch is None:
+        exc = registry.get_sketch_error(sketch_id)
+        if exc is not None:
+            tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+            return templates.TemplateResponse(
+                request,
+                "sketch_error.html",
+                {"sketch_id": sketch_id, "error": str(exc), "traceback": tb},
+                status_code=500,
+            )
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
 
     depths = sketch.dag.node_depths()
@@ -75,6 +85,15 @@ async def step_view(
     """Render the fullscreen step output view."""
     sketch = registry.get_sketch(sketch_id)
     if sketch is None:
+        exc = registry.get_sketch_error(sketch_id)
+        if exc is not None:
+            tb = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+            return templates.TemplateResponse(
+                request,
+                "sketch_error.html",
+                {"sketch_id": sketch_id, "error": str(exc), "traceback": tb},
+                status_code=500,
+            )
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
 
     try:

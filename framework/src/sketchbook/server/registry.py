@@ -44,6 +44,7 @@ class SketchRegistry:
         self._locks: dict[str, threading.Lock] = {
             slug: threading.Lock() for slug in self.candidates
         }
+        self._load_errors: dict[str, Exception] = {}
         self._watched: set[str] = set()
         self._watcher: Watcher | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -78,14 +79,18 @@ class SketchRegistry:
             elapsed = time.perf_counter() - t0
             log.info(f"Loaded sketch '{sketch_id}': {cls.name} ({elapsed:.2f}s)")
             self.sketches[sketch_id] = instance
+            self._load_errors.pop(sketch_id, None)
             if self._watcher is not None and self._loop is not None:
                 self._register_watch(sketch_id, instance)
             return instance
         except Exception as exc:
             elapsed = time.perf_counter() - t0
-            log.warning(f"Failed to load sketch '{sketch_id}': {exc} ({elapsed:.2f}s)")
-            # Remove so subsequent requests get a 404 rather than retrying.
-            self.candidates.pop(sketch_id, None)
+            log.warning(
+                f"Failed to load sketch '{sketch_id}': {exc} ({elapsed:.2f}s)",
+                exc_info=True,
+            )
+            self._load_errors[sketch_id] = exc
+            # Keep the candidate so the next request retries rather than 404ing.
             return None
 
     def list_sketch_infos(self) -> list[dict[str, str]]:
@@ -120,6 +125,10 @@ class SketchRegistry:
     def get_watched_sketch_ids(self) -> frozenset[str]:
         """Return sketch IDs that currently have file watchers registered."""
         return frozenset(self._watched)
+
+    def get_sketch_error(self, sketch_id: str) -> Exception | None:
+        """Return the last exception from a failed lazy load, or None."""
+        return self._load_errors.get(sketch_id)
 
     # ------------------------------------------------------------------
     # Watcher lifecycle

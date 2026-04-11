@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block title %}Error — {{ sketch_id }}{% endblock %}
+
+{% block toolbar_title %}
+  <a href="/">Sketchbook</a>
+  <span class="sep">/</span>
+  {{ sketch_id }}
+  <span class="sep">/</span>
+  error
+{% endblock %}
+
+{% block toolbar_controls %}{% endblock %}
+
+{% block extra_style %}
+  .error-page { padding: 2rem; overflow: auto; flex: 1; }
+  .error-page h3 { color: #f88; margin: 0 0 0.5rem; font-size: 1rem; }
+  .error-message { color: #fcc; font-size: 0.95rem; margin-bottom: 1.5rem; }
+  .traceback-heading { color: #888; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.4rem; }
+  .traceback { background: #161616; border: 1px solid #2a2a2a; padding: 1rem 1.25rem; white-space: pre; overflow-x: auto; font-size: 0.78rem; line-height: 1.5; color: #ccc; }
+{% endblock %}
+
+{% block content %}
+  <div class="error-page">
+    <h3>Failed to load sketch &#39;{{ sketch_id }}&#39;</h3>
+    <div class="error-message">{{ error }}</div>
+    <div class="traceback-heading">Traceback</div>
+    <pre class="traceback">{{ traceback }}</pre>
+  </div>
+{% endblock %}
