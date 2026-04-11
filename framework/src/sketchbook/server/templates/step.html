@@ -20,6 +20,8 @@
     const PARAMS_URL = `/api/sketches/${SKETCH_ID}/params/{{ step_id }}`;
     const STEP_ID = "{{ step_id }}";
 
+    let paneEntry = null;
+
     async function init() {
       const res = await fetch(PARAMS_URL);
       if (!res.ok) { connect(); return; }
@@ -27,10 +29,22 @@
       const params = data.params;
 
       if (params && Object.keys(params).length > 0) {
-        buildPane(document.getElementById(`params-${STEP_ID}`), STEP_ID, params);
+        paneEntry = buildPane(document.getElementById(`params-${STEP_ID}`), STEP_ID, params);
       }
 
       connect();
+    }
+
+    async function refreshPanes() {
+      if (!paneEntry) return;
+      const res = await fetch(PARAMS_URL);
+      if (!res.ok) return;
+      const data = await res.json();
+      const params = data.params;
+      for (const [name, spec] of Object.entries(params)) {
+        paneEntry.state[name] = spec.value;
+      }
+      paneEntry.pane.refresh();
     }
 
     function connect() {
@@ -49,6 +63,7 @@
           img.style.display = "none";
         } else if (msg.type === "preset_state") {
           fetchAndRenderPresets();
+          refreshPanes();
         } else if (msg.type === "page_reload") {
           location.reload();
         }

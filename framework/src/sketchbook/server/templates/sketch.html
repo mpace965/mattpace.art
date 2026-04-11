@@ -136,6 +136,8 @@
       document.querySelectorAll("details.step-card").forEach(d => d.open = false);
     });
 
+    const panes = {};
+
     async function init() {
       const res = await fetch(PARAMS_URL);
       if (!res.ok) return;
@@ -146,10 +148,24 @@
         const container = document.getElementById(`params-${stepId}`);
         if (!container) continue;
 
-        buildPane(container, stepId, params);
+        panes[stepId] = buildPane(container, stepId, params);
       }
 
       connect();
+    }
+
+    async function refreshPanes() {
+      const res = await fetch(PARAMS_URL);
+      if (!res.ok) return;
+      const allParams = await res.json();
+      for (const [stepId, params] of Object.entries(allParams)) {
+        const entry = panes[stepId];
+        if (!entry) continue;
+        for (const [name, spec] of Object.entries(params)) {
+          entry.state[name] = spec.value;
+        }
+        entry.pane.refresh();
+      }
     }
 
     function connect() {
@@ -174,6 +190,7 @@
           if (errDot) errDot.classList.add("visible");
         } else if (msg.type === "preset_state") {
           fetchAndRenderPresets();
+          refreshPanes();
         } else if (msg.type === "page_reload") {
           location.reload();
         }
