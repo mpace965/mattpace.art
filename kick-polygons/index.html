@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>kick-polygons — matt's pixel library</title>
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <style>
+      body {
+        font-family: monospace;
+        max-width: 900px;
+        margin: 4rem auto;
+        padding: 0 1.5rem;
+      }
+
+      header {
+        margin-bottom: 2rem;
+      }
+
+      h1 {
+        font-size: 1.25rem;
+        margin: 0 0 0.4rem;
+      }
+
+      .meta {
+        font-size: 0.85rem;
+        color: #888;
+        margin: 0;
+      }
+
+      nav {
+        font-size: 0.85rem;
+        margin-bottom: 2.5rem;
+      }
+
+      nav a {
+        color: #888;
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        text-decoration: underline;
+      }
+
+      .variants {
+        display: flex;
+        flex-direction: column;
+        gap: 3rem;
+      }
+
+      .variant {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+
+      .variant-name {
+        font-size: 0.85rem;
+        color: #888;
+      }
+
+      .variant-name a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .variant-name a:hover {
+        text-decoration: underline;
+      }
+
+      .variant img {
+        max-width: 100%;
+        display: block;
+      }
+
+      .empty {
+        color: #888;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <nav><a href="/">← matt's pixel library</a></nav>
+    <header>
+      <h1>kick-polygons</h1>
+      <p class="meta">radial arrangement of image copies forming polygon patterns.</p>
+      <p class="meta">2026-04-11</p>
+    </header>
+    <div class="variants">
+      <div class="variant" id="dress-star">
+        <span class="variant-name"><a href="#dress-star">dress-star</a></span>
+        <img src="dress-star.png" alt="dress-star" loading="lazy" />
+      </div>
+      <div class="variant" id="fist-pinwheel">
+        <span class="variant-name"><a href="#fist-pinwheel">fist-pinwheel</a></span>
+        <img src="fist-pinwheel.png" alt="fist-pinwheel" loading="lazy" />
+      </div>
+      <div class="variant" id="sun-pinwheel">
+        <span class="variant-name"><a href="#sun-pinwheel">sun-pinwheel</a></span>
+        <img src="sun-pinwheel.png" alt="sun-pinwheel" loading="lazy" />
+      </div>
+      <div class="variant" id="thirteen-fist-fin">
+        <span class="variant-name"><a href="#thirteen-fist-fin">thirteen-fist-fin</a></span>
+        <img src="thirteen-fist-fin.png" alt="thirteen-fist-fin" loading="lazy" />
+      </div>
+    </div>
+  </body>
+</html>

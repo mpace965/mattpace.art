@@ -1,5 +1,29 @@
 [
   {
+    "slug": "kick-polygons",
+    "name": "kick-polygons",
+    "description": "radial arrangement of image copies forming polygon patterns.",
+    "date": "2026-04-11",
+    "variants": [
+      {
+        "name": "dress-star",
+        "image_path": "kick-polygons/dress-star.png"
+      },
+      {
+        "name": "fist-pinwheel",
+        "image_path": "kick-polygons/fist-pinwheel.png"
+      },
+      {
+        "name": "sun-pinwheel",
+        "image_path": "kick-polygons/sun-pinwheel.png"
+      },
+      {
+        "name": "thirteen-fist-fin",
+        "image_path": "kick-polygons/thirteen-fist-fin.png"
+      }
+    ]
+  },
+  {
     "slug": "fence-torn-paper",
     "name": "fence-torn-paper",
     "description": "weathered fence with torn paper and emphasized edges.",
