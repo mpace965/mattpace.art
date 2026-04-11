@@ -14,11 +14,10 @@ from sketches import SITE_BUNDLE
 
 
 class KickPolygons(Sketch):
-    """Radial arrangement of she-kick image copies forming polygon patterns."""
 
     name = "kick-polygons"
-    description = "radial arrangement of she-kick image copies forming polygon patterns."
-    date = "2026-03-31"
+    description = "radial arrangement of image copies forming polygon patterns."
+    date = "2026-04-11"
 
     def build(self) -> None:
         """Load she-kick and compose radial polygon arrangement."""
@@ -42,7 +41,11 @@ class KickPolygons(Sketch):
                 "s_flip_v": {},
             },
         )
-        self.output_bundle(result, SITE_BUNDLE)
+        self.output_bundle(
+            result,
+            SITE_BUNDLE,
+            ["dress-star", "fist-pinwheel", "sun-pinwheel", "thirteen-fist-fin"],
+        )
 
 
 class Downscale(PipelineStep):

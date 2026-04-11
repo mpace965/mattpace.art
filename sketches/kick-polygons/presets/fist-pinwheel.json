@@ -1,0 +1,13 @@
+{
+  "downscale_0": {
+    "scale": 0.5
+  },
+  "radial_arrange_0": {
+    "n": 32,
+    "offset": -88.0,
+    "s_rotation": 14.0,
+    "s_radial": -0.15,
+    "s_flip_h": true,
+    "s_flip_v": false
+  }
+}
