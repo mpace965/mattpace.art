@@ -63,7 +63,7 @@ def _build_variant(task: _VariantTask) -> _VariantResult:
         n for n in sketch.dag.topo_sort()
         if isinstance(n.step, OutputBundle) and n.step.bundle_name == task.bundle_name
     ]
-    sketch.preset_manager.load_preset(task.preset_name, sketch.dag)
+    sketch.preset_manager.load_preset(task.preset_name, sketch.dag, save=False)
     result = execute(sketch.dag)
     if not result.ok:
         log.warning(f"  preset '{task.preset_name}' failed: {result.errors}")

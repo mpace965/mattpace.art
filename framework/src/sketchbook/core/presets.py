@@ -113,8 +113,11 @@ class PresetManager:
         self.save_active(dag)
         log.info(f"Saved preset '{name}'")
 
-    def load_preset(self, name: str, dag: DAG) -> None:
-        """Load a named preset into step registries and update _active.json."""
+    def load_preset(self, name: str, dag: DAG, *, save: bool = True) -> None:
+        """Load a named preset into step registries and optionally update _active.json.
+
+        Pass save=False to load params without writing to disk (e.g. during parallel builds).
+        """
         preset_path = self._dir / f"{name}.json"
         if not preset_path.exists():
             raise FileNotFoundError(
@@ -131,7 +134,8 @@ class PresetManager:
             node.step.load_params(values)
         self._dirty = False
         self._based_on = name
-        self.save_active(dag)
+        if save:
+            self.save_active(dag)
         log.info(f"Loaded preset '{name}'")
 
     def reset(self, dag: DAG) -> None:

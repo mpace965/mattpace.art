@@ -158,6 +158,21 @@ def test_load_preset_not_found_raises(tmp_path: Path, minimal_dag) -> None:
         pm.load_preset("nonexistent", minimal_dag)
 
 
+def test_load_preset_save_false_skips_active_json(tmp_path: Path, minimal_dag) -> None:
+    """load_preset with save=False restores params but does not write _active.json."""
+    pm = PresetManager(tmp_path / "presets")
+    pm.save_preset("snap", minimal_dag)
+    active_path = tmp_path / "presets" / "_active.json"
+    mtime_before = active_path.stat().st_mtime
+
+    pm2 = PresetManager(tmp_path / "presets")
+    pm2.load_preset("snap", minimal_dag, save=False)
+
+    assert active_path.stat().st_mtime == mtime_before, "_active.json was written unexpectedly"
+    assert pm2.based_on == "snap"
+    assert not pm2.dirty
+
+
 # ---------------------------------------------------------------------------
 # _active.json round-trip
 # ---------------------------------------------------------------------------
