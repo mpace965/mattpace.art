@@ -1,17 +1,1 @@
-{
-  "_meta": {
-    "dirty": true,
-    "based_on": "pinwheel"
-  },
-  "downscale_0": {
-    "scale": 0.25
-  },
-  "radial_arrange_0": {
-    "n": 12,
-    "offset": 84.0,
-    "s_rotation": 76.0,
-    "s_radial": 0.06999999999999997,
-    "s_flip_h": false,
-    "s_flip_v": false
-  }
-}
+{}
