@@ -8,6 +8,7 @@ from typing import Any
 import numpy as np
 
 from sketchbook.core.executor import execute
+from sketchbook.core.profile import ExecutionProfile
 from sketchbook.core.sketch import Sketch, _step_id_base
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
@@ -46,7 +47,7 @@ class _SingleSourceSketch(Sketch):
     description = ""
     date = ""
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         self.source("photo", "assets/photo.png")
 
 
@@ -55,7 +56,7 @@ class _PipeSketch(Sketch):
     description = ""
     date = ""
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         src = self.source("photo", "assets/photo.png")
         src.pipe(FakeStep)
 
@@ -65,7 +66,7 @@ class _MultiPipeSketch(Sketch):
     description = ""
     date = ""
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         src = self.source("photo", "assets/photo.png")
         mid = src.pipe(FakeStep)
         mid.pipe(OtherStep)
@@ -78,7 +79,7 @@ class _TwoSameStepSketch(Sketch):
     description = ""
     date = ""
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         src = self.source("photo", "assets/photo.png")
         first = src.pipe(FakeStep)
         first.pipe(FakeStep)
@@ -188,7 +189,7 @@ class _AddSketch(Sketch):
     description = ""
     date = ""
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         src = self.source("photo", "assets/photo.png")
         self.add(FakeStep, inputs={"image": src})
 
@@ -200,7 +201,7 @@ class _AddTwoInputsSketch(Sketch):
     description = ""
     date = ""
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         src = self.source("photo", "assets/photo.png")
         mask = self.source("mask", "assets/photo.png")
         self.add(FakeStep, inputs={"image": src, "mask": mask})
@@ -230,7 +231,7 @@ def test_add_with_custom_id(tmp_path: Path) -> None:
         description = ""
         date = ""
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             src = self.source("photo", "assets/photo.png")
             self.add(FakeStep, inputs={"image": src}, id="my_step")
 
@@ -251,7 +252,7 @@ def test_sketch_source_without_loader_fails_on_execute(tmp_path: Path) -> None:
         description = ""
         date = ""
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             self.source("photo", "assets/photo.png")
 
     sketch = _NoLoaderSketch(tmp_path)
@@ -272,7 +273,7 @@ def test_sketch_source_loader_is_called(tmp_path: Path) -> None:
         description = ""
         date = ""
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             self.source("photo", "assets/photo.png", loader=lambda _p: sentinel)
 
     sketch = _WithLoaderSketch(tmp_path)

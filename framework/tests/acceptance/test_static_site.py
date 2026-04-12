@@ -10,6 +10,7 @@ import pytest
 
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
+from sketchbook.core.profile import ExecutionProfile
 from sketchbook.core.types import Image
 from tests.conftest import make_test_image
 from tests.steps import EdgeDetect, GaussianBlur, Passthrough
@@ -22,7 +23,7 @@ class _EdgePortraitSketch(Sketch):
     description = "Canny edge detection on a portrait."
     date = "2026-03-18"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Wire photo through blur, edge detect, then mark as bundle output."""
         photo = self.source("photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p))))
         blurred = photo.pipe(GaussianBlur)
@@ -88,7 +89,7 @@ def test_build_without_output_bundle_produces_empty_bundle(tmp_path: Path) -> No
         description = "No output bundle."
         date = "2026-03-18"
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             photo = self.source("photo", "assets/photo.jpg")
             photo.pipe(Passthrough)
 

@@ -7,6 +7,7 @@ from typing import Any
 import cv2
 import numpy as np
 from sketchbook import Sketch
+from sketchbook.core.profile import ExecutionProfile
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
 
@@ -19,7 +20,7 @@ class KickPolygons(Sketch):
     description = "radial arrangement of image copies forming polygon patterns."
     date = "2026-04-11"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Load she-kick and compose radial polygon arrangement."""
         photo = self.source(
             "photo",

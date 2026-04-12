@@ -73,7 +73,7 @@ class SketchRegistry:
         sketch_dir = self.sketches_dir / sketch_id
         t0 = time.perf_counter()
         try:
-            instance = cls(sketch_dir)
+            instance = cls(sketch_dir, mode="dev")
             execute(instance.dag)
             elapsed = time.perf_counter() - t0
             log.info(f"Loaded sketch '{sketch_id}': {cls.name} ({elapsed:.2f}s)")

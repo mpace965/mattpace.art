@@ -58,7 +58,7 @@ class _DiscoveryResult:
 
 def _build_variant(task: _VariantTask) -> _VariantResult:
     """Execute the full pipeline for one (sketch, preset) pair and save the output image."""
-    sketch = task.sketch_cls(task.sketch_dir)
+    sketch = task.sketch_cls(task.sketch_dir, mode="build")
     bundle_nodes = [
         n for n in sketch.dag.topo_sort()
         if isinstance(n.step, OutputBundle) and n.step.bundle_name == task.bundle_name
@@ -93,7 +93,7 @@ def _discover_sketch(
     sketch_dir = sketches_dir / sketch_id
     log.info(f"Processing sketch '{sketch_id}'")
 
-    sketch = sketch_cls(sketch_dir)
+    sketch = sketch_cls(sketch_dir, mode="build")
 
     bundle_nodes = [
         n for n in sketch.dag.topo_sort()

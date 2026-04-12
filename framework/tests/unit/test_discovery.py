@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from sketchbook import Sketch
+from sketchbook.core.profile import ExecutionProfile
 from sketchbook.discovery import discover_sketches, find_sketch_class
 
 
@@ -20,7 +21,7 @@ class _FakeSketch(Sketch):
     description = "a fake sketch"
     date = "2026-01-01"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         pass
 
 
@@ -58,7 +59,7 @@ def test_finds_first_subclass_when_multiple_present() -> None:
         description = "another"
         date = "2026-01-01"
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             pass
 
     module = types.ModuleType("multi_module")
@@ -83,7 +84,7 @@ _SKETCH_SRC = textwrap.dedent("""\
         description = "test sketch"
         date = "2026-01-01"
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             pass
 """)
 

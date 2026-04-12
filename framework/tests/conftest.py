@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
+from sketchbook.core.profile import ExecutionProfile
 from sketchbook.core.types import Image
 from sketchbook.server.app import create_app
 from tests.steps import EdgeDetect, GaussianBlur, Passthrough
@@ -71,7 +72,7 @@ class _HelloSketch(Sketch):
     description = "Simplest possible sketch."
     date = "2026-03-16"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Wire a source image through a passthrough step."""
         photo = self.source("photo", "assets/fence-torn-paper.png", loader=_cv2_loader)
         photo.pipe(Passthrough)
@@ -121,7 +122,7 @@ class _EdgeHelloSketch(Sketch):
     description = "Canny edge detection with tunable thresholds."
     date = "2026-03-16"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Wire a source image through blur then edge detection."""
         photo = self.source("photo", "assets/hello.jpg", loader=_cv2_loader)
         photo.pipe(GaussianBlur, params={"sigma": {"max": 3.0, "step": 0.05}}).pipe(EdgeDetect)
@@ -158,7 +159,7 @@ class _MultiStepSketch(Sketch):
     description = "source → blur → edge detect"
     date = "2026-03-18"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Wire photo through blur then edge detection."""
         photo = self.source("photo", "assets/photo.jpg", loader=_cv2_loader)
         photo.pipe(GaussianBlur).pipe(EdgeDetect)
@@ -197,7 +198,7 @@ class _MaskedEdgeSketch(Sketch):
     description = "Multi-source: blur + optional mask into edge detect."
     date = "2026-03-18"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Wire photo through blur, with mask as optional second input to edge detect."""
         photo = self.source("photo", "assets/photo.jpg", loader=_cv2_loader)
         mask = self.source("mask", "assets/mask.png", loader=_cv2_loader)
@@ -212,7 +213,7 @@ class _NoMaskEdgeSketch(Sketch):
     description = "Optional mask input not wired."
     date = "2026-03-18"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Wire photo through blur then edge detect (no mask)."""
         photo = self.source("photo", "assets/photo.jpg", loader=_cv2_loader)
         blur = photo.pipe(GaussianBlur)

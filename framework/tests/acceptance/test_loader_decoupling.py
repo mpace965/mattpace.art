@@ -20,6 +20,7 @@ from fastapi.testclient import TestClient
 
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
+from sketchbook.core.profile import ExecutionProfile
 from sketchbook.core.types import Image
 from sketchbook.server.app import create_app
 from tests.conftest import make_test_image
@@ -64,7 +65,7 @@ class _LoaderSketch(Sketch):
     description = "Tests that a sketch-supplied loader runs end-to-end."
     date = "2026-03-22"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         photo = self.source("photo", "assets/photo.png", loader=lambda p: Image(cv2.imread(str(p))))
         photo.pipe(Passthrough)
 

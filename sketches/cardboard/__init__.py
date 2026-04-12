@@ -7,6 +7,7 @@ from typing import Any
 import cv2
 import numpy as np
 from sketchbook import Sketch
+from sketchbook.core.profile import ExecutionProfile
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
 
@@ -20,7 +21,7 @@ class Cardboard(Sketch):
     description = "greyscale cardboard texture with a grid of inverted circles."
     date = "2026-03-09"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Load the cardboard photo, generate a circle grid mask, and apply DIFFERENCE blend."""
         photo = self.source(
             "photo", "assets/cardboard.jpg", loader=lambda p: Image(cv2.imread(str(p)))

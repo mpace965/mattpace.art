@@ -10,6 +10,7 @@ import pytest
 
 from sketchbook import Sketch
 from sketchbook.core.executor import execute
+from sketchbook.core.profile import ExecutionProfile
 from sketchbook.core.types import Image
 from sketchbook.steps.output_bundle import OutputBundle
 from tests.conftest import make_test_image
@@ -21,7 +22,7 @@ class _SiteSketch(Sketch):
     description = "Output bundle test."
     date = "2026-03-18"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         photo = self.source("photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p))))
         blurred = photo.pipe(GaussianBlur)
         edges = blurred.pipe(EdgeDetect)
@@ -36,8 +37,8 @@ def sketch_dir(tmp_path: Path) -> Path:
     return d
 
 
-def test_output_bundle_step_is_passthrough(sketch_dir: Path) -> None:
-    """OutputBundle step passes the input image through unchanged."""
+def test_output_bundle_step_passes_data_through(sketch_dir: Path) -> None:
+    """OutputBundle step returns an Image with the same pixel data as the input."""
     import numpy as np
 
     from sketchbook.core.types import Image
@@ -46,7 +47,20 @@ def test_output_bundle_step_is_passthrough(sketch_dir: Path) -> None:
     arr = np.zeros((4, 4, 3), dtype=np.uint8)
     img = Image(arr)
     result = step.process({"image": img}, {})
-    assert result is img
+    assert isinstance(result, Image)
+    np.testing.assert_array_equal(result.data, arr)
+
+
+def test_output_bundle_step_stamps_compress_level(sketch_dir: Path) -> None:
+    """OutputBundle stamps its compress_level onto the returned Image."""
+    import numpy as np
+
+    from sketchbook.core.types import Image
+
+    step = OutputBundle("bundle", compress_level=6)
+    img = Image(np.zeros((4, 4, 3), dtype=np.uint8))
+    result = step.process({"image": img}, {})
+    assert result.compress_level == 6
 
 
 def test_output_bundle_dsl_adds_node(sketch_dir: Path) -> None:
@@ -70,7 +84,7 @@ def test_site_output_bundle_is_no_arg_output_bundle(sketch_dir: Path) -> None:
         description = ""
         date = "2026-03-18"
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             photo = self.source("photo", "assets/photo.jpg")
             photo.pipe(_FakeSiteOutputBundle)
 
@@ -88,7 +102,7 @@ def test_sketch_output_bundle_uses_given_name(sketch_dir: Path) -> None:
         description = ""
         date = "2026-03-18"
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             photo = self.source("photo", "assets/photo.jpg")
             edges = photo.pipe(GaussianBlur)
             self.output_bundle(edges, "my_bundle")
@@ -108,7 +122,7 @@ def test_builder_discovers_output_bundle_nodes(sketch_dir: Path, tmp_path: Path)
         description = ""
         date = "2026-03-18"
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             photo = self.source("photo", "assets/photo.jpg")
             photo.pipe(Passthrough)
 
@@ -132,7 +146,7 @@ def test_builder_ignores_different_bundle_name(sketch_dir: Path, tmp_path: Path)
         description = ""
         date = "2026-03-18"
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             photo = self.source("photo", "assets/photo.jpg")
             edges = photo.pipe(GaussianBlur)
             self.output_bundle(edges, "other_bundle")
@@ -219,7 +233,7 @@ def test_builder_uses_node_presets_to_filter(sketch_dir: Path, tmp_path: Path) -
         description = ""
         date = "2026-03-18"
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             photo = self.source(
                 "photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p)))
             )
@@ -248,7 +262,7 @@ def test_builder_node_presets_unknown_name_does_not_crash(sketch_dir: Path, tmp_
         description = ""
         date = "2026-03-18"
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             photo = self.source(
                 "photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p)))
             )
@@ -280,7 +294,7 @@ def test_builder_warns_on_duplicate_bundle_nodes(
         description = ""
         date = "2026-03-18"
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             photo = self.source("photo", "assets/photo.jpg")
             blurred = photo.pipe(GaussianBlur)
             self.output_bundle(blurred, "bundle")
@@ -313,7 +327,7 @@ class _ParallelSketch(Sketch):
     description = "Two-preset parallel test sketch."
     date = "2026-03-31"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         photo = self.source(
             "photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p)))
         )
@@ -360,7 +374,7 @@ def test_failing_preset_does_not_block_others(sketch_dir: Path, tmp_path: Path) 
         description = ""
         date = "2026-03-31"
 
-        def build(self) -> None:
+        def build(self, profile: ExecutionProfile) -> None:
             photo = self.source(
                 "photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p)))
             )

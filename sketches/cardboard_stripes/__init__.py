@@ -8,6 +8,7 @@ from typing import Any
 import cv2
 import numpy as np
 from sketchbook import Sketch
+from sketchbook.core.profile import ExecutionProfile
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
 
@@ -31,14 +32,15 @@ class CardboardStripes(Sketch):
     description = "greyscale cardboard texture with a stack of inverted horizontal bars."
     date = "2026-03-12"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Load cardboard photo, generate a stripe mask, and apply DIFFERENCE blend."""
         photo = self.source(
             "photo", "assets/cardboard.jpg", loader=lambda p: Image(cv2.imread(str(p)))
         )
         mask = photo.pipe(StripesMask)
         blended = self.add(DifferenceBlend, inputs={"image": photo, "mask": mask})
-        self.output_bundle(blended, SITE_BUNDLE, presets=["three", "steps"])
+        self.output_bundle(blended, SITE_BUNDLE, presets=["three", "steps"],
+                           compress_level=profile.compress_level)
 
 
 class StripesMask(PipelineStep):
@@ -116,7 +118,7 @@ class DifferenceBlend(PipelineStep):
         # Resize mask to match image if needed
         if img.shape != mask.shape:
             mask = cv2.resize(mask, (img.shape[1], img.shape[0]))
-        return Image(cv2.absdiff(img, mask), compress_level=9)
+        return Image(cv2.absdiff(img, mask))
 
 
 def _lerp(t: float, a: float, b: float) -> float:

@@ -10,6 +10,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from sketchbook import Sketch
+from sketchbook.core.profile import ExecutionProfile
 from sketchbook.server.app import create_app
 from tests.steps import EdgeDetect, GaussianBlur, Passthrough
 
@@ -25,7 +26,7 @@ class _BrowserHelloSketch(Sketch):
     description = "Simplest possible sketch."
     date = "2026-03-16"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Wire source through passthrough."""
         photo = self.source("photo", "assets/hello.jpg")
         photo.pipe(Passthrough)
@@ -38,7 +39,7 @@ class _BrowserEdgePortraitSketch(Sketch):
     description = "Canny edge detection."
     date = "2026-03-18"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Wire source through blur then edge detect."""
         photo = self.source("photo", "assets/photo.jpg")
         photo.pipe(GaussianBlur).pipe(EdgeDetect)

@@ -10,6 +10,7 @@ from typing import Any
 
 from sketchbook.core.dag import DAG, DAGNode
 from sketchbook.core.presets import PresetManager
+from sketchbook.core.profile import ExecutionProfile, ProfileRegistry
 from sketchbook.core.step import PipelineStep
 
 log = logging.getLogger("sketchbook.sketch")
@@ -39,13 +40,16 @@ class Sketch:
     description: str = ""
     date: str = ""
 
-    def __init__(self, sketch_dir: str | Path) -> None:
+    def __init__(self, sketch_dir: str | Path, mode: str = "dev") -> None:
         self._sketch_dir = Path(sketch_dir)
         self._dag = DAG()
         self._workdir = self._sketch_dir / ".workdir"
         self._workdir.mkdir(parents=True, exist_ok=True)
         self._step_counts: dict[str, int] = {}
-        self.build()
+        sketch_profiles = self.execution_profiles()
+        self._profile_registry = ProfileRegistry(sketch_profiles)
+        profile = self._profile_registry.resolve(mode)
+        self.build(profile)
         self._preset_manager = PresetManager(self._sketch_dir / "presets")
         self._preset_manager.load_active(self._dag)
 
@@ -64,8 +68,12 @@ class Sketch:
         """Return the preset manager for this sketch."""
         return self._preset_manager
 
-    def build(self) -> None:
-        """Override to define the pipeline."""
+    def execution_profiles(self) -> dict[str, ExecutionProfile]:
+        """Return sketch-level profile overrides keyed by mode name."""
+        return {}
+
+    def build(self, profile: ExecutionProfile) -> None:
+        """Override to define the pipeline. Use profile.draft_scale and profile.compress_level."""
         raise NotImplementedError(f"{type(self).__name__} must implement build()")
 
     def source(
@@ -134,6 +142,7 @@ class Sketch:
         node: _ManagedNode,
         bundle_name: str,
         presets: list[str] | None = None,
+        compress_level: int = 0,
     ) -> _ManagedNode:
         """Add an OutputBundle node after the given node and return it.
 
@@ -144,11 +153,14 @@ class Sketch:
             node: The upstream node whose output to bundle.
             bundle_name: The name of the output bundle.
             presets: Preset names to include in the site build. None = all saved presets.
+            compress_level: PNG compression level to stamp onto the output image.
         """
         from sketchbook.steps.output_bundle import OutputBundle
 
         node_id = self._next_id(OutputBundle)
-        managed = self._register_node(OutputBundle(bundle_name, presets=presets), node_id)
+        managed = self._register_node(
+            OutputBundle(bundle_name, presets=presets, compress_level=compress_level), node_id
+        )
         self._dag.connect(node.id, node_id, "image")
         log.debug(f"Wired {node.id} -> {node_id} via 'image' (bundle: {bundle_name!r})")
         return managed

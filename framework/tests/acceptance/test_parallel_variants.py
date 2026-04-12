@@ -15,6 +15,7 @@ import pytest
 from sketchbook import Sketch
 from sketchbook.bundle.builder import build_bundle
 from sketchbook.core.executor import execute
+from sketchbook.core.profile import ExecutionProfile
 from sketchbook.core.types import Image
 from tests.conftest import make_test_image
 from tests.steps import EdgeDetect, GaussianBlur
@@ -25,7 +26,7 @@ class _SketchA(Sketch):
     description = "First parallel test sketch."
     date = "2026-03-31"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Wire photo through blur then output."""
         photo = self.source("photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p))))
         blurred = photo.pipe(GaussianBlur)
@@ -37,7 +38,7 @@ class _SketchB(Sketch):
     description = "Second parallel test sketch."
     date = "2026-03-30"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Wire photo through edge detect then output."""
         photo = self.source("photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p))))
         edges = photo.pipe(EdgeDetect)

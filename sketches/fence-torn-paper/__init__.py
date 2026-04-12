@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 from sketchbook import Sketch
 from sketchbook.core.params import Color
+from sketchbook.core.profile import ExecutionProfile
 from sketchbook.core.step import PipelineStep
 from sketchbook.core.types import Image
 
@@ -21,7 +22,7 @@ class FenceTornPaper(Sketch):
     description = "weathered fence with torn paper and emphasized edges."
     date = "2026-03-29"
 
-    def build(self) -> None:
+    def build(self, profile: ExecutionProfile) -> None:
         """Load source, blur, detect edges, then composite hot-pink edges over original."""
         photo = self.source(
             "photo",
