@@ -6,13 +6,16 @@ import logging
 import re
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from sketchbook.core.dag import DAG, DAGNode
 from sketchbook.core.presets import PresetManager
 from sketchbook.core.step import PipelineStep
 
 log = logging.getLogger("sketchbook.sketch")
+
+SketchMode = Literal["dev", "build"]
+_VALID_MODES: frozenset[str] = frozenset({"dev", "build"})
 
 
 class _ManagedNode(DAGNode):
@@ -39,7 +42,13 @@ class Sketch:
     description: str = ""
     date: str = ""
 
-    def __init__(self, sketch_dir: str | Path) -> None:
+    def __init__(self, sketch_dir: str | Path, mode: SketchMode = "dev") -> None:
+        if mode not in _VALID_MODES:
+            raise ValueError(
+                f"Invalid sketch mode '{mode}'. Valid modes are: {sorted(_VALID_MODES)}"
+            )
+        # mode must be stored before build() so subclasses can branch on self.mode
+        self._mode: SketchMode = mode
         self._sketch_dir = Path(sketch_dir)
         self._dag = DAG()
         self._workdir = self._sketch_dir / ".workdir"
@@ -48,6 +57,11 @@ class Sketch:
         self.build()
         self._preset_manager = PresetManager(self._sketch_dir / "presets")
         self._preset_manager.load_active(self._dag)
+
+    @property
+    def mode(self) -> SketchMode:
+        """Return the mode this sketch was instantiated with ('dev' or 'build')."""
+        return self._mode
 
     @property
     def dag(self) -> DAG:
