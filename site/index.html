@@ -9,6 +9,20 @@ title: matt's pixel library
     <title>{{ title }}</title>
     <link rel="icon" href="/favicon.png" type="image/png" />
     <style>
+      :root {
+        --color-bg: #fff;
+        --color-text: #000;
+        --color-muted: #888;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --color-bg: #111;
+          --color-text: #d8d8d8;
+          --color-muted: #777;
+        }
+      }
+
       body {
         font-family: monospace;
         max-width: 800px;
@@ -17,6 +31,8 @@ title: matt's pixel library
         min-height: calc(100vh - 8rem);
         display: flex;
         flex-direction: column;
+        background-color: var(--color-bg);
+        color: var(--color-text);
       }
 
       h1 {
@@ -39,7 +55,7 @@ title: matt's pixel library
       }
 
       .date {
-        color: #888;
+        color: var(--color-muted);
         white-space: nowrap;
       }
 
@@ -55,14 +71,14 @@ title: matt's pixel library
 
       .description {
         font-size: 0.85rem;
-        color: #888;
+        color: var(--color-muted);
       }
 
       footer {
         margin-top: auto;
         padding-top: 4rem;
         font-size: 0.8rem;
-        color: #888;
+        color: var(--color-muted);
       }
     </style>
   </head>

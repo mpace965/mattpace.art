@@ -13,11 +13,27 @@ permalink: "{{ sketch.slug }}/"
     <title>{{ sketch.name }} — matt's pixel library</title>
     <link rel="icon" href="/favicon.png" type="image/png" />
     <style>
+      :root {
+        --color-bg: #fff;
+        --color-text: #000;
+        --color-muted: #888;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --color-bg: #111;
+          --color-text: #d8d8d8;
+          --color-muted: #777;
+        }
+      }
+
       body {
         font-family: monospace;
         max-width: 900px;
         margin: 4rem auto;
         padding: 0 1.5rem;
+        background-color: var(--color-bg);
+        color: var(--color-text);
       }
 
       header {
@@ -31,7 +47,7 @@ permalink: "{{ sketch.slug }}/"
 
       .meta {
         font-size: 0.85rem;
-        color: #888;
+        color: var(--color-muted);
         margin: 0;
       }
 
@@ -41,7 +57,7 @@ permalink: "{{ sketch.slug }}/"
       }
 
       nav a {
-        color: #888;
+        color: var(--color-muted);
         text-decoration: none;
       }
 
@@ -63,7 +79,7 @@ permalink: "{{ sketch.slug }}/"
 
       .variant-name {
         font-size: 0.85rem;
-        color: #888;
+        color: var(--color-muted);
       }
 
       .variant-name a {
@@ -81,7 +97,7 @@ permalink: "{{ sketch.slug }}/"
       }
 
       .empty {
-        color: #888;
+        color: var(--color-muted);
         font-size: 0.9rem;
       }
     </style>
@@ -103,7 +119,9 @@ permalink: "{{ sketch.slug }}/"
         {%- if sketch.variants.size > 1 %}
         <span class="variant-name"><a href="#{{ variant.name }}">{{ variant.name }}</a></span>
         {%- endif %}
-        <img src="{{ variant.name }}.png" alt="{{ variant.name }}" loading="lazy" />
+        <a href="{{ variant.name }}.png" target="_blank" rel="noopener">
+          <img src="{{ variant.name }}.png" alt="{{ variant.name }}" loading="lazy" />
+        </a>
       </div>
       {%- endfor %}
     </div>
