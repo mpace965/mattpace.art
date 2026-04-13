@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import pytest
 
 from sketchbook.core.executor import execute
 from sketchbook.core.sketch import Sketch, _step_id_base
@@ -175,6 +176,49 @@ def test_step_id_base_acronym() -> None:
     result = _step_id_base(RGBSplit)
     assert result == result.lower()
     assert " " not in result
+
+
+# ---------------------------------------------------------------------------
+# pipe() with a pre-built instance
+# ---------------------------------------------------------------------------
+
+class _PipeInstanceSketch(Sketch):
+    name = "Test"
+    description = ""
+    date = ""
+
+    def build(self) -> None:
+        src = self.source("photo", "assets/photo.png")
+        src.pipe(FakeStep())
+
+
+def test_pipe_instance_adds_node_to_dag(tmp_path: Path) -> None:
+    _make_asset(tmp_path)
+    sketch = _PipeInstanceSketch(tmp_path)
+    assert "fake_step_0" in sketch.dag.nodes
+
+
+def test_pipe_instance_wires_edge(tmp_path: Path) -> None:
+    _make_asset(tmp_path)
+    sketch = _PipeInstanceSketch(tmp_path)
+    dst = sketch.dag.node("fake_step_0")
+    assert dst._sources["image"].id == "source_photo"
+
+
+def test_pipe_instance_with_params_raises(tmp_path: Path) -> None:
+    _make_asset(tmp_path)
+
+    class _BadSketch(Sketch):
+        name = "Test"
+        description = ""
+        date = ""
+
+        def build(self) -> None:
+            src = self.source("photo", "assets/photo.png")
+            src.pipe(FakeStep(), params={"x": {}})
+
+    with pytest.raises(ValueError, match="params"):
+        _BadSketch(tmp_path)
 
 
 # ---------------------------------------------------------------------------

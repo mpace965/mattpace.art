@@ -27,12 +27,25 @@ class _ManagedNode(DAGNode):
 
     def pipe(
         self,
-        step_class: type[PipelineStep],
+        step: type[PipelineStep] | PipelineStep,
         input_name: str = "image",
         params: dict[str, dict] | None = None,
     ) -> _ManagedNode:
-        """Connect this node's output to a new step instance."""
-        return self._sketch._pipe(self, step_class, input_name, param_overrides=params)
+        """Connect this node's output to a step class or a pre-built instance.
+
+        Pass a class to let the framework instantiate the step (optionally with
+        param overrides).  Pass an already-constructed instance when the step
+        requires constructor arguments that the framework cannot supply — in that
+        case ``params`` must be omitted.
+        """
+        if isinstance(step, PipelineStep):
+            if params is not None:
+                raise ValueError(
+                    "params cannot be passed to pipe() when a step instance is provided; "
+                    "the step is already constructed"
+                )
+            return self._sketch._pipe_instance(self, step, input_name)
+        return self._sketch._pipe(self, step, input_name, param_overrides=params)
 
 
 class Sketch:
@@ -141,6 +154,19 @@ class Sketch:
         node = self._make_node(step_class, node_id, param_overrides)
         self._dag.connect(from_node.id, node_id, input_name)
         log.debug(f"Wired {from_node.id} -> {node_id} via '{input_name}'")
+        return node
+
+    def _pipe_instance(
+        self,
+        from_node: _ManagedNode,
+        step: PipelineStep,
+        input_name: str,
+    ) -> _ManagedNode:
+        """Internal: register a pre-built step instance, wire an edge from from_node."""
+        node_id = self._next_id(type(step))
+        node = self._register_node(step, node_id)
+        self._dag.connect(from_node.id, node_id, input_name)
+        log.debug(f"Wired {from_node.id} -> {node_id} via '{input_name}' (instance)")
         return node
 
     def output_bundle(
