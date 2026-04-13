@@ -39,8 +39,10 @@ class KickPolygons(Sketch):
                 "s_flip_v": {},
             },
         )
+        compress_level = 9 if self.mode == "build" else 0
+        final = result.pipe(Postprocess(compress_level))
         self.output_bundle(
-            result,
+            final,
             SITE_BUNDLE,
             ["dress-star", "fist-pinwheel", "sun-pinwheel", "thirteen-fist-fin"],
         )
@@ -62,9 +64,27 @@ class Downscale(PipelineStep):
         src = inputs["image"].data
         h, w = src.shape[:2]
         result = cv2.resize(
-            src, (max(1, int(w * self._scale)), max(1, int(h * self._scale))), interpolation=cv2.INTER_AREA
+            src,
+            (max(1, int(w * self._scale)), max(1, int(h * self._scale))),
+            interpolation=cv2.INTER_AREA,
         )
         return Image(result)
+
+
+class Postprocess(PipelineStep):
+    """Apply output-time encoding settings to the final image."""
+
+    def __init__(self, compress_level: int) -> None:
+        self._compress_level = compress_level
+        super().__init__()
+
+    def setup(self) -> None:
+        """Declare image input."""
+        self.add_input("image", Image)
+
+    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
+        """Return the image with the configured compress level."""
+        return Image(inputs["image"].data, compress_level=self._compress_level)
 
 
 class RadialArrange(PipelineStep):

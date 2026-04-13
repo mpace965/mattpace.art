@@ -38,7 +38,9 @@ class CardboardStripes(Sketch):
         )
         mask = photo.pipe(StripesMask)
         blended = self.add(DifferenceBlend, inputs={"image": photo, "mask": mask})
-        self.output_bundle(blended, SITE_BUNDLE, presets=["three", "steps"])
+        compress_level = 9 if self.mode == "build" else 0
+        final = blended.pipe(Postprocess(compress_level))
+        self.output_bundle(final, SITE_BUNDLE, presets=["three", "steps"])
 
 
 class StripesMask(PipelineStep):
@@ -116,7 +118,23 @@ class DifferenceBlend(PipelineStep):
         # Resize mask to match image if needed
         if img.shape != mask.shape:
             mask = cv2.resize(mask, (img.shape[1], img.shape[0]))
-        return Image(cv2.absdiff(img, mask), compress_level=9)
+        return Image(cv2.absdiff(img, mask))
+
+
+class Postprocess(PipelineStep):
+    """Apply output-time encoding settings to the final image."""
+
+    def __init__(self, compress_level: int) -> None:
+        self._compress_level = compress_level
+        super().__init__()
+
+    def setup(self) -> None:
+        """Declare image input."""
+        self.add_input("image", Image)
+
+    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
+        """Return the image with the configured compress level."""
+        return Image(inputs["image"].data, compress_level=self._compress_level)
 
 
 def _lerp(t: float, a: float, b: float) -> float:

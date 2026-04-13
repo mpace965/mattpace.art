@@ -1,10 +1,10 @@
 {
   "_meta": {
-    "dirty": false,
+    "dirty": true,
     "based_on": "nine"
   },
   "circle_grid_mask_0": {
-    "count": 3,
+    "count": 20,
     "radius": 0.75
   }
 }

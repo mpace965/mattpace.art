@@ -50,7 +50,9 @@ class FenceTornPaper(Sketch):
                 "color": {},
             },
         )
-        self.output_bundle(composite, SITE_BUNDLE)
+        compress_level = 9 if self.mode == "build" else 0
+        final = composite.pipe(Postprocess(compress_level))
+        self.output_bundle(final, SITE_BUNDLE)
 
 
 class GaussianBlur(PipelineStep):
@@ -113,4 +115,20 @@ class CannyComposite(PipelineStep):
         color_layer = np.full_like(src, (color.r, color.g, color.b), dtype=np.uint8)
         edge_mask_3ch = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
         result = np.where(edge_mask_3ch > 0, color_layer, src)
-        return Image(result.astype(np.uint8), compress_level=9)
+        return Image(result.astype(np.uint8))
+
+
+class Postprocess(PipelineStep):
+    """Apply output-time encoding settings to the final image."""
+
+    def __init__(self, compress_level: int) -> None:
+        self._compress_level = compress_level
+        super().__init__()
+
+    def setup(self) -> None:
+        """Declare image input."""
+        self.add_input("image", Image)
+
+    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
+        """Return the image with the configured compress level."""
+        return Image(inputs["image"].data, compress_level=self._compress_level)

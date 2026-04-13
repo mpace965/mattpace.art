@@ -33,7 +33,9 @@ class Cardboard(Sketch):
             },
         )
         blended = self.add(DifferenceBlend, inputs={"image": photo, "mask": mask})
-        self.output_bundle(blended, SITE_BUNDLE, presets=["nine"])
+        compress_level = 9 if self.mode == "build" else 0
+        final = blended.pipe(Postprocess(compress_level))
+        self.output_bundle(final, SITE_BUNDLE, presets=["nine"])
 
 
 class CircleGridMask(PipelineStep):
@@ -78,4 +80,20 @@ class DifferenceBlend(PipelineStep):
     def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
         """Return the per-pixel absolute difference of image and mask."""
         result = cv2.absdiff(inputs["image"].data, inputs["mask"].data)
-        return Image(result, compress_level=9)
+        return Image(result)
+
+
+class Postprocess(PipelineStep):
+    """Apply output-time encoding settings to the final image."""
+
+    def __init__(self, compress_level: int) -> None:
+        self._compress_level = compress_level
+        super().__init__()
+
+    def setup(self) -> None:
+        """Declare image input."""
+        self.add_input("image", Image)
+
+    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
+        """Return the image with the configured compress level."""
+        return Image(inputs["image"].data, compress_level=self._compress_level)
