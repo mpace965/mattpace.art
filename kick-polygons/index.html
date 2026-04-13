@@ -6,11 +6,27 @@
     <title>kick-polygons — matt's pixel library</title>
     <link rel="icon" href="/favicon.png" type="image/png" />
     <style>
+      :root {
+        --color-bg: #fff;
+        --color-text: #000;
+        --color-muted: #888;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --color-bg: #111;
+          --color-text: #d8d8d8;
+          --color-muted: #777;
+        }
+      }
+
       body {
         font-family: monospace;
         max-width: 900px;
         margin: 4rem auto;
         padding: 0 1.5rem;
+        background-color: var(--color-bg);
+        color: var(--color-text);
       }
 
       header {
@@ -24,7 +40,7 @@
 
       .meta {
         font-size: 0.85rem;
-        color: #888;
+        color: var(--color-muted);
         margin: 0;
       }
 
@@ -34,7 +50,7 @@
       }
 
       nav a {
-        color: #888;
+        color: var(--color-muted);
         text-decoration: none;
       }
 
@@ -56,7 +72,7 @@
 
       .variant-name {
         font-size: 0.85rem;
-        color: #888;
+        color: var(--color-muted);
       }
 
       .variant-name a {
@@ -74,7 +90,7 @@
       }
 
       .empty {
-        color: #888;
+        color: var(--color-muted);
         font-size: 0.9rem;
       }
     </style>
@@ -89,19 +105,27 @@
     <div class="variants">
       <div class="variant" id="dress-star">
         <span class="variant-name"><a href="#dress-star">dress-star</a></span>
-        <img src="dress-star.png" alt="dress-star" loading="lazy" />
+        <a href="dress-star.png" target="_blank" rel="noopener">
+          <img src="dress-star.png" alt="dress-star" loading="lazy" />
+        </a>
       </div>
       <div class="variant" id="fist-pinwheel">
         <span class="variant-name"><a href="#fist-pinwheel">fist-pinwheel</a></span>
-        <img src="fist-pinwheel.png" alt="fist-pinwheel" loading="lazy" />
+        <a href="fist-pinwheel.png" target="_blank" rel="noopener">
+          <img src="fist-pinwheel.png" alt="fist-pinwheel" loading="lazy" />
+        </a>
       </div>
       <div class="variant" id="sun-pinwheel">
         <span class="variant-name"><a href="#sun-pinwheel">sun-pinwheel</a></span>
-        <img src="sun-pinwheel.png" alt="sun-pinwheel" loading="lazy" />
+        <a href="sun-pinwheel.png" target="_blank" rel="noopener">
+          <img src="sun-pinwheel.png" alt="sun-pinwheel" loading="lazy" />
+        </a>
       </div>
       <div class="variant" id="thirteen-fist-fin">
         <span class="variant-name"><a href="#thirteen-fist-fin">thirteen-fist-fin</a></span>
-        <img src="thirteen-fist-fin.png" alt="thirteen-fist-fin" loading="lazy" />
+        <a href="thirteen-fist-fin.png" target="_blank" rel="noopener">
+          <img src="thirteen-fist-fin.png" alt="thirteen-fist-fin" loading="lazy" />
+        </a>
       </div>
     </div>
   </body>

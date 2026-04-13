@@ -6,11 +6,27 @@
     <title>cardboard-stripes — matt's pixel library</title>
     <link rel="icon" href="/favicon.png" type="image/png" />
     <style>
+      :root {
+        --color-bg: #fff;
+        --color-text: #000;
+        --color-muted: #888;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --color-bg: #111;
+          --color-text: #d8d8d8;
+          --color-muted: #777;
+        }
+      }
+
       body {
         font-family: monospace;
         max-width: 900px;
         margin: 4rem auto;
         padding: 0 1.5rem;
+        background-color: var(--color-bg);
+        color: var(--color-text);
       }
 
       header {
@@ -24,7 +40,7 @@
 
       .meta {
         font-size: 0.85rem;
-        color: #888;
+        color: var(--color-muted);
         margin: 0;
       }
 
@@ -34,7 +50,7 @@
       }
 
       nav a {
-        color: #888;
+        color: var(--color-muted);
         text-decoration: none;
       }
 
@@ -56,7 +72,7 @@
 
       .variant-name {
         font-size: 0.85rem;
-        color: #888;
+        color: var(--color-muted);
       }
 
       .variant-name a {
@@ -74,7 +90,7 @@
       }
 
       .empty {
-        color: #888;
+        color: var(--color-muted);
         font-size: 0.9rem;
       }
     </style>
@@ -89,11 +105,15 @@
     <div class="variants">
       <div class="variant" id="three">
         <span class="variant-name"><a href="#three">three</a></span>
-        <img src="three.png" alt="three" loading="lazy" />
+        <a href="three.png" target="_blank" rel="noopener">
+          <img src="three.png" alt="three" loading="lazy" />
+        </a>
       </div>
       <div class="variant" id="steps">
         <span class="variant-name"><a href="#steps">steps</a></span>
-        <img src="steps.png" alt="steps" loading="lazy" />
+        <a href="steps.png" target="_blank" rel="noopener">
+          <img src="steps.png" alt="steps" loading="lazy" />
+        </a>
       </div>
     </div>
   </body>
