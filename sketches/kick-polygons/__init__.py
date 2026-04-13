@@ -26,10 +26,8 @@ class KickPolygons(Sketch):
             "assets/she-kick.png",
             loader=lambda p: Image(cv2.imread(str(p), cv2.IMREAD_UNCHANGED)),
         )
-        thumb = photo.pipe(
-            Downscale,
-            params={"scale": {"min": 0.05, "max": 1.0, "step": 0.05}},
-        )
+        scale = 0.5 if self.mode == "build" else 0.25
+        thumb = photo.pipe(Downscale(scale))
         result = thumb.pipe(
             RadialArrange,
             params={
@@ -49,20 +47,22 @@ class KickPolygons(Sketch):
 
 
 class Downscale(PipelineStep):
-    """Scale the image to 25% of its original size."""
+    """Scale the image by a fixed factor determined at sketch build time."""
+
+    def __init__(self, scale: float) -> None:
+        self._scale = scale
+        super().__init__()
 
     def setup(self) -> None:
-        """Declare image input and scale parameter."""
+        """Declare image input."""
         self.add_input("image", Image)
-        self.add_param("scale", float, default=0.25, debounce=150, min=0.05, max=1.0, step=0.05)
 
     def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
-        """Return the image scaled by the given factor."""
+        """Return the image scaled by the factor set at construction."""
         src = inputs["image"].data
         h, w = src.shape[:2]
-        scale: float = params["scale"]
         result = cv2.resize(
-            src, (max(1, int(w * scale)), max(1, int(h * scale))), interpolation=cv2.INTER_AREA
+            src, (max(1, int(w * self._scale)), max(1, int(h * self._scale))), interpolation=cv2.INTER_AREA
         )
         return Image(result)
 

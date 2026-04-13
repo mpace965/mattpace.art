@@ -3,9 +3,6 @@
     "dirty": false,
     "based_on": "fist-pinwheel"
   },
-  "downscale_0": {
-    "scale": 0.5
-  },
   "radial_arrange_0": {
     "n": 32,
     "offset": -88.0,
