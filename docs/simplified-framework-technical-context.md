@@ -72,6 +72,29 @@ Framework calls these on any value a step returns:
 
 MIME type derived from extension; no explicit protocol field needed.
 
+**Fallback for non-protocol values**: if the return value does not implement the protocol,
+the framework falls back to `str(value).encode("utf-8")` + `extension = "txt"`. The node
+still appears in the DAG UI with a text preview. Values that want rich display opt into the
+protocol; primitives (`float`, `int`, `str`) get a sensible default with zero effort.
+
+### Primitive values as pipeline intermediates
+Plain Python primitives (`float`, `int`, `str`, etc.) can flow through the DAG as step
+outputs and inputs without any wrapper type. A step that computes a scale factor is a
+normal `@step` function returning `float`:
+
+```python
+@step
+def compute_scale(ctx: SketchContext) -> float:
+    return 0.25 if ctx.mode == "dev" else 1.0
+```
+
+Calling it in the sketch returns a `Proxy[float]`. Downstream steps that receive it get a
+real `float` at execution time. The framework writes a `.txt` workdir file via the fallback
+protocol, and the node appears in the dev UI. No wrapper needed.
+
+Prefer making derived values explicit `@step` functions over baking them into the sketch
+body as plain Python — it keeps the DAG visible and gives each derivation its own UI node.
+
 ### Value types in userland
 - `Image` moves from `framework/src/sketchbook/core/types.py` to `sketches/types.py`
 - Framework has zero opinion on image libraries
