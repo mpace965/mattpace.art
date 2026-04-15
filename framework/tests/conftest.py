@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from pathlib import Path
+from typing import Literal
 
 import cv2
 import numpy as np
@@ -16,14 +17,46 @@ from sketchbook.core.types import Image
 from sketchbook.server.app import create_app
 from tests.steps import EdgeDetect, GaussianBlur, Passthrough
 
+# ---------------------------------------------------------------------------
+# TestImage — minimal SketchValueProtocol for v3 framework tests
+# ---------------------------------------------------------------------------
+
+
+class TestImage:  # noqa: N801 — kept as TestImage per plan; pytest warns but doesn't fail
+    """Minimal SketchValueProtocol implementation for framework tests.
+
+    Stores raw bytes so no image library is needed. Loads by reading the file
+    directly.
+    """
+
+    extension = "png"
+
+    def __init__(self, data: bytes) -> None:
+        self._data = data
+
+    @staticmethod
+    def load(path: Path) -> TestImage:
+        """Load a TestImage from *path* by reading its raw bytes."""
+        return TestImage(path.read_bytes())
+
+    def to_bytes(self, mode: Literal["dev", "build"]) -> bytes:
+        """Return the raw bytes, regardless of mode."""
+        return self._data
+
+    def to_html(self, url: str) -> str:
+        """Return a minimal HTML img tag."""
+        return f'<img src="{url}">'
+
 
 def _cv2_loader(path: Path) -> Image:
     """Load an image using cv2 — for use in test fixture sketches."""
     return Image(cv2.imread(str(path)))
 
+
 # ---------------------------------------------------------------------------
 # Image helpers
 # ---------------------------------------------------------------------------
+
 
 def make_test_image(path: Path, color: str = "blue") -> None:
     """Write a small solid-color JPEG to path."""
@@ -50,6 +83,17 @@ def write_test_image(path: Path, color: str = "red") -> None:
 # tmp_sketch fixture
 # ---------------------------------------------------------------------------
 
+
+@pytest.fixture()
+def tmp_fn_sketch(tmp_path: Path) -> Generator[Path]:
+    """Create a temporary sketch directory with a test PNG for v3 @sketch tests."""
+    sketch_dir = tmp_path / "hello"
+    assets_dir = sketch_dir / "assets"
+    assets_dir.mkdir(parents=True)
+    make_test_image(assets_dir / "hello.png")
+    yield sketch_dir
+
+
 @pytest.fixture()
 def tmp_sketch(tmp_path: Path) -> Generator[Path]:
     """Create a temporary sketch directory with a test source image."""
@@ -63,6 +107,7 @@ def tmp_sketch(tmp_path: Path) -> Generator[Path]:
 # ---------------------------------------------------------------------------
 # test_client fixture
 # ---------------------------------------------------------------------------
+
 
 class _HelloSketch(Sketch):
     """Minimal inline sketch for walking skeleton acceptance tests."""
@@ -92,17 +137,21 @@ def test_client(tmp_sketch: Path) -> Generator[TestClient]:
 # ws_client fixture (async context manager factory)
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def ws_client(test_client: TestClient):
     """Return a factory that opens a WebSocket connection via the TestClient."""
+
     def _factory(path: str):
         return test_client.websocket_connect(path)
+
     return _factory
 
 
 # ---------------------------------------------------------------------------
 # edge_hello fixtures (increment 2)
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture()
 def tmp_edge_sketch(tmp_path: Path) -> Generator[Path]:
@@ -141,8 +190,10 @@ def edge_test_client(tmp_edge_sketch: Path) -> Generator[TestClient]:
 @pytest.fixture()
 def edge_ws_client(edge_test_client: TestClient):
     """Return a factory that opens a WebSocket connection via the edge TestClient."""
+
     def _factory(path: str):
         return edge_test_client.websocket_connect(path)
+
     return _factory
 
 
@@ -244,8 +295,10 @@ def masked_client(tmp_masked_sketch: Path) -> Generator[TestClient]:
 @pytest.fixture()
 def masked_ws_client(masked_client: TestClient):
     """Return a factory that opens a WebSocket connection via the masked client."""
+
     def _factory(path: str):
         return masked_client.websocket_connect(path)
+
     return _factory
 
 

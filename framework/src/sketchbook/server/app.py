@@ -13,11 +13,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from sketchbook.core.sketch import Sketch
+from sketchbook.server.fn_registry import SketchFnRegistry
 from sketchbook.server.registry import SketchRegistry
 from sketchbook.server.routes import dag as dag_routes
 from sketchbook.server.routes import params as params_routes
 from sketchbook.server.routes import presets as presets_routes
 from sketchbook.server.routes import sketch as sketch_routes
+from sketchbook.server.routes import v3 as v3_routes
 from sketchbook.server.routes import ws as ws_routes
 
 log = logging.getLogger("sketchbook.server")
@@ -30,6 +32,7 @@ def create_app(
     sketches_dir: Path | None = None,
     *,
     candidates: dict[str, type[Sketch]] | None = None,
+    fn_registry: SketchFnRegistry | None = None,
 ) -> FastAPI:
     """Build and return the FastAPI app with all routes mounted.
 
@@ -38,6 +41,7 @@ def create_app(
         sketches_dir: Root directory containing sketch modules (for workdir serving).
         candidates: Uninstantiated Sketch subclasses for lazy loading (dev server path).
             When provided, sketches are instantiated and executed on first request.
+        fn_registry: Optional v3 SketchFnRegistry. When provided, mounts /v3/ routes.
     """
     registry = SketchRegistry(sketches, sketches_dir, candidates=candidates)
 
@@ -45,10 +49,14 @@ def create_app(
     async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
         loop = asyncio.get_running_loop()
         registry.start_watcher(loop)
+        if fn_registry is not None:
+            fn_registry.start_watcher(loop)
         try:
             yield
         finally:
             registry.stop_watcher()
+            if fn_registry is not None:
+                fn_registry.stop_watcher()
 
     app = FastAPI(title="Sketchbook", lifespan=lifespan)
     app.state.registry = registry
@@ -59,6 +67,11 @@ def create_app(
     app.include_router(presets_routes.router)
     app.include_router(ws_routes.router)
     app.include_router(dag_routes.router)
+
+    # Mount v3 routes when a SketchFnRegistry is provided.
+    if fn_registry is not None:
+        app.state.fn_registry = fn_registry
+        app.include_router(v3_routes.router)
 
     # Serve .workdir/ output images per sketch.
     # Eager sketches: workdir already exists (sketch was executed).
