@@ -56,8 +56,9 @@
     import { Pane } from "https://cdn.jsdelivr.net/npm/tweakpane@4/+esm";
 
     const SKETCH_ID = "{{ sketch_id }}";
-    const PATCH_URL = `/api/sketches/${SKETCH_ID}/params`;
-    const PRESETS_URL = `/api/sketches/${SKETCH_ID}/presets`;
+    const URL_PREFIX = "{{ url_prefix | default('') }}";
+    const PATCH_URL = `${URL_PREFIX}/api/sketches/${SKETCH_ID}/params`;
+    const PRESETS_URL = `${URL_PREFIX}/api/sketches/${SKETCH_ID}/presets`;
 
     // -----------------------------------------------------------------------
     // Presets

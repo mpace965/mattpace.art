@@ -79,7 +79,7 @@
             <span class="card-step-type">{{ node.type }}</span>
             <span class="card-error-dot" id="err-dot-{{ node.id }}"></span>
           </summary>
-          {{ step_body(node.id, "/workdir/" ~ sketch_id ~ "/" ~ node.id ~ ".png") }}
+          {{ step_body(node.id, node.image_url) }}
         </details>
       </div>
       {% endfor %}
@@ -88,7 +88,7 @@
 {% endblock %}
 
 {% block scripts %}
-    const PARAMS_URL = `/api/sketches/${SKETCH_ID}/params`;
+    const PARAMS_URL = `${URL_PREFIX}/api/sketches/${SKETCH_ID}/params`;
 
     document.querySelectorAll("a.card-step-id").forEach(a => {
       a.addEventListener("click", (e) => e.stopPropagation());
@@ -169,7 +169,7 @@
     }
 
     function connect() {
-      const ws = new WebSocket(`ws://${location.host}/ws/${SKETCH_ID}`);
+      const ws = new WebSocket(`ws://${location.host}${URL_PREFIX}/ws/${SKETCH_ID}`);
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         if (msg.type === "step_updated") {

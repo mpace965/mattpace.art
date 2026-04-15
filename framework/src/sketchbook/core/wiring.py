@@ -9,7 +9,7 @@ from pathlib import Path
 from sketchbook.core.building_dag import Proxy, SourceRecord, building_sketch
 from sketchbook.core.built_dag import BuiltDAG, BuiltNode
 from sketchbook.core.decorators import SketchContext
-from sketchbook.core.introspect import extract_inputs
+from sketchbook.core.introspect import extract_inputs, extract_params
 
 log = logging.getLogger("sketchbook.wiring")
 
@@ -86,10 +86,15 @@ def wire_sketch(
                     f"corresponding proxy argument"
                 )
 
+        param_specs = extract_params(call.fn)
+        param_values = {s.name: s.default for s in param_specs}
+
         node = BuiltNode(
             step_id=call.step_id,
             fn=call.fn,
             source_ids=source_ids,
+            param_schema=param_specs,
+            param_values=param_values,
             ctx=ctx,
         )
         dag.nodes[call.step_id] = node

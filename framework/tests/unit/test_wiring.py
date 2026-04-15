@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Annotated
 
 import pytest
 
 from sketchbook.core.building_dag import output, source
-from sketchbook.core.decorators import SketchContext, sketch, step
+from sketchbook.core.decorators import Param, SketchContext, sketch, step
 from sketchbook.core.wiring import wire_sketch
 
 # ---------------------------------------------------------------------------
@@ -201,3 +202,75 @@ def test_descendants_of_source(tmp_path: Path) -> None:
     dag = wire_sketch(hello, _CTX)
     desc = dag.descendants("source_hello")
     assert "passthrough" in desc
+
+
+# ---------------------------------------------------------------------------
+# param_schema / param_values population
+# ---------------------------------------------------------------------------
+
+_src = Path("/fake/hello.png")
+
+
+def test_step_with_param_populates_schema() -> None:
+    """wire_sketch fills param_schema from Annotated keyword args."""
+
+    @step
+    def proc(image: _Img, *, level: Annotated[int, Param(min=0, max=255)] = 128) -> _Img:
+        return image
+
+    @sketch(date="2026-01-01")
+    def sk() -> None:
+        img = source(_src, _loader)
+        output(proc(img), "main")
+
+    dag = wire_sketch(sk, _CTX)
+    node = dag.nodes["proc"]
+    assert len(node.param_schema) == 1
+    assert node.param_schema[0].name == "level"
+    assert node.param_values == {"level": 128}
+
+
+def test_param_values_use_defaults() -> None:
+    """Initial param_values come from function signature defaults."""
+
+    @step
+    def proc(image: _Img, *, sigma: Annotated[float, Param()] = 2.5) -> _Img:
+        return image
+
+    @sketch(date="2026-01-01")
+    def sk() -> None:
+        img = source(_src, _loader)
+        output(proc(img), "main")
+
+    dag = wire_sketch(sk, _CTX)
+    assert dag.nodes["proc"].param_values["sigma"] == 2.5
+
+
+def test_step_without_params_has_empty_schema() -> None:
+    """A step with no Annotated params gets empty param_schema and param_values."""
+
+    @sketch(date="2026-01-01")
+    def sk() -> None:
+        img = source(_src, _loader)
+        output(passthrough(img), "main")
+
+    dag = wire_sketch(sk, _CTX)
+    node = dag.nodes["passthrough"]
+    assert node.param_schema == []
+    assert node.param_values == {}
+
+
+def test_step_with_ctx_stores_context() -> None:
+    """wire_sketch stores the dag-level ctx on a node whose step declares SketchContext."""
+
+    @step
+    def proc(image: _Img, ctx: SketchContext) -> _Img:
+        return image
+
+    @sketch(date="2026-01-01")
+    def sk() -> None:
+        img = source(_src, _loader)
+        output(proc(img), "main")
+
+    dag = wire_sketch(sk, _CTX)
+    assert dag.nodes["proc"].ctx is _CTX

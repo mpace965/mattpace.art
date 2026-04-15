@@ -1,9 +1,11 @@
-"""Unit tests for extract_inputs()."""
+"""Unit tests for extract_inputs() and extract_params()."""
 
 from __future__ import annotations
 
-from sketchbook.core.decorators import SketchContext
-from sketchbook.core.introspect import extract_inputs
+from typing import Annotated
+
+from sketchbook.core.decorators import Param, SketchContext, step
+from sketchbook.core.introspect import extract_inputs, extract_params
 
 
 class _FakeImage:
@@ -97,3 +99,66 @@ def test_works_with_step_decorated_fn() -> None:
     specs = extract_inputs(process)
     assert len(specs) == 1
     assert specs[0].name == "image"
+
+
+# ---------------------------------------------------------------------------
+# extract_params tests
+# ---------------------------------------------------------------------------
+
+
+def test_annotated_int_param() -> None:
+    """Annotated[int, Param(min=0, max=255)] keyword-only arg → ParamSpec."""
+
+    def f(image, *, level: Annotated[int, Param(min=0, max=255)] = 128) -> None: ...
+
+    specs = extract_params(f)
+    assert len(specs) == 1
+    assert specs[0].name == "level"
+    assert specs[0].type is int
+    assert specs[0].default == 128
+    assert specs[0].param.min == 0
+    assert specs[0].param.max == 255
+
+
+def test_annotated_float_with_default() -> None:
+    """Annotated[float, Param(...)] = 0.5 → default=0.5."""
+
+    def f(*, sigma: Annotated[float, Param(min=0.0, max=5.0)] = 0.5) -> None: ...
+
+    specs = extract_params(f)
+    assert specs[0].default == 0.5
+
+
+def test_bare_kwarg_not_a_param() -> None:
+    """A keyword-only arg without Param annotation is excluded."""
+
+    def f(*, count: int = 3) -> None: ...
+
+    assert extract_params(f) == []
+
+
+def test_sketch_context_kwarg_excluded() -> None:
+    """SketchContext keyword-only arg is excluded from params."""
+
+    def f(*, ctx: SketchContext) -> None: ...
+
+    assert extract_params(f) == []
+
+
+def test_optional_param_with_annotated() -> None:
+    """T | None with Param annotation is a valid optional param."""
+
+    def f(*, blur: Annotated[int, Param(min=0)] | None = None) -> None: ...
+
+    specs = extract_params(f)
+    assert len(specs) == 1
+
+
+def test_works_with_step_decorated_fn_params() -> None:
+    """extract_params unwraps @step and reads the original signature."""
+
+    @step
+    def proc(image, *, level: Annotated[int, Param(min=0)] = 5) -> None: ...
+
+    specs = extract_params(proc)
+    assert len(specs) == 1

@@ -1,4 +1,4 @@
-"""Introspection helpers — extract typed input specs from step function signatures."""
+"""Introspection helpers — extract typed input and param specs from step function signatures."""
 
 from __future__ import annotations
 
@@ -6,7 +6,9 @@ import inspect
 import typing
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Annotated, Any
+
+from sketchbook.core.built_dag import ParamSpec
 
 
 @dataclass
@@ -72,3 +74,81 @@ def extract_inputs(fn: Callable) -> list[InputSpec]:
         specs.append(InputSpec(name=name, type=base_type, optional=optional))
 
     return specs
+
+
+def extract_params(fn: Callable) -> list[ParamSpec]:
+    """Return ParamSpec list for keyword-only Annotated[T, Param(...)] parameters of *fn*.
+
+    Rules:
+    - Only KEYWORD_ONLY parameters are included.
+    - Parameters annotated as ``SketchContext`` are excluded.
+    - Only parameters whose annotation is (or contains) ``Annotated[T, Param(...)]`` are
+      included; bare keyword args without a ``Param`` metadata are silently skipped.
+    - A parameter without a default value raises ``ValueError``.
+    """
+    from sketchbook.core.decorators import Param, SketchContext
+
+    unwrapped = getattr(fn, "__wrapped__", fn)
+
+    try:
+        hints = typing.get_type_hints(unwrapped, include_extras=True)
+    except Exception:
+        hints = {}
+
+    sig = inspect.signature(unwrapped)
+    specs: list[ParamSpec] = []
+
+    for name, param in sig.parameters.items():
+        if param.kind != inspect.Parameter.KEYWORD_ONLY:
+            continue
+
+        annotation = hints.get(name, inspect.Parameter.empty)
+
+        # Strip Optional wrapper (T | None) to get the inner type.
+        inner = annotation
+        if _is_optional_annotation(annotation):
+            args = [a for a in typing.get_args(annotation) if a is not type(None)]
+            inner = args[0] if args else inspect.Parameter.empty
+
+        # Skip SketchContext parameters.
+        if inner is SketchContext:
+            continue
+
+        # Must be Annotated[T, Param(...)].
+        if typing.get_origin(inner) is not Annotated:
+            continue
+
+        annotated_args = typing.get_args(inner)
+        if len(annotated_args) < 2:
+            continue
+
+        base_type = annotated_args[0]
+        param_meta = next((a for a in annotated_args[1:] if isinstance(a, Param)), None)
+        if param_meta is None:
+            continue
+
+        default = param.default
+        if default is inspect.Parameter.empty:
+            raise ValueError(
+                f"Param '{name}' must have a default value — add '= <default>' to the signature."
+            )
+
+        specs.append(ParamSpec(name=name, type=base_type, default=default, param=param_meta))
+
+    return specs
+
+
+def coerce_param(spec: ParamSpec, raw: Any) -> Any:
+    """Coerce *raw* to the type declared in *spec*.
+
+    Delegates bool coercion to ``_coerce_bool`` for robust string handling.
+    For int, float, and str, calls the type constructor directly.
+    Unknown types are returned unchanged.
+    """
+    from sketchbook.core.params import _coerce_bool
+
+    if spec.type is bool:
+        return _coerce_bool(raw)
+    if spec.type in (int, float, str):
+        return spec.type(raw)
+    return raw

@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 from sketchbook.core.built_dag import BuiltDAG, BuiltNode
+from sketchbook.core.decorators import SketchContext
 from sketchbook.core.executor_v3 import execute_built, execute_partial_built
 from sketchbook.core.protocol import SketchValueProtocol
 
@@ -194,3 +195,95 @@ def test_partial_skips_unrelated_nodes(tmp_path: Path) -> None:
     assert "from_b" in result.executed
     assert "src_a" not in result.executed
     assert "from_a" not in result.executed
+
+
+# ---------------------------------------------------------------------------
+# param_values and ctx injection
+# ---------------------------------------------------------------------------
+
+
+def test_param_values_passed_as_kwargs(tmp_path: Path) -> None:
+    """param_values are passed as keyword args to the step fn."""
+    received: dict[str, object] = {}
+
+    def proc(image: _Img, *, level: int = 128) -> _Img:
+        received["level"] = level
+        return image
+
+    dag = BuiltDAG()
+    dag.nodes["src"] = _source_node("src")
+    dag.nodes["proc"] = BuiltNode(
+        step_id="proc",
+        fn=proc,
+        source_ids={"image": "src"},
+        param_values={"level": 64},
+    )
+
+    execute_built(dag, tmp_path)
+    assert received["level"] == 64
+
+
+def test_ctx_injected_when_declared(tmp_path: Path) -> None:
+    """SketchContext is injected if the node has ctx set and fn declares it."""
+    received: dict[str, object] = {}
+
+    def proc(image: _Img, ctx: SketchContext) -> _Img:
+        received["mode"] = ctx.mode
+        return image
+
+    ctx = SketchContext(mode="build")
+    dag = BuiltDAG()
+    dag.nodes["src"] = _source_node("src")
+    dag.nodes["proc"] = BuiltNode(
+        step_id="proc",
+        fn=proc,
+        source_ids={"image": "src"},
+        ctx=ctx,
+    )
+
+    execute_built(dag, tmp_path)
+    assert received["mode"] == "build"
+
+
+def test_ctx_not_injected_when_none(tmp_path: Path) -> None:
+    """No ctx injection when node.ctx is None."""
+    received: dict[str, object] = {}
+
+    def proc(image: _Img) -> _Img:
+        received["called"] = True
+        return image
+
+    dag = BuiltDAG()
+    dag.nodes["src"] = _source_node("src")
+    dag.nodes["proc"] = BuiltNode(
+        step_id="proc",
+        fn=proc,
+        source_ids={"image": "src"},
+        ctx=None,
+    )
+
+    execute_built(dag, tmp_path)
+    assert received.get("called") is True
+
+
+def test_updated_param_flows_through_reexecution(tmp_path: Path) -> None:
+    """Mutating param_values before execute_partial_built uses the new value."""
+    received: dict[str, object] = {}
+
+    def proc(image: _Img, *, level: int = 128) -> _Img:
+        received["level"] = level
+        return image
+
+    dag = BuiltDAG()
+    dag.nodes["src"] = _source_node("src")
+    dag.nodes["proc"] = BuiltNode(
+        step_id="proc",
+        fn=proc,
+        source_ids={"image": "src"},
+        param_values={"level": 128},
+    )
+
+    execute_built(dag, tmp_path)
+    dag.nodes["proc"].param_values["level"] = 42
+    execute_partial_built(dag, ["proc"], tmp_path)
+    assert received["level"] == 42

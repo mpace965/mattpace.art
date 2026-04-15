@@ -49,6 +49,7 @@ async def sketch_view(
                 "type": type(sketch.dag.node(nid).step).__name__,
                 "depth": depths[nid],
                 "input_ids": [src.id for src in sketch.dag.node(nid).source_nodes.values()],
+                "image_url": f"/workdir/{sketch_id}/{nid}.png",
             }
             for nid in component
         ]
