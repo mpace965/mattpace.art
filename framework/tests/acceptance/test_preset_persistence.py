@@ -23,6 +23,7 @@ from fastapi.testclient import TestClient
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _collect_ws_messages(
     ws_client, path: str, trigger, *, timeout: float = 5.0, idle: float = 0.3
 ) -> list[dict]:
@@ -193,9 +194,7 @@ def test_preset_save_broadcasts_preset_state(edge_test_client: TestClient, edge_
     msgs = _collect_ws_messages(
         edge_ws_client,
         "/ws/edge_hello",
-        lambda: edge_test_client.post(
-            "/api/sketches/edge_hello/presets", json={"name": "ws_test"}
-        ),
+        lambda: edge_test_client.post("/api/sketches/edge_hello/presets", json={"name": "ws_test"}),
         timeout=3.0,
     )
     preset_msgs = [m for m in msgs if m.get("type") == "preset_state"]
@@ -248,9 +247,7 @@ def test_preset_load_broadcasts_preset_state(edge_test_client: TestClient, edge_
     msgs = _collect_ws_messages(
         edge_ws_client,
         "/ws/edge_hello",
-        lambda: edge_test_client.post(
-            "/api/sketches/edge_hello/presets/for_load/load"
-        ),
+        lambda: edge_test_client.post("/api/sketches/edge_hello/presets/for_load/load"),
         timeout=3.0,
     )
     preset_msgs = [m for m in msgs if m.get("type") == "preset_state"]

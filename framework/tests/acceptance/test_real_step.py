@@ -70,6 +70,7 @@ def test_param_change_triggers_websocket_update(
         deadline = 5.0
         found = False
         import time
+
         start = time.monotonic()
         while time.monotonic() - start < deadline:
             try:

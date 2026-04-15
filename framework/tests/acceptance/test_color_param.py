@@ -66,6 +66,6 @@ def test_color_preset_round_trip(tmp_path: Path, color_dag) -> None:
 
     restored = node.step._param_registry.get_value(param_name)
     assert isinstance(restored, Color)
-    assert restored.r == 0x1a
-    assert restored.g == 0x2b
-    assert restored.b == 0x3c
+    assert restored.r == 0x1A
+    assert restored.g == 0x2B
+    assert restored.b == 0x3C

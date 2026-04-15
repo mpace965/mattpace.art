@@ -60,7 +60,8 @@ def _build_variant(task: _VariantTask) -> _VariantResult:
     """Execute the full pipeline for one (sketch, preset) pair and save the output image."""
     sketch = task.sketch_cls(task.sketch_dir, mode="build")
     bundle_nodes = [
-        n for n in sketch.dag.topo_sort()
+        n
+        for n in sketch.dag.topo_sort()
         if isinstance(n.step, OutputBundle) and n.step.bundle_name == task.bundle_name
     ]
     sketch.preset_manager.load_preset(task.preset_name, sketch.dag, save=False)
@@ -96,7 +97,8 @@ def _discover_sketch(
     sketch = sketch_cls(sketch_dir, mode="build")
 
     bundle_nodes = [
-        n for n in sketch.dag.topo_sort()
+        n
+        for n in sketch.dag.topo_sort()
         if isinstance(n.step, OutputBundle) and n.step.bundle_name == bundle_name
     ]
     if not bundle_nodes:
@@ -209,9 +211,12 @@ def build_bundle(
             continue
         # Restore discovery order (produced list is completion-order)
         ordered = [p for p in preset_order[sketch_id] if p in set(variants)]
-        entries.append({**meta, "variants": [
-            {"name": p, "image_path": f"{meta['slug']}/{p}.png"} for p in ordered
-        ]})
+        entries.append(
+            {
+                **meta,
+                "variants": [{"name": p, "image_path": f"{meta['slug']}/{p}.png"} for p in ordered],
+            }
+        )
 
     entries.sort(key=lambda e: e["date"], reverse=True)
     bundle_path = output_dir / "manifest.json"

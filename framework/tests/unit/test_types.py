@@ -13,6 +13,7 @@ from sketchbook.core.types import Image, PipelineValue
 # PipelineValue interface on Image
 # ---------------------------------------------------------------------------
 
+
 def test_image_is_pipeline_value() -> None:
     assert issubclass(Image, PipelineValue)
 
@@ -39,6 +40,7 @@ def test_image_to_bytes_non_empty() -> None:
 # Image wrapper
 # ---------------------------------------------------------------------------
 
+
 def test_image_stores_ndarray() -> None:
     data = np.zeros((8, 8, 3), dtype=np.uint8)
     img = Image(data)
@@ -62,6 +64,7 @@ def test_image_data_shape_preserved() -> None:
 # ---------------------------------------------------------------------------
 # compress_level
 # ---------------------------------------------------------------------------
+
 
 def test_image_compress_level_default_is_zero() -> None:
     img = Image(np.zeros((4, 4, 3), dtype=np.uint8))

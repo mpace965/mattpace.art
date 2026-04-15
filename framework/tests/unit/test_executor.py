@@ -17,6 +17,7 @@ from sketchbook.steps.source import SourceFile
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class _ConstantStep(PipelineStep):
     """Always returns a fixed Image regardless of inputs."""
 
@@ -76,6 +77,7 @@ def _make_node(node_id: str, step: PipelineStep, workdir: Path | None = None) ->
 # Full execution
 # ---------------------------------------------------------------------------
 
+
 def test_execute_single_source_node() -> None:
     img = _small_image()
     dag = DAG()
@@ -104,6 +106,7 @@ def test_execute_source_to_passthrough() -> None:
 # Workdir write
 # ---------------------------------------------------------------------------
 
+
 def test_execute_writes_workdir_file(tmp_path: Path) -> None:
     img = _small_image()
     dag = DAG()
@@ -120,6 +123,7 @@ def test_execute_writes_workdir_file(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Params
 # ---------------------------------------------------------------------------
+
 
 def test_executor_passes_params_to_process() -> None:
     img = _small_image()
@@ -154,6 +158,7 @@ def test_executor_uses_registry_not_empty_dict() -> None:
 # Failure propagation
 # ---------------------------------------------------------------------------
 
+
 def test_failed_node_propagates_to_downstream() -> None:
     img = _small_image()
     dag = DAG()
@@ -187,6 +192,7 @@ def test_failed_node_clears_output() -> None:
 # Stale file deletion
 # ---------------------------------------------------------------------------
 
+
 def test_execute_result_records_executed_nodes() -> None:
     img = _small_image()
     dag = DAG()
@@ -203,6 +209,7 @@ def test_execute_result_records_executed_nodes() -> None:
 # ---------------------------------------------------------------------------
 # Partial execution
 # ---------------------------------------------------------------------------
+
 
 def test_execute_partial_skips_non_descendants() -> None:
     """execute_partial on source_b only runs source_b and its descendants, not source_a."""
@@ -246,6 +253,7 @@ def test_execute_partial_includes_start_node() -> None:
 # ---------------------------------------------------------------------------
 # Optional input handling
 # ---------------------------------------------------------------------------
+
 
 class _OptionalMaskStep(PipelineStep):
     """Step that records whether mask was received."""
@@ -296,6 +304,7 @@ def test_optional_input_receives_image_when_connected() -> None:
 # Workdir write via to_bytes
 # ---------------------------------------------------------------------------
 
+
 def test_executor_writes_workdir_via_to_bytes(tmp_path: Path) -> None:
     """Executor writes workdir files using to_bytes(), not a save() method."""
     sentinel = Image(np.zeros((4, 4, 3), dtype=np.uint8))
@@ -315,6 +324,7 @@ def test_executor_writes_workdir_via_to_bytes(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Stale file deletion
 # ---------------------------------------------------------------------------
+
 
 def test_failed_node_deletes_stale_workdir_file(tmp_path: Path) -> None:
     img = _small_image()

@@ -100,6 +100,7 @@ def test_mode_build_produces_expected_dag_structure(tmp_path: Path) -> None:
 # Dev server registry passes mode="dev"
 # ---------------------------------------------------------------------------
 
+
 def test_registry_loads_sketch_in_dev_mode(tmp_path: Path) -> None:
     """Sketch instances loaded via SketchRegistry have mode == 'dev'."""
     from sketchbook.server.registry import SketchRegistry
@@ -121,6 +122,7 @@ def test_registry_loads_sketch_in_dev_mode(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Bundle builder passes mode="build"
 # ---------------------------------------------------------------------------
+
 
 def test_build_variant_uses_build_mode(tmp_path: Path) -> None:
     """_build_variant instantiates the sketch with mode='build'."""

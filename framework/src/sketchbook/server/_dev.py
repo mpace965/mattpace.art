@@ -23,9 +23,7 @@ def create_dev_app() -> FastAPI:
     """
     candidates = discover_sketches(_SKETCHES_DIR)
     sketch_fns = discover_sketch_fns(_SKETCHES_DIR)
-    fn_registry = (
-        SketchFnRegistry(sketch_fns, sketches_dir=_SKETCHES_DIR) if sketch_fns else None
-    )
+    fn_registry = SketchFnRegistry(sketch_fns, sketches_dir=_SKETCHES_DIR) if sketch_fns else None
     return create_app(
         {}, sketches_dir=_SKETCHES_DIR, candidates=candidates, fn_registry=fn_registry
     )

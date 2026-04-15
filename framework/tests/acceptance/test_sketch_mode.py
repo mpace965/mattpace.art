@@ -72,9 +72,7 @@ def test_dev_server_instantiates_sketch_in_dev_mode(sketch_dir: Path) -> None:
     assert sketch.mode == "dev"
 
 
-def test_bundle_builder_instantiates_sketch_in_build_mode(
-    sketch_dir: Path, tmp_path: Path
-) -> None:
+def test_bundle_builder_instantiates_sketch_in_build_mode(sketch_dir: Path, tmp_path: Path) -> None:
     """A sketch instantiated by the bundle builder has mode == 'build'."""
     from sketchbook.bundle.builder import build_bundle
 

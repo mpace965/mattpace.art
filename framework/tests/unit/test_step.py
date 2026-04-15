@@ -15,6 +15,7 @@ from tests.steps import Passthrough
 # add_input
 # ---------------------------------------------------------------------------
 
+
 class _MinimalStep(PipelineStep):
     def setup(self) -> None:
         self.add_input("image", Image)
@@ -48,6 +49,7 @@ def test_add_input_multiple_inputs() -> None:
 # setup / process contract
 # ---------------------------------------------------------------------------
 
+
 class _NoProcess(PipelineStep):
     def setup(self) -> None:
         pass
@@ -62,6 +64,7 @@ def test_process_not_implemented_raises() -> None:
 # ---------------------------------------------------------------------------
 # add_param
 # ---------------------------------------------------------------------------
+
 
 class _ParamStep(PipelineStep):
     def setup(self) -> None:
@@ -92,6 +95,7 @@ def test_params_passed_to_process() -> None:
 # Passthrough
 # ---------------------------------------------------------------------------
 
+
 def test_passthrough_output_equals_input() -> None:
     img = Image(np.zeros((8, 8, 3), dtype=np.uint8))
     step = Passthrough()
@@ -109,6 +113,7 @@ def test_passthrough_declares_image_input() -> None:
 # ---------------------------------------------------------------------------
 # Optional input not required at execution time
 # ---------------------------------------------------------------------------
+
 
 class _OptionalStep(PipelineStep):
     """Step with one required and one optional input."""

@@ -314,9 +314,7 @@ class _ParallelSketch(Sketch):
     date = "2026-03-31"
 
     def build(self) -> None:
-        photo = self.source(
-            "photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p)))
-        )
+        photo = self.source("photo", "assets/photo.jpg", loader=lambda p: Image(cv2.imread(str(p))))
         blurred = photo.pipe(GaussianBlur)
         self.output_bundle(blurred, "bundle")
 

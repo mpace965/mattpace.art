@@ -24,6 +24,7 @@ def _node(node_id: str) -> DAGNode:
 # add_node
 # ---------------------------------------------------------------------------
 
+
 def test_add_node_stores_node() -> None:
     dag = DAG()
     n = _node("a")
@@ -41,6 +42,7 @@ def test_add_node_duplicate_raises() -> None:
 # ---------------------------------------------------------------------------
 # connect
 # ---------------------------------------------------------------------------
+
 
 def test_connect_adds_edge() -> None:
     dag = DAG()
@@ -68,6 +70,7 @@ def test_connect_missing_target_raises() -> None:
 # ---------------------------------------------------------------------------
 # topo_sort
 # ---------------------------------------------------------------------------
+
 
 def test_topo_sort_two_nodes() -> None:
     dag = DAG()
@@ -130,6 +133,7 @@ def test_edges_property_returns_all_edges() -> None:
 # node lookup
 # ---------------------------------------------------------------------------
 
+
 def test_node_lookup_missing_raises() -> None:
     dag = DAG()
     with pytest.raises(KeyError, match="No node 'x'"):
@@ -139,6 +143,7 @@ def test_node_lookup_missing_raises() -> None:
 # ---------------------------------------------------------------------------
 # descendants
 # ---------------------------------------------------------------------------
+
 
 def test_descendants_leaf_node_is_empty() -> None:
     dag = DAG()
@@ -198,6 +203,7 @@ def test_descendants_missing_node_raises() -> None:
 # validate
 # ---------------------------------------------------------------------------
 
+
 class _RequiredInputStep(_Stub):
     def setup(self) -> None:
         self.add_input("image", object)
@@ -227,6 +233,7 @@ def test_validate_connected_required_passes() -> None:
 # ---------------------------------------------------------------------------
 # node_depths
 # ---------------------------------------------------------------------------
+
 
 def test_node_depths_single_node() -> None:
     dag = DAG()
@@ -276,6 +283,7 @@ def test_node_depths_two_roots() -> None:
 # ---------------------------------------------------------------------------
 # connected_components
 # ---------------------------------------------------------------------------
+
 
 def test_connected_components_single_chain() -> None:
     dag = DAG()
@@ -335,6 +343,7 @@ def test_connected_components_diamond_is_one_component() -> None:
 # ---------------------------------------------------------------------------
 # validate
 # ---------------------------------------------------------------------------
+
 
 def test_validate_missing_optional_passes() -> None:
     """Required input connected, optional input not connected — should pass."""

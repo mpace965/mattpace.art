@@ -109,9 +109,7 @@ class Sketch:
         from sketchbook.steps.source import SourceFile
 
         node_id = f"source_{name}"
-        node = self._register_node(
-            SourceFile(self._sketch_dir / path, loader=loader), node_id
-        )
+        node = self._register_node(SourceFile(self._sketch_dir / path, loader=loader), node_id)
         log.debug(f"Added source node '{node_id}' watching {self._sketch_dir / path}")
         return node
 

@@ -29,11 +29,13 @@ async def ws_endpoint(websocket: WebSocket, sketch_id: str) -> None:
         for node in sketch.dag.topo_sort():
             if node.workdir_path and Path(node.workdir_path).exists():
                 await websocket.send_text(
-                    json.dumps({
-                        "type": "step_updated",
-                        "step_id": node.id,
-                        "image_url": f"/workdir/{sketch_id}/{node.id}.png",
-                    })
+                    json.dumps(
+                        {
+                            "type": "step_updated",
+                            "step_id": node.id,
+                            "image_url": f"/workdir/{sketch_id}/{node.id}.png",
+                        }
+                    )
                 )
 
     try:

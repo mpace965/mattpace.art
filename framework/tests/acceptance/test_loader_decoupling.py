@@ -29,6 +29,7 @@ from tests.steps import Passthrough
 def test_image_is_pipeline_value() -> None:
     """Image must subclass PipelineValue."""
     from sketchbook.core.types import PipelineValue
+
     assert issubclass(Image, PipelineValue)
 
 

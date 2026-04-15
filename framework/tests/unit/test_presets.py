@@ -260,6 +260,7 @@ def test_reset_restores_param_defaults(tmp_path: Path, param_dag) -> None:
 def test_reset_writes_active_json(tmp_path: Path, minimal_dag) -> None:
     """reset() writes _active.json with dirty=False and based_on=null."""
     import json
+
     pm = PresetManager(tmp_path / "presets")
     pm.save_preset("p", minimal_dag)
     pm.reset(minimal_dag)

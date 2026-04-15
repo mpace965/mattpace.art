@@ -68,7 +68,6 @@ def test_websocket_sends_initial_state_on_connect(test_client: TestClient, ws_cl
     assert "passthrough_0" in step_ids, f"Expected passthrough_0 in initial state, got: {step_ids}"
 
 
-
 # ---------------------------------------------------------------------------
 # File change still works after initial-state push is added
 # ---------------------------------------------------------------------------

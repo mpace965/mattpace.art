@@ -98,22 +98,26 @@ class SketchRegistry:
 
         for sketch_id, sketch in self.sketches.items():
             cls = type(sketch)
-            infos.append({
-                "id": sketch_id,
-                "name": getattr(cls, "name", ""),
-                "description": getattr(cls, "description", ""),
-                "date": getattr(cls, "date", ""),
-            })
-            seen.add(sketch_id)
-
-        for sketch_id, cls in self.candidates.items():
-            if sketch_id not in seen:
-                infos.append({
+            infos.append(
+                {
                     "id": sketch_id,
                     "name": getattr(cls, "name", ""),
                     "description": getattr(cls, "description", ""),
                     "date": getattr(cls, "date", ""),
-                })
+                }
+            )
+            seen.add(sketch_id)
+
+        for sketch_id, cls in self.candidates.items():
+            if sketch_id not in seen:
+                infos.append(
+                    {
+                        "id": sketch_id,
+                        "name": getattr(cls, "name", ""),
+                        "description": getattr(cls, "description", ""),
+                        "date": getattr(cls, "date", ""),
+                    }
+                )
 
         return sorted(infos, key=lambda x: x["date"], reverse=True)
 
@@ -182,9 +186,7 @@ class SketchRegistry:
                 dead.add(ws)
         self.connections[sketch_id] -= dead
 
-    async def broadcast_results(
-        self, sketch_id: str, dag: DAG, result: ExecutionResult
-    ) -> None:
+    async def broadcast_results(self, sketch_id: str, dag: DAG, result: ExecutionResult) -> None:
         """Broadcast step_updated or step_error for every executed or failed node."""
         relevant = result.executed | result.errors.keys()
         for n in dag.topo_sort():
@@ -193,24 +195,31 @@ class SketchRegistry:
             if relevant and n.id not in relevant:
                 continue
             if n.id in result.errors:
-                await self.broadcast(sketch_id, {
-                    "type": "step_error",
-                    "step_id": n.id,
-                    "error": str(result.errors[n.id]),
-                })
+                await self.broadcast(
+                    sketch_id,
+                    {
+                        "type": "step_error",
+                        "step_id": n.id,
+                        "error": str(result.errors[n.id]),
+                    },
+                )
             else:
-                await self.broadcast(sketch_id, {
-                    "type": "step_updated",
-                    "step_id": n.id,
-                    "image_url": f"/workdir/{sketch_id}/{n.id}.png",
-                })
+                await self.broadcast(
+                    sketch_id,
+                    {
+                        "type": "step_updated",
+                        "step_id": n.id,
+                        "image_url": f"/workdir/{sketch_id}/{n.id}.png",
+                    },
+                )
 
-    async def broadcast_preset_state(
-        self, sketch_id: str, preset_manager: PresetManager
-    ) -> None:
+    async def broadcast_preset_state(self, sketch_id: str, preset_manager: PresetManager) -> None:
         """Broadcast current preset dirty/based_on state to all clients watching a sketch."""
-        await self.broadcast(sketch_id, {
-            "type": "preset_state",
-            "dirty": preset_manager.dirty,
-            "based_on": preset_manager.based_on,
-        })
+        await self.broadcast(
+            sketch_id,
+            {
+                "type": "preset_state",
+                "dirty": preset_manager.dirty,
+                "based_on": preset_manager.based_on,
+            },
+        )

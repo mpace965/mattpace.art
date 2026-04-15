@@ -21,10 +21,7 @@ async def get_dag(sketch_id: str, registry: SketchRegistry = Depends(get_registr
     if sketch is None:
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
 
-    nodes = [
-        {"id": node.id, "type": type(node.step).__name__}
-        for node in sketch.dag.topo_sort()
-    ]
+    nodes = [{"id": node.id, "type": type(node.step).__name__} for node in sketch.dag.topo_sort()]
     edges = [
         {"from": from_id, "to": to_id, "input": input_name}
         for from_id, to_id, input_name in sketch.dag.edges

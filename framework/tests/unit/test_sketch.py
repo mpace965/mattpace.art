@@ -17,6 +17,7 @@ from sketchbook.core.types import Image
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 class FakeStep(PipelineStep):
     def setup(self) -> None:
         self.add_input("image", Image)
@@ -89,6 +90,7 @@ class _TwoSameStepSketch(Sketch):
 # source()
 # ---------------------------------------------------------------------------
 
+
 def test_source_adds_node_to_dag(tmp_path: Path) -> None:
     _make_asset(tmp_path)
     sketch = _SingleSourceSketch(tmp_path)
@@ -105,6 +107,7 @@ def test_source_node_id_format(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # pipe()
 # ---------------------------------------------------------------------------
+
 
 def test_pipe_adds_node_to_dag(tmp_path: Path) -> None:
     _make_asset(tmp_path)
@@ -132,6 +135,7 @@ def test_pipe_chain_produces_correct_order(tmp_path: Path) -> None:
 # Node ID assignment
 # ---------------------------------------------------------------------------
 
+
 def test_same_step_class_twice_gets_incrementing_ids(tmp_path: Path) -> None:
     _make_asset(tmp_path)
     sketch = _TwoSameStepSketch(tmp_path)
@@ -151,26 +155,36 @@ def test_workdir_path_set_on_piped_node(tmp_path: Path) -> None:
 # _step_id_base helper
 # ---------------------------------------------------------------------------
 
+
 def test_step_id_base_camel_case() -> None:
     class EdgeDetect(PipelineStep):
-        def setup(self): pass
-        def process(self, inputs, params): pass
+        def setup(self):
+            pass
+
+        def process(self, inputs, params):
+            pass
 
     assert _step_id_base(EdgeDetect) == "edge_detect"
 
 
 def test_step_id_base_single_word() -> None:
     class Passthrough(PipelineStep):
-        def setup(self): pass
-        def process(self, inputs, params): pass
+        def setup(self):
+            pass
+
+        def process(self, inputs, params):
+            pass
 
     assert _step_id_base(Passthrough) == "passthrough"
 
 
 def test_step_id_base_acronym() -> None:
     class RGBSplit(PipelineStep):
-        def setup(self): pass
-        def process(self, inputs, params): pass
+        def setup(self):
+            pass
+
+        def process(self, inputs, params):
+            pass
 
     # r_g_b_split is acceptable; just check it's lowercase and snake
     result = _step_id_base(RGBSplit)
@@ -181,6 +195,7 @@ def test_step_id_base_acronym() -> None:
 # ---------------------------------------------------------------------------
 # pipe() with a pre-built instance
 # ---------------------------------------------------------------------------
+
 
 class _PipeInstanceSketch(Sketch):
     name = "Test"
@@ -224,6 +239,7 @@ def test_pipe_instance_with_params_raises(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # add()
 # ---------------------------------------------------------------------------
+
 
 class _AddSketch(Sketch):
     """Uses add() with explicit inputs."""
@@ -285,6 +301,7 @@ def test_add_with_custom_id(tmp_path: Path) -> None:
 # ---------------------------------------------------------------------------
 # loader= parameter on source()
 # ---------------------------------------------------------------------------
+
 
 def test_sketch_source_without_loader_fails_on_execute(tmp_path: Path) -> None:
     """A source() call with no loader produces a ValueError in the execution result."""

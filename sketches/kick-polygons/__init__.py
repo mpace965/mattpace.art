@@ -14,7 +14,6 @@ from sketches import SITE_BUNDLE
 
 
 class KickPolygons(Sketch):
-
     name = "kick-polygons"
     description = "radial arrangement of image copies forming polygon patterns."
     date = "2026-04-11"
@@ -100,15 +99,11 @@ class RadialArrange(PipelineStep):
         """Declare image input and n parameter."""
         self.add_input("image", Image)
         self.add_param("n", int, default=6, debounce=150, min=0, max=16, step=1)
-        self.add_param(
-            "offset", float, default=0.0, debounce=150, min=-180.0, max=180.0, step=1.0
-        )
+        self.add_param("offset", float, default=0.0, debounce=150, min=-180.0, max=180.0, step=1.0)
         self.add_param(
             "s_rotation", float, default=0.0, debounce=150, min=-180.0, max=180.0, step=1.0
         )
-        self.add_param(
-            "s_radial", float, default=0.0, debounce=150, min=-2.0, max=2.0, step=0.05
-        )
+        self.add_param("s_radial", float, default=0.0, debounce=150, min=-2.0, max=2.0, step=0.05)
         self.add_param("s_flip_h", bool, default=False)
         self.add_param("s_flip_v", bool, default=False)
 
@@ -152,8 +147,11 @@ class RadialArrange(PipelineStep):
         rot_mat[0, 2] += (new_w - pre_w) / 2.0
         rot_mat[1, 2] += (new_h - pre_h) / 2.0
         src_prerot = cv2.warpAffine(
-            stamp, rot_mat, (new_w, new_h),
-            flags=cv2.INTER_LANCZOS4, borderMode=cv2.BORDER_CONSTANT,
+            stamp,
+            rot_mat,
+            (new_w, new_h),
+            flags=cv2.INTER_LANCZOS4,
+            borderMode=cv2.BORDER_CONSTANT,
         )
         pr_h, pr_w = src_prerot.shape[:2]
 

@@ -21,6 +21,7 @@ from tests.conftest import write_test_image
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def extract_img_src(html: str) -> str:
     """Return the src attribute of the first <img> tag in html."""
     match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', html)
@@ -31,6 +32,7 @@ def extract_img_src(html: str) -> str:
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
+
 
 def test_source_to_passthrough_shows_in_browser(test_client: TestClient) -> None:
     """The step page returns HTML containing an <img> tag."""

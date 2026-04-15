@@ -121,8 +121,7 @@ class PresetManager:
         preset_path = self._dir / f"{name}.json"
         if not preset_path.exists():
             raise FileNotFoundError(
-                f"Preset '{name}' not found at {preset_path}. "
-                f"Available: {self.list_presets()}"
+                f"Preset '{name}' not found at {preset_path}. Available: {self.list_presets()}"
             )
         data: dict[str, Any] = json.loads(preset_path.read_text())
         for step_id, values in data.items():
@@ -151,8 +150,4 @@ class PresetManager:
         """Return sorted list of named preset names (without .json extension)."""
         if not self._dir.exists():
             return []
-        return sorted(
-            p.stem
-            for p in self._dir.glob("*.json")
-            if p.stem != "_active"
-        )
+        return sorted(p.stem for p in self._dir.glob("*.json") if p.stem != "_active")

@@ -11,8 +11,26 @@ description = "Run framework tests"
 run = [
     "uv run --directory framework ruff check src tests",
     "uv run --directory sketches ruff check .",
+    "uv run --directory framework ruff format --check src tests",
+    "uv run --directory sketches ruff format --check .",
 ]
-description = "Lint framework and sketches"
+description = "Lint and check formatting for framework and sketches"
+
+[tasks.format]
+run = [
+    "uv run --directory framework ruff format src tests",
+    "uv run --directory sketches ruff format .",
+]
+description = "Auto-format framework and sketches with ruff"
+
+[tasks.fix]
+run = [
+    "uv run --directory framework ruff check --fix src tests",
+    "uv run --directory sketches ruff check --fix .",
+    "uv run --directory framework ruff format src tests",
+    "uv run --directory sketches ruff format .",
+]
+description = "Auto-fix lint violations and format framework and sketches"
 
 [tasks."sketches:new"]
 run = "uv run new-sketch"
