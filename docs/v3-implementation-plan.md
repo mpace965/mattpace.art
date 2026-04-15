@@ -712,6 +712,15 @@ New source node format: `source_cardboard` (path stem, `source_` prefix)
 Each sketch has ≤ 10 preset files. Rename keys by hand or with a one-shot script run once
 and discarded. Not part of the framework.
 
+**Route prefix dropped (flag day):**
+- `server/routes/v3.py` router prefix changes from `/v3` to `/` — all routes become canonical.
+- All hardcoded `/v3/...` URL strings inside the router (workdir URLs, WebSocket push payloads,
+  `url_prefix` template context) updated to drop the prefix.
+- Old `server/routes/sketch.py`, `params.py`, `presets.py`, `ws.py` (the v1 routes) deleted.
+- `server/app.py` updated: include only `v3.router`, remove old router includes.
+- Acceptance test `test_all_sketches_load_in_dev_server` hits `/sketch/{slug}` (no prefix) to
+  verify the routes landed at root.
+
 **CLI wired up:**
 - `cli.py` `dev` command: `discover_sketch_fns` + `SketchFnRegistry`. Old path removed.
 - `cli.py` `build` command: already updated in Increment 4.
@@ -793,6 +802,7 @@ def test_build_produces_valid_site(sketches_dir, tmp_output_dir):
 - [ ] Zero imports from `sketches.*` anywhere in `framework/`
 - [ ] `uv run dev` starts cleanly; all four sketches load and show output
 - [ ] `uv run build` completes; `dist/manifest.json` contains all four sketches
+- [ ] All v3 routes served at root (no `/v3` prefix); old route files deleted
 - [ ] `mise run lint` passes with zero violations
 
 ---
