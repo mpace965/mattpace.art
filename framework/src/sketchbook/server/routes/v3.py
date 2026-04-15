@@ -75,6 +75,34 @@ async def v3_sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
     )
 
 
+@router.get("/sketch/{sketch_id}/step/{step_id}", response_class=HTMLResponse)
+async def v3_step_view(request: Request, sketch_id: str, step_id: str) -> HTMLResponse:
+    """Render the fullscreen step output view for a v3 @sketch step."""
+    fn_registry = request.app.state.fn_registry
+    templates = request.app.state.templates
+    dag = fn_registry.get_dag(sketch_id)
+    if dag is None:
+        raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
+    node = dag.nodes.get(step_id)
+    if node is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Step '{step_id}' not found in sketch '{sketch_id}'",
+        )
+    ext = node.output.extension if isinstance(node.output, SketchValueProtocol) else "txt"
+    image_url = f"/v3/workdir/{sketch_id}/{step_id}.{ext}"
+    return templates.TemplateResponse(
+        request,
+        "step.html",
+        {
+            "sketch_id": sketch_id,
+            "step_id": step_id,
+            "image_url": image_url,
+            "url_prefix": "/v3",
+        },
+    )
+
+
 @router.get("/workdir/{sketch_id}/{filename}")
 async def v3_workdir_file(request: Request, sketch_id: str, filename: str) -> FileResponse:
     """Stream a workdir output file for the given sketch."""

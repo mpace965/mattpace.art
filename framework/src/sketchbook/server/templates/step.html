@@ -17,7 +17,7 @@
 {% endblock %}
 
 {% block scripts %}
-    const PARAMS_URL = `/api/sketches/${SKETCH_ID}/params/{{ step_id }}`;
+    const PARAMS_URL = `${URL_PREFIX}/api/sketches/${SKETCH_ID}/params/{{ step_id }}`;
     const STEP_ID = "{{ step_id }}";
 
     let paneEntry = null;
@@ -26,7 +26,7 @@
       const res = await fetch(PARAMS_URL);
       if (!res.ok) { connect(); return; }
       const data = await res.json();
-      const params = data.params;
+      const params = data.params ?? data;
 
       if (params && Object.keys(params).length > 0) {
         paneEntry = buildPane(document.getElementById(`params-${STEP_ID}`), STEP_ID, params);
@@ -40,7 +40,7 @@
       const res = await fetch(PARAMS_URL);
       if (!res.ok) return;
       const data = await res.json();
-      const params = data.params;
+      const params = data.params ?? data;
       for (const [name, spec] of Object.entries(params)) {
         paneEntry.state[name] = spec.value;
       }
@@ -50,7 +50,7 @@
     function connect() {
       const errMsg = document.getElementById(`err-msg-${STEP_ID}`);
       const img = document.getElementById(`img-${STEP_ID}`);
-      const ws = new WebSocket(`ws://${location.host}/ws/${SKETCH_ID}`);
+      const ws = new WebSocket(`ws://${location.host}${URL_PREFIX}/ws/${SKETCH_ID}`);
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         if (msg.type === "step_updated" && msg.step_id === STEP_ID) {

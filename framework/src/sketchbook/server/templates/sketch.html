@@ -75,7 +75,7 @@
         {% endif %}
         <details class="step-card" id="card-{{ node.id }}" open>
           <summary class="step-card-header">
-            <a class="card-step-id" href="/sketch/{{ sketch_id }}/step/{{ node.id }}">{{ node.id }}</a>
+            <a class="card-step-id" href="{{ url_prefix }}/sketch/{{ sketch_id }}/step/{{ node.id }}">{{ node.id }}</a>
             <span class="card-step-type">{{ node.type }}</span>
             <span class="card-error-dot" id="err-dot-{{ node.id }}"></span>
           </summary>
