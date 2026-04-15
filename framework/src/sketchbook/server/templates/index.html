@@ -27,7 +27,7 @@
 {% block content %}
     <div id="sketch-list">
       {% for sketch in sketches %}
-      <a class="sketch-card" href="/sketch/{{ sketch.id }}">
+      <a class="sketch-card" href="{{ sketch.url }}">
         <p class="sketch-name">{{ sketch.name }}</p>
         {% if sketch.description %}<p class="sketch-description">{{ sketch.description }}</p>{% endif %}
         <p class="sketch-date">{{ sketch.date }}</p>

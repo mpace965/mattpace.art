@@ -158,6 +158,7 @@
       const res = await fetch(PARAMS_URL);
       if (!res.ok) return;
       const allParams = await res.json();
+      _refreshing = true;
       for (const [stepId, params] of Object.entries(allParams)) {
         const entry = panes[stepId];
         if (!entry) continue;
@@ -166,6 +167,7 @@
         }
         entry.pane.refresh();
       }
+      _refreshing = false;
     }
 
     function connect() {

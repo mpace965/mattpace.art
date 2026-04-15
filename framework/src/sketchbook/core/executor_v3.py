@@ -121,7 +121,8 @@ def _find_ctx_param(fn: Callable) -> str | None:
     try:
         hints = typing.get_type_hints(unwrapped)
     except Exception as exc:
-        log.warning(f"Could not resolve type hints for '{getattr(unwrapped, '__name__', unwrapped)}': {exc}")
+        name = getattr(unwrapped, "__name__", unwrapped)
+        log.warning(f"Could not resolve type hints for '{name}': {exc}")
         return None
     for name, annotation in hints.items():
         if annotation is SketchContext:

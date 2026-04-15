@@ -137,6 +137,9 @@
     // Shared Tweakpane helper
     // -----------------------------------------------------------------------
 
+    // Set to true during programmatic refreshPanes() to suppress change side-effects.
+    let _refreshing = false;
+
     function buildPane(container, stepId, params) {
       const pane = new Pane({ container });
       const state = {};
@@ -156,6 +159,7 @@
           body: JSON.stringify({ step_id: stepId, param_name: name, value }),
         });
         pane.addBinding(state, name, opts).on("change", (ev) => {
+          if (_refreshing) return;
           markDirtyLocally();
           if (debounceMs > 0) {
             clearTimeout(debounceTimer);

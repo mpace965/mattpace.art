@@ -24,7 +24,23 @@ async def index_view(
     templates: Jinja2Templates = Depends(get_templates),
 ) -> HTMLResponse:
     """Render the sketch browser index page listing all known sketches."""
-    sketches = registry.list_sketch_infos()
+    sketches = [{**info, "url": f"/sketch/{info['id']}"} for info in registry.list_sketch_infos()]
+
+    fn_registry = getattr(request.app.state, "fn_registry", None)
+    if fn_registry is not None:
+        for sketch_id, fn in fn_registry.sketch_fns.items():
+            meta = getattr(fn, "__sketch_meta__", None)
+            sketches.append(
+                {
+                    "id": sketch_id,
+                    "name": getattr(meta, "name", sketch_id),
+                    "description": getattr(meta, "description", ""),
+                    "date": getattr(meta, "date", ""),
+                    "url": f"/v3/sketch/{sketch_id}",
+                }
+            )
+
+    sketches.sort(key=lambda s: s["date"], reverse=True)
     return templates.TemplateResponse(request, "index.html", {"sketches": sketches})
 
 

@@ -11,8 +11,13 @@ from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisco
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
-from sketchbook.core.executor_v3 import execute_partial_built
+from sketchbook.core.executor_v3 import execute_built
 from sketchbook.core.introspect import coerce_param
+from sketchbook.core.presets import (
+    load_preset_into_built,
+    save_active_from_built,
+    save_preset_from_built,
+)
 from sketchbook.core.protocol import SketchValueProtocol
 from sketchbook.server.tweakpane_v3 import built_node_to_tweakpane
 
@@ -170,10 +175,104 @@ async def v3_update_param(request: Request, sketch_id: str, body: ParamUpdateV3)
             detail=f"Unknown param '{body.param_name}' on step '{body.step_id}'",
         )
 
-    node.param_values[body.param_name] = coerce_param(spec, body.value)
-
-    sketch_dir = fn_registry.sketches_dir / sketch_id
-    workdir = sketch_dir / ".workdir"
-    result = execute_partial_built(dag, [body.step_id], workdir)
+    coerced = coerce_param(spec, body.value)
+    result = fn_registry.set_param(sketch_id, body.step_id, body.param_name, coerced)
     await fn_registry.broadcast_results(sketch_id, dag, result)
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Preset routes
+# ---------------------------------------------------------------------------
+
+
+class SavePresetRequest(BaseModel):
+    """Request body for POST /api/sketches/{sketch_id}/presets."""
+
+    name: str
+
+
+def _list_preset_names(presets_dir: Path) -> list[str]:
+    """Return sorted named preset names from presets_dir (excluding _active)."""
+    if not presets_dir.exists():
+        return []
+    return sorted(p.stem for p in presets_dir.glob("*.json") if p.stem != "_active")
+
+
+@router.get("/api/sketches/{sketch_id}/presets")
+async def v3_list_presets(request: Request, sketch_id: str) -> dict[str, Any]:
+    """Return named presets and current active state {dirty, based_on}."""
+    fn_registry = request.app.state.fn_registry
+    if sketch_id not in fn_registry.sketch_fns:
+        raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
+    presets_dir = fn_registry.sketches_dir / sketch_id / "presets"
+    return {
+        "presets": _list_preset_names(presets_dir),
+        "active": {
+            "dirty": fn_registry._dirty.get(sketch_id, False),
+            "based_on": fn_registry._based_on.get(sketch_id),
+        },
+    }
+
+
+@router.post("/api/sketches/{sketch_id}/presets")
+async def v3_save_preset(
+    request: Request, sketch_id: str, body: SavePresetRequest
+) -> dict[str, Any]:
+    """Save current param values as a named preset."""
+    fn_registry = request.app.state.fn_registry
+    dag = fn_registry.get_dag(sketch_id)
+    if dag is None:
+        raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
+    presets_dir = fn_registry.sketches_dir / sketch_id / "presets"
+    save_preset_from_built(dag, presets_dir, body.name)
+    fn_registry._dirty[sketch_id] = False
+    fn_registry._based_on[sketch_id] = body.name
+    save_active_from_built(dag, presets_dir, dirty=False, based_on=body.name)
+    log.info(f"Saved preset '{body.name}' for sketch '{sketch_id}'")
+    return {"ok": True, "name": body.name}
+
+
+@router.post("/api/sketches/{sketch_id}/presets/new")
+async def v3_new_preset(request: Request, sketch_id: str) -> dict[str, Any]:
+    """Reset all params to defaults, re-execute, and broadcast."""
+    fn_registry = request.app.state.fn_registry
+    dag = fn_registry.get_dag(sketch_id)
+    if dag is None:
+        raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
+    for node in dag.topo_sort():
+        for spec in node.param_schema:
+            node.param_values[spec.name] = spec.default
+    fn_registry._dirty[sketch_id] = False
+    fn_registry._based_on[sketch_id] = None
+    presets_dir = fn_registry.sketches_dir / sketch_id / "presets"
+    save_active_from_built(dag, presets_dir, dirty=False, based_on=None)
+    workdir = fn_registry.sketches_dir / sketch_id / ".workdir"
+    result = execute_built(dag, workdir)
+    await fn_registry.broadcast_results(sketch_id, dag, result)
+    await fn_registry.broadcast(sketch_id, {"type": "preset_state"})
+    log.info(f"Reset to defaults for sketch '{sketch_id}'")
+    return {"ok": True}
+
+
+@router.post("/api/sketches/{sketch_id}/presets/{name}/load")
+async def v3_load_preset(request: Request, sketch_id: str, name: str) -> dict[str, Any]:
+    """Load a named preset, re-execute, and broadcast step_updated."""
+    fn_registry = request.app.state.fn_registry
+    dag = fn_registry.get_dag(sketch_id)
+    if dag is None:
+        raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
+    presets_dir = fn_registry.sketches_dir / sketch_id / "presets"
+    try:
+        load_preset_into_built(dag, presets_dir, name)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
+    fn_registry._dirty[sketch_id] = False
+    fn_registry._based_on[sketch_id] = name
+    save_active_from_built(dag, presets_dir, dirty=False, based_on=name)
+    workdir = fn_registry.sketches_dir / sketch_id / ".workdir"
+    result = execute_built(dag, workdir)
+    await fn_registry.broadcast_results(sketch_id, dag, result)
+    await fn_registry.broadcast(sketch_id, {"type": "preset_state"})
+    log.info(f"Loaded preset '{name}' for sketch '{sketch_id}'")
     return {"ok": True}

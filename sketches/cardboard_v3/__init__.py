@@ -8,7 +8,6 @@ from __future__ import annotations
 from typing import Annotated
 
 import numpy as np
-
 from sketchbook.core.building_dag import output, source
 from sketchbook.core.decorators import Param, sketch, step
 
