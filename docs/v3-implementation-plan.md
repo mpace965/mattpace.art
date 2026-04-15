@@ -17,6 +17,56 @@ final increment ports the real sketches and deletes it.
 
 ---
 
+## Writing a detailed increment plan
+
+Before starting any increment, write a standalone implementation plan to
+`docs/v3-increment-<N>-plan.md`. The plan is the contract between the high-level increment
+description above and the actual coding session. Write it to a file — do not output it inline.
+
+A complete plan contains the following sections, in this order:
+
+**Acceptance criterion** — copy the acceptance test description verbatim from this document.
+
+**Current state** — read the branch and list what already exists that is relevant to this
+increment (stubbed types, partial implementations, prior-art files) and what is absent. This
+prevents re-deriving context during implementation.
+
+**GOOS double-loop** — the outer loop is the acceptance test; the inner loop is one unit test
+per collaborator. The section must make the loop structure explicit:
+
+- Step 0: write the acceptance test and run it — it must fail before any implementation starts.
+  Include the exact `uv run pytest` command and state the expected failure mode.
+- One numbered inner loop per collaborator (a class, function, or module boundary). Each loop
+  has three parts in order:
+  1. The failing unit test(s) — written and run before touching implementation.
+  2. The implementation — minimum code to make those tests pass.
+  3. An explicit "run unit tests — all pass" checkpoint before moving to the next loop.
+- An outer loop check at the end: run the acceptance test again and confirm it goes green.
+
+**Files to create / files to modify** — two tables listing every file touched, with a one-line
+description of the change. Written before implementation so the scope is visible upfront.
+
+**Acceptance test (full spec)** — the complete pytest source for the acceptance test, ready to
+paste into the file. Written in the plan so it can be reviewed before any code changes.
+
+**Prior art** — a table mapping existing files to their role as reference or reuse. Prevents
+re-implementing things that already exist in the old path.
+
+**Definition of done** — a checkbox list. Every new class, function, and route gets at least
+one checkbox. All boxes must be checked before the increment is considered complete.
+
+**Manual verification** — step-by-step instructions a human can follow after all automated
+checks pass, to confirm the browser-side behaviour that tests cannot cover. Includes:
+- any sketch edits needed to exercise the feature (use `cardboard_v3` as the v3 demo sketch)
+- the `mise run sketches:dev` start command
+- specific URLs to open and what to look for
+- `curl` commands for any new API endpoints, with expected output
+- browser DevTools checks (Network/WS) where relevant
+- a "commit the sketch change" note if the sketch was modified — `cardboard_v3` is the
+  persistent v3 demo and changes to it are kept, not reverted
+
+---
+
 ## Migration strategy
 
 Same repo. Additive cutover. No fork.
