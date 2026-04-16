@@ -7,8 +7,6 @@ from pathlib import Path
 
 import uvicorn
 
-from sketchbook.discovery import discover_sketches
-
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 log = logging.getLogger("sketchbook.cli")
 
@@ -47,7 +45,8 @@ def build() -> None:
     """
     import argparse
 
-    from sketchbook.bundle.builder import build_bundle
+    from sketchbook.bundle.builder import build_bundle_fns
+    from sketchbook.discovery import discover_sketch_fns
 
     parser = argparse.ArgumentParser(prog="build")
     parser.add_argument("--bundle", default="bundle", help="Bundle name to build (default: bundle)")
@@ -66,10 +65,12 @@ def build() -> None:
     args = parser.parse_args()
 
     output_dir = Path(args.output)
-    sketch_classes = discover_sketches(_SKETCHES_DIR)
-    n = len(sketch_classes)
+    sketch_fns = discover_sketch_fns(_SKETCHES_DIR)
+    n = len(sketch_fns)
+    if n == 0:
+        log.warning("No @sketch functions discovered — is any sketch ported to the v3 API?")
     log.info(f"Building bundle '{args.bundle}' for {n} sketch(es) -> {output_dir}")
-    build_bundle(sketch_classes, _SKETCHES_DIR, output_dir, args.bundle, workers=args.workers)
+    build_bundle_fns(sketch_fns, _SKETCHES_DIR, output_dir, args.bundle, workers=args.workers)
     print(f"Built bundle '{args.bundle}' with {n} sketch(es) -> {output_dir}")
 
 

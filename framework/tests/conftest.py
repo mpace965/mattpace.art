@@ -40,8 +40,8 @@ class TestImage:  # noqa: N801 — kept as TestImage per plan; pytest warns but 
         return TestImage(path.read_bytes())
 
     def to_bytes(self, mode: Literal["dev", "build"]) -> bytes:
-        """Return the raw bytes, regardless of mode."""
-        return self._data
+        """Return data prefixed with mode tag so dev and build bytes are distinguishable."""
+        return f"mode:{mode}:".encode() + self._data
 
     def to_html(self, url: str) -> str:
         """Return a minimal HTML img tag."""

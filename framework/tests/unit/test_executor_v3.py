@@ -9,6 +9,7 @@ from sketchbook.core.built_dag import BuiltDAG, BuiltNode
 from sketchbook.core.decorators import SketchContext
 from sketchbook.core.executor_v3 import execute_built, execute_partial_built
 from sketchbook.core.protocol import SketchValueProtocol
+from tests.conftest import TestImage
 
 # ---------------------------------------------------------------------------
 # Minimal SketchValueProtocol implementation
@@ -264,6 +265,82 @@ def test_ctx_not_injected_when_none(tmp_path: Path) -> None:
 
     execute_built(dag, tmp_path)
     assert received.get("called") is True
+
+
+# ---------------------------------------------------------------------------
+# Increment 4: mode-aware to_bytes, ctx injection in build mode, no-input ctx step
+# ---------------------------------------------------------------------------
+
+
+def test_to_bytes_mode_distinguishes_dev_build() -> None:
+    """TestImage.to_bytes('dev') and to_bytes('build') must return different bytes."""
+    img = TestImage(b"\x00" * 64)
+    assert img.to_bytes("dev") != img.to_bytes("build")
+
+
+def test_execute_built_build_mode_calls_build_to_bytes(tmp_path: Path) -> None:
+    """mode='build' writes bytes produced by to_bytes('build'), not to_bytes('dev')."""
+    dag = BuiltDAG()
+    dag.nodes["src"] = BuiltNode(
+        step_id="src",
+        fn=lambda: TestImage(b"data"),
+        source_ids={},
+    )
+
+    execute_built(dag, tmp_path, mode="build")
+
+    out = tmp_path / "src.png"
+    assert out.exists()
+    build_bytes = out.read_bytes()
+    assert build_bytes.startswith(b"mode:build:"), (
+        f"Expected build-mode bytes, got: {build_bytes[:20]!r}"
+    )
+
+
+def test_ctx_mode_is_build_during_build_execution(tmp_path: Path) -> None:
+    """Steps that declare SketchContext receive mode='build' when node.ctx.mode == 'build'."""
+    received: dict[str, object] = {}
+
+    def step_with_ctx(image: _Img, ctx: SketchContext) -> _Img:
+        received["mode"] = ctx.mode
+        return image
+
+    ctx = SketchContext(mode="build")
+    dag = BuiltDAG()
+    dag.nodes["src"] = _source_node("src")
+    dag.nodes["step_with_ctx"] = BuiltNode(
+        step_id="step_with_ctx",
+        fn=step_with_ctx,
+        source_ids={"image": "src"},
+        ctx=ctx,
+    )
+
+    execute_built(dag, tmp_path, mode="build")
+
+    assert received["mode"] == "build"
+
+
+def test_no_input_step_with_ctx_executes_correctly(tmp_path: Path) -> None:
+    """scale_factor()-style step (zero inputs, ctx only) produces output and flows downstream."""
+    received: dict[str, object] = {}
+
+    def scale_factor(ctx: SketchContext) -> float:
+        received["mode"] = ctx.mode
+        return 1.0
+
+    ctx = SketchContext(mode="build")
+    dag = BuiltDAG()
+    dag.nodes["scale_factor"] = BuiltNode(
+        step_id="scale_factor",
+        fn=scale_factor,
+        source_ids={},
+        ctx=ctx,
+    )
+
+    result = execute_built(dag, tmp_path)
+    assert result.ok
+    assert received["mode"] == "build"
+    assert dag.nodes["scale_factor"].output == 1.0
 
 
 def test_updated_param_flows_through_reexecution(tmp_path: Path) -> None:

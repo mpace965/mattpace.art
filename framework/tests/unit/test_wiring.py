@@ -274,3 +274,48 @@ def test_step_with_ctx_stores_context() -> None:
 
     dag = wire_sketch(sk, _CTX)
     assert dag.nodes["proc"].ctx is _CTX
+
+
+# ---------------------------------------------------------------------------
+# Increment 4: ctx-only step and scalar proxy wiring
+# ---------------------------------------------------------------------------
+
+
+def test_ctx_only_step_wires_without_inputs() -> None:
+    """A step with only SketchContext arg has no required inputs and wires cleanly."""
+
+    @step
+    def ctx_only(ctx: SketchContext) -> float:
+        return 0.25 if ctx.mode == "dev" else 1.0
+
+    @sketch(date="2026-01-01")
+    def sk() -> None:
+        ctx_only()  # no positional args — ctx is injected at execution time
+
+    dag = wire_sketch(sk, _CTX)
+    node = dag.nodes["ctx_only"]
+    assert node.source_ids == {}
+    assert node.ctx is _CTX
+
+
+def test_scalar_proxy_flows_as_pipeline_input() -> None:
+    """A step returning float produces a proxy that can be passed as input to a downstream step."""
+
+    @step
+    def produce_scale(ctx: SketchContext) -> float:
+        return 1.0
+
+    @step
+    def consume_scale(image: _Img, scale: float) -> _Img:
+        return image
+
+    @sketch(date="2026-01-01")
+    def sk() -> None:
+        img = source(_src, _loader)
+        sc = produce_scale()
+        result = consume_scale(img, sc)
+        output(result, "main")
+
+    dag = wire_sketch(sk, _CTX)
+    consume_node = dag.nodes["consume_scale"]
+    assert consume_node.source_ids == {"image": "source_hello", "scale": "produce_scale"}

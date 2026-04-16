@@ -241,6 +241,18 @@ def load_preset_into_built(dag: BuiltDAG, presets_dir: str | Path, name: str) ->
     log.info(f"Loaded preset '{name}' into BuiltDAG")
 
 
+def list_preset_names(presets_dir: str | Path) -> list[str]:
+    """Return sorted list of named preset names from *presets_dir*.
+
+    Excludes the ``_active`` sentinel file. Returns an empty list if the
+    directory does not exist.
+    """
+    d = Path(presets_dir)
+    if not d.exists():
+        return []
+    return sorted(p.stem for p in d.glob("*.json") if p.stem != "_active")
+
+
 def save_preset_from_built(dag: BuiltDAG, presets_dir: str | Path, name: str) -> None:
     """Snapshot current BuiltNode.param_values to <name>.json."""
     presets_dir = Path(presets_dir)
