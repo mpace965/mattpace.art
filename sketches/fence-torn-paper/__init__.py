@@ -2,133 +2,70 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Annotated
 
 import cv2
 import numpy as np
-from sketchbook import Sketch
-from sketchbook.core.params import Color
-from sketchbook.core.step import PipelineStep
-from sketchbook.core.types import Image
+from sketchbook.core.building_dag import output, source
+from sketchbook.core.decorators import Param, sketch, step
 
 from sketches import SITE_BUNDLE
+from sketches.types import Color, Image
 
 
-class FenceTornPaper(Sketch):
-    """Canny edge detection composited in hot pink over the source photo."""
-
-    name = "fence-torn-paper"
-    description = "weathered fence with torn paper and emphasized edges."
-    date = "2026-03-29"
-
-    def build(self) -> None:
-        """Load source, blur, detect edges, then composite hot-pink edges over original."""
-        photo = self.source(
-            "photo",
-            "assets/fence-torn-paper.png",
-            loader=lambda p: Image(cv2.cvtColor(cv2.imread(str(p)), cv2.COLOR_BGR2RGB)),
-        )
-        blurred = photo.pipe(
-            GaussianBlur,
-            params={
-                "kernel": {"min": 1, "max": 31, "step": 2},
-                "sigma": {"min": 0.0, "max": 10.0, "step": 0.1},
-            },
-        )
-        edges = blurred.pipe(
-            CannyEdge,
-            params={
-                "low": {"min": 0, "max": 500, "step": 1},
-                "high": {"min": 0, "max": 500, "step": 1},
-            },
-        )
-        composite = self.add(
-            CannyComposite,
-            inputs={"source": photo, "edges": edges},
-            params={
-                "weight": {"min": 1, "max": 21, "step": 2},
-                "color": {},
-            },
-        )
-        compress_level = 9 if self.mode == "build" else 0
-        final = composite.pipe(Postprocess(compress_level))
-        self.output_bundle(final, SITE_BUNDLE)
+@sketch(date="2026-03-29")
+def fence_torn_paper() -> None:
+    """weathered fence with torn paper and emphasized edges."""
+    photo = source(
+        "assets/fence-torn-paper.png",
+        Image.load,
+    )
+    blurred = gaussian_blur(photo)
+    edges = canny_edge(blurred)
+    result = canny_composite(photo, edges)
+    output(result, SITE_BUNDLE)
 
 
-class GaussianBlur(PipelineStep):
-    """Apply a Gaussian blur to reduce noise before edge detection."""
-
-    def setup(self) -> None:
-        """Declare image input and blur parameters."""
-        self.add_input("image", Image)
-        self.add_param("kernel", int, default=5, debounce=150, min=1, max=31, step=2)
-        self.add_param("sigma", float, default=1.4, debounce=150, min=0.0, max=10.0, step=0.1)
-
-    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
-        """Return the Gaussian-blurred image."""
-        src = inputs["image"].data
-        k = params["kernel"]
-        if k % 2 == 0:
-            k += 1
-        result = cv2.GaussianBlur(src, (k, k), params["sigma"])
-        return Image(result)
+@step
+def gaussian_blur(
+    image: Image,
+    *,
+    kernel: Annotated[int, Param(min=1, max=31, step=2, debounce=150)] = 5,
+    sigma: Annotated[float, Param(min=0.0, max=10.0, step=0.1, debounce=150)] = 1.4,
+) -> Image:
+    """Return the Gaussian-blurred image."""
+    k = kernel if kernel % 2 == 1 else kernel + 1
+    return Image(cv2.GaussianBlur(image.array, (k, k), sigma))
 
 
-class CannyEdge(PipelineStep):
-    """Detect edges using the Canny algorithm and return a binary mask."""
-
-    def setup(self) -> None:
-        """Declare image input and Canny threshold parameters."""
-        self.add_input("image", Image)
-        self.add_param("low", int, default=50, debounce=150, min=0, max=500, step=1)
-        self.add_param("high", int, default=150, debounce=150, min=0, max=500, step=1)
-
-    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
-        """Return the Canny edge mask as a single-channel image."""
-        src = inputs["image"].data
-        gray = cv2.cvtColor(src, cv2.COLOR_RGB2GRAY) if src.ndim == 3 else src
-        edges = cv2.Canny(gray, params["low"], params["high"])
-        return Image(edges)
+@step
+def canny_edge(
+    image: Image,
+    *,
+    low: Annotated[int, Param(min=0, max=500, step=1, debounce=150)] = 50,
+    high: Annotated[int, Param(min=0, max=500, step=1, debounce=150)] = 150,
+) -> Image:
+    """Return the Canny edge mask as a single-channel image."""
+    src = image.array
+    gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY) if src.ndim == 3 else src
+    return Image(cv2.Canny(gray, low, high))
 
 
-class CannyComposite(PipelineStep):
-    """Composite hot-pink Canny edges over the source image."""
-
-    def setup(self) -> None:
-        """Declare source and edge mask inputs, stroke weight and edge color parameters."""
-        self.add_input("source", Image)
-        self.add_input("edges", Image)
-        self.add_param("weight", int, default=1, debounce=150, min=1, max=21, step=2)
-        self.add_param("color", Color, default=Color("#ff69b4"), debounce=150)
-
-    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
-        """Return source image with colored edges composited on top."""
-        src = inputs["source"].data
-        mask = inputs["edges"].data
-
-        weight = params["weight"]
-        if weight > 1:
-            kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (weight, weight))
-            mask = cv2.dilate(mask, kernel)
-
-        color: Color = params["color"]
-        color_layer = np.full_like(src, (color.r, color.g, color.b), dtype=np.uint8)
-        edge_mask_3ch = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
-        result = np.where(edge_mask_3ch > 0, color_layer, src)
-        return Image(result.astype(np.uint8))
-
-
-class Postprocess(PipelineStep):
-    """Apply output-time encoding settings to the final image."""
-
-    def __init__(self, compress_level: int) -> None:
-        self._compress_level = compress_level
-        super().__init__()
-
-    def setup(self) -> None:
-        """Declare image input."""
-        self.add_input("image", Image)
-
-    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
-        """Return the image with the configured compress level."""
-        return Image(inputs["image"].data, compress_level=self._compress_level)
+@step
+def canny_composite(
+    source_img: Image,
+    edges: Image,
+    *,
+    weight: Annotated[int, Param(min=1, max=21, step=2, debounce=150)] = 1,
+    color: Annotated[Color, Param(debounce=150)] = Color("#ff69b4"),
+) -> Image:
+    """Return source image with colored edges composited on top."""
+    src = source_img.array
+    mask = edges.array
+    if weight > 1:
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (weight, weight))
+        mask = cv2.dilate(mask, kernel)
+    color_layer = np.full_like(src, color.to_bgr(), dtype=np.uint8)
+    edge_mask_3ch = cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR)
+    result = np.where(edge_mask_3ch > 0, color_layer, src)
+    return Image(result.astype(np.uint8))

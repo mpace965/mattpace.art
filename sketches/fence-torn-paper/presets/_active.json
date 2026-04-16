@@ -1,18 +1,18 @@
 {
   "_meta": {
-    "dirty": false,
+    "dirty": true,
     "based_on": "default"
   },
-  "gaussian_blur_0": {
+  "gaussian_blur": {
     "kernel": 5,
     "sigma": 1.4
   },
-  "canny_edge_0": {
+  "canny_edge": {
     "low": 150,
     "high": 400
   },
-  "canny_composite_0": {
-    "weight": 7,
-    "color": "#ff69b4"
+  "canny_composite": {
+    "weight": 13,
+    "color": "#1d3586"
   }
 }

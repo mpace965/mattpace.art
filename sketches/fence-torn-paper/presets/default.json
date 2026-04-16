@@ -1,13 +1,13 @@
 {
-  "gaussian_blur_0": {
+  "gaussian_blur": {
     "kernel": 5,
     "sigma": 1.4
   },
-  "canny_edge_0": {
+  "canny_edge": {
     "low": 150,
     "high": 400
   },
-  "canny_composite_0": {
+  "canny_composite": {
     "weight": 7,
     "color": "#ff69b4"
   }

@@ -7,20 +7,19 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from sketchbook.core.built_dag import BuiltDAG
+from sketchbook.core.built_dag import BuiltDAG, BuiltNode
 from sketchbook.core.dag import DAG
-from sketchbook.core.params import Color
 
 log = logging.getLogger("sketchbook.core.presets")
 
 
 class _Encoder(json.JSONEncoder):
-    """JSON encoder that serializes Color instances as hex strings."""
+    """JSON encoder that serializes rich param types via to_tweakpane()."""
 
     def default(self, o: Any) -> Any:
-        """Encode Color as its hex string representation."""
-        if isinstance(o, Color):
-            return str(o)
+        """Serialize any object that exposes to_tweakpane() as its wire form."""
+        if hasattr(o, "to_tweakpane"):
+            return o.to_tweakpane()
         return super().default(o)
 
 
@@ -159,6 +158,18 @@ class PresetManager:
 # ---------------------------------------------------------------------------
 
 
+def _apply_values(node: BuiltNode, values: dict[str, Any]) -> None:
+    """Apply *values* to *node.param_values*, coercing each to its declared type."""
+    from sketchbook.core.introspect import coerce_param
+
+    spec_by_name = {s.name: s for s in node.param_schema}
+    for param_name, value in values.items():
+        if param_name not in node.param_values:
+            continue
+        spec = spec_by_name.get(param_name)
+        node.param_values[param_name] = coerce_param(spec, value) if spec is not None else value
+
+
 def _snapshot_params_built(dag: BuiltDAG) -> dict[str, Any]:
     """Return a mapping of step_id -> param values for all nodes with params."""
     data: dict[str, Any] = {}
@@ -190,9 +201,7 @@ def load_active_into_built(dag: BuiltDAG, presets_dir: str | Path) -> tuple[bool
         if node is None:
             log.warning(f"_active.json references unknown step '{step_id}', skipping")
             continue
-        for param_name, value in values.items():
-            if param_name in node.param_values:
-                node.param_values[param_name] = value
+        _apply_values(node, values)
 
     log.info(f"Loaded _active.json (dirty={dirty}, based_on={based_on!r})")
     return dirty, based_on
@@ -235,9 +244,7 @@ def load_preset_into_built(dag: BuiltDAG, presets_dir: str | Path, name: str) ->
         if node is None:
             log.warning(f"Preset '{name}' references unknown step '{step_id}', skipping")
             continue
-        for param_name, value in values.items():
-            if param_name in node.param_values:
-                node.param_values[param_name] = value
+        _apply_values(node, values)
     log.info(f"Loaded preset '{name}' into BuiltDAG")
 
 

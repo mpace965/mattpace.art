@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
@@ -45,3 +46,36 @@ class Image:
     def array(self) -> np.ndarray:
         """Return the underlying numpy array."""
         return self._array
+
+
+@dataclass
+class Color:
+    """An RGB color value backed by a hex string (e.g. '#ff69b4')."""
+
+    r: int
+    g: int
+    b: int
+
+    def __init__(self, value: str) -> None:
+        """Parse a '#rrggbb' hex string into r, g, b components."""
+        v = value.strip()
+        if not (v.startswith("#") and len(v) == 7):
+            raise ValueError(f"Color value must be a '#rrggbb' hex string, got: {value!r}")
+        try:
+            self.r = int(v[1:3], 16)
+            self.g = int(v[3:5], 16)
+            self.b = int(v[5:7], 16)
+        except ValueError:
+            raise ValueError(f"Color value must be a '#rrggbb' hex string, got: {value!r}")
+
+    def __str__(self) -> str:
+        """Return the lowercase '#rrggbb' hex representation."""
+        return f"#{self.r:02x}{self.g:02x}{self.b:02x}"
+
+    def to_bgr(self) -> tuple[int, int, int]:
+        """Return the color as a (blue, green, red) tuple for use with OpenCV."""
+        return (self.b, self.g, self.r)
+
+    def to_tweakpane(self) -> str:
+        """Return the hex string representation for Tweakpane."""
+        return str(self)

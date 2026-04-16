@@ -151,4 +151,6 @@ def coerce_param(spec: ParamSpec, raw: Any) -> Any:
         return _coerce_bool(raw)
     if spec.type in (int, float, str):
         return spec.type(raw)
+    if not isinstance(raw, spec.type):
+        return spec.type(raw)
     return raw
