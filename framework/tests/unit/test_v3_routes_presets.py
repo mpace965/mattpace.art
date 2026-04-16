@@ -52,7 +52,7 @@ def fn_registry_client(tmp_threshold_sketch: Path) -> Generator[TestClient]:
         sketch_fns={"threshold_hello": threshold_hello},
         sketches_dir=tmp_threshold_sketch.parent,
     )
-    app = create_app({}, sketches_dir=tmp_threshold_sketch.parent, fn_registry=fn_registry)
+    app = create_app(fn_registry=fn_registry)
     with TestClient(app, raise_server_exceptions=True) as client:
         yield client
 
@@ -61,8 +61,8 @@ def test_list_presets_empty_initially(
     fn_registry_client: TestClient, tmp_threshold_sketch: Path
 ) -> None:
     """GET /presets returns empty list and clean active state before any saves."""
-    fn_registry_client.get("/v3/sketch/threshold_hello")
-    resp = fn_registry_client.get("/v3/api/sketches/threshold_hello/presets")
+    fn_registry_client.get("/sketch/threshold_hello")
+    resp = fn_registry_client.get("/api/sketches/threshold_hello/presets")
     assert resp.status_code == 200
     data = resp.json()
     assert data["presets"] == []
@@ -74,12 +74,12 @@ def test_list_presets_shows_saved_preset(
     fn_registry_client: TestClient, tmp_threshold_sketch: Path
 ) -> None:
     """GET /presets includes named presets after a save."""
-    fn_registry_client.get("/v3/sketch/threshold_hello")
+    fn_registry_client.get("/sketch/threshold_hello")
     fn_registry_client.post(
-        "/v3/api/sketches/threshold_hello/presets",
+        "/api/sketches/threshold_hello/presets",
         json={"name": "snap"},
     )
-    resp = fn_registry_client.get("/v3/api/sketches/threshold_hello/presets")
+    resp = fn_registry_client.get("/api/sketches/threshold_hello/presets")
     assert "snap" in resp.json()["presets"]
 
 
@@ -87,9 +87,9 @@ def test_save_preset_creates_file(
     fn_registry_client: TestClient, tmp_threshold_sketch: Path
 ) -> None:
     """POST /presets writes a named .json file and returns ok."""
-    fn_registry_client.get("/v3/sketch/threshold_hello")
+    fn_registry_client.get("/sketch/threshold_hello")
     resp = fn_registry_client.post(
-        "/v3/api/sketches/threshold_hello/presets",
+        "/api/sketches/threshold_hello/presets",
         json={"name": "mypreset"},
     )
     assert resp.status_code == 200
@@ -101,21 +101,19 @@ def test_load_preset_restores_values(
     fn_registry_client: TestClient, tmp_threshold_sketch: Path
 ) -> None:
     """POST /presets/{name}/load restores param values saved in the preset."""
-    fn_registry_client.get("/v3/sketch/threshold_hello")
+    fn_registry_client.get("/sketch/threshold_hello")
     fn_registry_client.patch(
-        "/v3/api/sketches/threshold_hello/params",
+        "/api/sketches/threshold_hello/params",
         json={"step_id": "threshold_image", "param_name": "level", "value": 42},
     )
-    fn_registry_client.post("/v3/api/sketches/threshold_hello/presets", json={"name": "low"})
+    fn_registry_client.post("/api/sketches/threshold_hello/presets", json={"name": "low"})
     fn_registry_client.patch(
-        "/v3/api/sketches/threshold_hello/params",
+        "/api/sketches/threshold_hello/params",
         json={"step_id": "threshold_image", "param_name": "level", "value": 200},
     )
-    resp = fn_registry_client.post("/v3/api/sketches/threshold_hello/presets/low/load")
+    resp = fn_registry_client.post("/api/sketches/threshold_hello/presets/low/load")
     assert resp.status_code == 200
-    schema = fn_registry_client.get(
-        "/v3/api/sketches/threshold_hello/params/threshold_image"
-    ).json()
+    schema = fn_registry_client.get("/api/sketches/threshold_hello/params/threshold_image").json()
     assert schema["level"]["value"] == 42
 
 
@@ -123,16 +121,14 @@ def test_new_preset_resets_to_defaults(
     fn_registry_client: TestClient, tmp_threshold_sketch: Path
 ) -> None:
     """POST /presets/new resets all params to their declared defaults."""
-    fn_registry_client.get("/v3/sketch/threshold_hello")
+    fn_registry_client.get("/sketch/threshold_hello")
     fn_registry_client.patch(
-        "/v3/api/sketches/threshold_hello/params",
+        "/api/sketches/threshold_hello/params",
         json={"step_id": "threshold_image", "param_name": "level", "value": 200},
     )
-    resp = fn_registry_client.post("/v3/api/sketches/threshold_hello/presets/new")
+    resp = fn_registry_client.post("/api/sketches/threshold_hello/presets/new")
     assert resp.status_code == 200
-    schema = fn_registry_client.get(
-        "/v3/api/sketches/threshold_hello/params/threshold_image"
-    ).json()
+    schema = fn_registry_client.get("/api/sketches/threshold_hello/params/threshold_image").json()
     assert schema["level"]["value"] == 128  # default
 
 
@@ -140,8 +136,8 @@ def test_load_preset_not_found_returns_404(
     fn_registry_client: TestClient, tmp_threshold_sketch: Path
 ) -> None:
     """POST /presets/{name}/load returns 404 for an unknown preset name."""
-    fn_registry_client.get("/v3/sketch/threshold_hello")
-    resp = fn_registry_client.post("/v3/api/sketches/threshold_hello/presets/nonexistent/load")
+    fn_registry_client.get("/sketch/threshold_hello")
+    resp = fn_registry_client.post("/api/sketches/threshold_hello/presets/nonexistent/load")
     assert resp.status_code == 404
 
 
@@ -167,17 +163,17 @@ def test_new_preset_broadcasts_preset_state(
     fn_registry_client: TestClient, tmp_threshold_sketch: Path
 ) -> None:
     """POST /presets/new must broadcast preset_state so the browser refreshes sliders."""
-    fn_registry_client.get("/v3/sketch/threshold_hello")
+    fn_registry_client.get("/sketch/threshold_hello")
 
     messages: list[dict] = []
     found = threading.Event()
 
-    with fn_registry_client.websocket_connect("/v3/ws/threshold_hello") as ws:
+    with fn_registry_client.websocket_connect("/ws/threshold_hello") as ws:
         t = threading.Thread(
             target=_collect_until_preset_state, args=(ws, found, messages), daemon=True
         )
         t.start()
-        fn_registry_client.post("/v3/api/sketches/threshold_hello/presets/new")
+        fn_registry_client.post("/api/sketches/threshold_hello/presets/new")
         found.wait(timeout=2.0)
 
     t.join(timeout=1.0)
@@ -188,22 +184,22 @@ def test_load_preset_broadcasts_preset_state(
     fn_registry_client: TestClient, tmp_threshold_sketch: Path
 ) -> None:
     """POST /presets/{name}/load must broadcast preset_state so the browser refreshes sliders."""
-    fn_registry_client.get("/v3/sketch/threshold_hello")
+    fn_registry_client.get("/sketch/threshold_hello")
     fn_registry_client.patch(
-        "/v3/api/sketches/threshold_hello/params",
+        "/api/sketches/threshold_hello/params",
         json={"step_id": "threshold_image", "param_name": "level", "value": 42},
     )
-    fn_registry_client.post("/v3/api/sketches/threshold_hello/presets", json={"name": "low"})
+    fn_registry_client.post("/api/sketches/threshold_hello/presets", json={"name": "low"})
 
     messages: list[dict] = []
     found = threading.Event()
 
-    with fn_registry_client.websocket_connect("/v3/ws/threshold_hello") as ws:
+    with fn_registry_client.websocket_connect("/ws/threshold_hello") as ws:
         t = threading.Thread(
             target=_collect_until_preset_state, args=(ws, found, messages), daemon=True
         )
         t.start()
-        fn_registry_client.post("/v3/api/sketches/threshold_hello/presets/low/load")
+        fn_registry_client.post("/api/sketches/threshold_hello/presets/low/load")
         found.wait(timeout=2.0)
 
     t.join(timeout=1.0)

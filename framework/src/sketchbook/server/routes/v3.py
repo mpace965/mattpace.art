@@ -1,4 +1,4 @@
-"""v3 routes — serve @sketch-based pipelines under the /v3/ prefix."""
+"""v3 routes — serve @sketch-based pipelines at the root prefix."""
 
 from __future__ import annotations
 
@@ -23,7 +23,29 @@ from sketchbook.server.tweakpane_v3 import built_node_to_tweakpane
 
 log = logging.getLogger("sketchbook.server.routes.v3")
 
-router = APIRouter(prefix="/v3")
+router = APIRouter()
+
+
+@router.get("/", response_class=HTMLResponse)
+async def v3_index(request: Request) -> HTMLResponse:
+    """Render an index page listing all available v3 sketches."""
+    fn_registry = request.app.state.fn_registry
+    templates = request.app.state.templates
+    sketches = [
+        {
+            "slug": slug,
+            "url": f"/sketch/{slug}",
+            "name": fn.__sketch_meta__.name,
+            "description": fn.__sketch_meta__.description,
+            "date": fn.__sketch_meta__.date,
+        }
+        for slug, fn in sorted(fn_registry.sketch_fns.items(), key=lambda kv: kv[1].__sketch_meta__.date, reverse=True)
+    ]
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {"sketches": sketches},
+    )
 
 
 @router.get("/sketch/{sketch_id}", response_class=HTMLResponse)
@@ -46,7 +68,7 @@ async def v3_sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
                 "type": fn.__name__,
                 "depth": 0,  # resolved below
                 "input_ids": list(node.source_ids.values()),
-                "image_url": f"/v3/workdir/{sketch_id}/{node.step_id}.{ext}",
+                "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
             }
         )
 
@@ -70,7 +92,7 @@ async def v3_sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
             "sketch_id": sketch_id,
             "nodes": nodes_data,
             "groups": groups,
-            "url_prefix": "/v3",
+            "url_prefix": "",
         },
     )
 
@@ -90,7 +112,7 @@ async def v3_step_view(request: Request, sketch_id: str, step_id: str) -> HTMLRe
             detail=f"Step '{step_id}' not found in sketch '{sketch_id}'",
         )
     ext = node.output.extension if isinstance(node.output, SketchValueProtocol) else "txt"
-    image_url = f"/v3/workdir/{sketch_id}/{step_id}.{ext}"
+    image_url = f"/workdir/{sketch_id}/{step_id}.{ext}"
     return templates.TemplateResponse(
         request,
         "step.html",
@@ -98,7 +120,7 @@ async def v3_step_view(request: Request, sketch_id: str, step_id: str) -> HTMLRe
             "sketch_id": sketch_id,
             "step_id": step_id,
             "image_url": image_url,
-            "url_prefix": "/v3",
+            "url_prefix": "",
         },
     )
 
@@ -136,7 +158,7 @@ async def v3_ws_endpoint(websocket: WebSocket, sketch_id: str) -> None:
                         {
                             "type": "step_updated",
                             "step_id": node.step_id,
-                            "image_url": f"/v3/workdir/{sketch_id}/{node.step_id}.{ext}",
+                            "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
                         }
                     )
                 )

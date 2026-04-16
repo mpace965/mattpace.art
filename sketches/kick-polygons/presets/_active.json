@@ -1,13 +1,13 @@
 {
   "_meta": {
     "dirty": false,
-    "based_on": "trefoil"
+    "based_on": "nine-spike"
   },
   "radial_arrange": {
-    "n": 3,
+    "n": 9,
     "offset": 90.0,
-    "s_rotation": 90.0,
-    "s_radial": -0.040000000000000036,
+    "s_rotation": 30.0,
+    "s_radial": 0.25,
     "s_flip_h": false,
     "s_flip_v": true
   }

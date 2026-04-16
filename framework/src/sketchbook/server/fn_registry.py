@@ -198,6 +198,6 @@ class SketchFnRegistry:
                     {
                         "type": "step_updated",
                         "step_id": node.step_id,
-                        "image_url": f"/v3/workdir/{sketch_id}/{node.step_id}.{ext}",
+                        "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
                     },
                 )

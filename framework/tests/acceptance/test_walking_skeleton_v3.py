@@ -2,8 +2,8 @@
 
 Acceptance criteria:
     A @sketch function with one source() and one @step:
-    1. GETs /v3/sketch/hello and follows the <img src> URL — returns image/* bytes.
-    2. Opens /v3/ws/hello, overwrites the source PNG on disk, and receives a
+    1. GETs /sketch/hello and follows the <img src> URL — returns image/* bytes.
+    2. Opens /ws/hello, overwrites the source PNG on disk, and receives a
        step_updated message within 5 seconds.
 """
 
@@ -56,7 +56,7 @@ def fn_registry_client(tmp_fn_sketch: Path) -> Generator[TestClient]:
         sketch_fns={"hello": hello_v3},
         sketches_dir=tmp_fn_sketch.parent,
     )
-    app = create_app({}, sketches_dir=tmp_fn_sketch.parent, fn_registry=fn_registry)
+    app = create_app(fn_registry=fn_registry)
     with TestClient(app, raise_server_exceptions=True) as client:
         yield client
 
@@ -67,15 +67,15 @@ def fn_registry_client(tmp_fn_sketch: Path) -> Generator[TestClient]:
 
 
 def test_sketch_page_has_img_tag(fn_registry_client: TestClient) -> None:
-    """GET /v3/sketch/hello returns HTML containing an <img> tag."""
-    resp = fn_registry_client.get("/v3/sketch/hello")
+    """GET /sketch/hello returns HTML containing an <img> tag."""
+    resp = fn_registry_client.get("/sketch/hello")
     assert resp.status_code == 200
     assert "<img" in resp.text
 
 
 def test_img_url_resolves_to_image_bytes(fn_registry_client: TestClient) -> None:
     """The <img src> URL in the sketch page returns image/* content."""
-    resp = fn_registry_client.get("/v3/sketch/hello")
+    resp = fn_registry_client.get("/sketch/hello")
     assert resp.status_code == 200
 
     match = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', resp.text)
@@ -91,9 +91,9 @@ def test_file_change_triggers_step_updated(
     tmp_fn_sketch: Path,
     fn_registry_client: TestClient,
 ) -> None:
-    """Overwriting the source PNG sends a step_updated message over /v3/ws/hello."""
+    """Overwriting the source PNG sends a step_updated message over /ws/hello."""
     # Trigger lazy load so the watcher is registered.
-    fn_registry_client.get("/v3/sketch/hello")
+    fn_registry_client.get("/sketch/hello")
 
     received: queue.Queue = queue.Queue()
 
@@ -104,7 +104,7 @@ def test_file_change_triggers_step_updated(
         except Exception:
             pass
 
-    with fn_registry_client.websocket_connect("/v3/ws/hello") as ws:
+    with fn_registry_client.websocket_connect("/ws/hello") as ws:
         t = threading.Thread(target=_receive_all, args=(ws,), daemon=True)
         t.start()
 

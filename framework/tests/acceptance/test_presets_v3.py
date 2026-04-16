@@ -50,7 +50,7 @@ def fn_registry_client(tmp_threshold_sketch: Path) -> Generator[TestClient]:
         sketch_fns={"threshold_hello": threshold_hello},
         sketches_dir=tmp_threshold_sketch.parent,
     )
-    app = create_app({}, sketches_dir=tmp_threshold_sketch.parent, fn_registry=fn_registry)
+    app = create_app(fn_registry=fn_registry)
     with TestClient(app, raise_server_exceptions=True) as client:
         yield client
 
@@ -58,28 +58,26 @@ def fn_registry_client(tmp_threshold_sketch: Path) -> Generator[TestClient]:
 def test_preset_save_load_cycle(fn_registry_client: TestClient, tmp_threshold_sketch: Path) -> None:
     """Save a preset, change params, load it back — params restore."""
     # Trigger lazy load.
-    fn_registry_client.get("/v3/sketch/threshold_hello")
+    fn_registry_client.get("/sketch/threshold_hello")
 
     fn_registry_client.patch(
-        "/v3/api/sketches/threshold_hello/params",
+        "/api/sketches/threshold_hello/params",
         json={"step_id": "threshold_image", "param_name": "level", "value": 42},
     )
     resp = fn_registry_client.post(
-        "/v3/api/sketches/threshold_hello/presets",
+        "/api/sketches/threshold_hello/presets",
         json={"name": "low"},
     )
     assert resp.status_code == 200
     assert (tmp_threshold_sketch / "presets" / "low.json").exists()
 
     fn_registry_client.patch(
-        "/v3/api/sketches/threshold_hello/params",
+        "/api/sketches/threshold_hello/params",
         json={"step_id": "threshold_image", "param_name": "level", "value": 200},
     )
-    fn_registry_client.post("/v3/api/sketches/threshold_hello/presets/low/load")
+    fn_registry_client.post("/api/sketches/threshold_hello/presets/low/load")
 
-    schema = fn_registry_client.get(
-        "/v3/api/sketches/threshold_hello/params/threshold_image"
-    ).json()
+    schema = fn_registry_client.get("/api/sketches/threshold_hello/params/threshold_image").json()
     assert schema["level"]["value"] == 42
 
 
@@ -88,10 +86,10 @@ def test_active_json_written_on_param_change(
 ) -> None:
     """Editing a param writes _active.json with dirty=True."""
     # Trigger lazy load.
-    fn_registry_client.get("/v3/sketch/threshold_hello")
+    fn_registry_client.get("/sketch/threshold_hello")
 
     fn_registry_client.patch(
-        "/v3/api/sketches/threshold_hello/params",
+        "/api/sketches/threshold_hello/params",
         json={"step_id": "threshold_image", "param_name": "level", "value": 99},
     )
     active = json.loads((tmp_threshold_sketch / "presets" / "_active.json").read_text())
@@ -104,16 +102,14 @@ def test_params_restored_on_reload(
 ) -> None:
     """Active params persisted in _active.json survive a registry reload."""
     # Trigger lazy load.
-    fn_registry_client.get("/v3/sketch/threshold_hello")
+    fn_registry_client.get("/sketch/threshold_hello")
 
     fn_registry_client.patch(
-        "/v3/api/sketches/threshold_hello/params",
+        "/api/sketches/threshold_hello/params",
         json={"step_id": "threshold_image", "param_name": "level", "value": 77},
     )
     # Simulate a reload by evicting the DAG from the registry.
     fn_registry_client.app.state.fn_registry.evict("threshold_hello")
 
-    schema = fn_registry_client.get(
-        "/v3/api/sketches/threshold_hello/params/threshold_image"
-    ).json()
+    schema = fn_registry_client.get("/api/sketches/threshold_hello/params/threshold_image").json()
     assert schema["level"]["value"] == 77

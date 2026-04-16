@@ -53,7 +53,7 @@ def fn_registry_client(tmp_threshold_sketch: Path) -> Generator[TestClient]:
         sketch_fns={"threshold_hello": threshold_hello},
         sketches_dir=tmp_threshold_sketch.parent,
     )
-    app = create_app({}, sketches_dir=tmp_threshold_sketch.parent, fn_registry=fn_registry)
+    app = create_app(fn_registry=fn_registry)
     with TestClient(app, raise_server_exceptions=True) as client:
         yield client
 
@@ -61,9 +61,9 @@ def fn_registry_client(tmp_threshold_sketch: Path) -> Generator[TestClient]:
 def test_param_schema_endpoint(fn_registry_client: TestClient, tmp_threshold_sketch: Path) -> None:
     """The param schema endpoint returns Tweakpane-compatible definitions."""
     # Trigger lazy load
-    fn_registry_client.get("/v3/sketch/threshold_hello")
+    fn_registry_client.get("/sketch/threshold_hello")
 
-    response = fn_registry_client.get("/v3/api/sketches/threshold_hello/params/threshold_image")
+    response = fn_registry_client.get("/api/sketches/threshold_hello/params/threshold_image")
     assert response.status_code == 200
     schema = response.json()
     assert "level" in schema
@@ -77,7 +77,7 @@ def test_param_change_triggers_websocket_update(
 ) -> None:
     """Changing a param via API triggers re-execution and a step_updated WebSocket message."""
     # Trigger lazy load and register watcher.
-    fn_registry_client.get("/v3/sketch/threshold_hello")
+    fn_registry_client.get("/sketch/threshold_hello")
 
     received: queue.Queue = queue.Queue()
 
@@ -88,7 +88,7 @@ def test_param_change_triggers_websocket_update(
         except Exception:
             pass
 
-    with fn_registry_client.websocket_connect("/v3/ws/threshold_hello") as ws:
+    with fn_registry_client.websocket_connect("/ws/threshold_hello") as ws:
         t = threading.Thread(target=_receive_all, args=(ws,), daemon=True)
         t.start()
 
@@ -98,7 +98,7 @@ def test_param_change_triggers_websocket_update(
             received.get_nowait()
 
         response = fn_registry_client.patch(
-            "/v3/api/sketches/threshold_hello/params",
+            "/api/sketches/threshold_hello/params",
             json={"step_id": "threshold_image", "param_name": "level", "value": 64},
         )
         assert response.status_code == 200
