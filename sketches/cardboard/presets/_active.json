@@ -3,8 +3,8 @@
     "dirty": true,
     "based_on": "nine"
   },
-  "circle_grid_mask_0": {
-    "count": 20,
+  "circle_grid_mask": {
+    "count": 3,
     "radius": 0.75
   }
 }
