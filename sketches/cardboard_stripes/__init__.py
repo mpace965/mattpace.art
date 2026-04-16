@@ -3,15 +3,15 @@
 from __future__ import annotations
 
 import math
-from typing import Any
+from typing import Annotated, Any
 
 import cv2
 import numpy as np
-from sketchbook import Sketch
-from sketchbook.core.step import PipelineStep
-from sketchbook.core.types import Image
+from sketchbook.core.building_dag import output, source
+from sketchbook.core.decorators import Param, sketch, step
 
 from sketches import SITE_BUNDLE
+from sketches.types import Image
 
 _WIDTH_FNS: dict[str, Any] = {
     "uniform": lambda i, n: 1.0,
@@ -24,117 +24,65 @@ _WIDTH_FN_OPTIONS = list(_WIDTH_FNS.keys())
 _ALIGN_OPTIONS = ["left", "center", "right"]
 
 
-class CardboardStripes(Sketch):
-    """Cardboard texture with DIFFERENCE-blended rectangle stripes."""
+@sketch(date="2026-03-12")
+def cardboard_stripes() -> None:
+    """greyscale cardboard texture with a stack of inverted horizontal bars."""
+    img = source("assets/cardboard.jpg", Image.load)
+    mask = stripes_mask(img)
+    result = difference_blend(img, mask)
+    output(result, SITE_BUNDLE, presets=["three", "steps"])
 
-    name = "cardboard-stripes"
-    description = "greyscale cardboard texture with a stack of inverted horizontal bars."
-    date = "2026-03-12"
 
-    def build(self) -> None:
-        """Load cardboard photo, generate a stripe mask, and apply DIFFERENCE blend."""
-        photo = self.source(
-            "photo", "assets/cardboard.jpg", loader=lambda p: Image(cv2.imread(str(p)))
+@step
+def stripes_mask(
+    image: Image,
+    *,
+    count: Annotated[int, Param(min=1, max=50, step=1, debounce=150)] = 3,
+    vert_margin: Annotated[float, Param(min=0.0, max=1.0, step=0.01, debounce=150)] = 0.45,
+    horz_margin: Annotated[float, Param(min=0.0, max=1.0, step=0.01, debounce=150)] = 0.2,
+    width_fn: Annotated[str, Param(options=_WIDTH_FN_OPTIONS)] = "uniform",
+    invert_fn: Annotated[bool, Param()] = False,
+    align: Annotated[str, Param(options=_ALIGN_OPTIONS)] = "center",
+) -> Image:
+    """Draw horizontal white rectangles on a black canvas with the configured layout."""
+    src = image.array
+    h, w = src.shape[:2]
+    inset = horz_margin * 0.5 * w
+    available_w = w - 2 * inset
+    total_gap = vert_margin * h
+    gap = total_gap / (count + 1)
+    rect_h = (h - total_gap) / count
+    fn = _WIDTH_FNS[width_fn]
+    canvas = np.zeros((h, w, 3), dtype=np.uint8)
+    for i in range(count):
+        raw = fn(i, count)
+        v = (1.0 - raw) if invert_fn else raw
+        rect_w = available_w * _lerp(v, 1.0 / count, 1.0)
+        if align == "left":
+            x = inset
+        elif align == "right":
+            x = inset + available_w - rect_w
+        else:
+            x = inset + (available_w - rect_w) / 2
+        y = gap + i * (rect_h + gap)
+        cv2.rectangle(
+            canvas,
+            (int(x), int(y)),
+            (int(x + rect_w), int(y + rect_h)),
+            (255, 255, 255),
+            thickness=-1,
         )
-        mask = photo.pipe(StripesMask)
-        blended = self.add(DifferenceBlend, inputs={"image": photo, "mask": mask})
-        compress_level = 9 if self.mode == "build" else 0
-        final = blended.pipe(Postprocess(compress_level))
-        self.output_bundle(final, SITE_BUNDLE, presets=["three", "steps"])
+    return Image(canvas)
 
 
-class StripesMask(PipelineStep):
-    """Generate a white-on-black stripe mask matching the input image dimensions."""
-
-    def setup(self) -> None:
-        """Declare image input for sizing and stripe layout parameters."""
-        self.add_input("image", Image)
-        self.add_param("count", int, default=3, debounce=150, min=1, max=50, step=1)
-        self.add_param(
-            "vert_margin", float, default=0.45, debounce=150, min=0.0, max=1.0, step=0.01
-        )
-        self.add_param("horz_margin", float, default=0.2, debounce=150, min=0.0, max=1.0, step=0.01)
-        self.add_param("width_fn", str, default="uniform", options=_WIDTH_FN_OPTIONS)
-        self.add_param("invert_fn", bool, default=False)
-        self.add_param("align", str, default="center", options=_ALIGN_OPTIONS)
-
-    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
-        """Draw horizontal white rectangles on a black canvas with the configured layout."""
-        src = inputs["image"].data
-        h, w = src.shape[:2]
-
-        count: int = params["count"]
-        vert_margin: float = params["vert_margin"]
-        horz_margin: float = params["horz_margin"]
-        width_fn_key: str = params["width_fn"]
-        invert_fn: bool = params["invert_fn"]
-        align: str = params["align"]
-
-        inset = horz_margin * 0.5 * w
-        available_w = w - 2 * inset
-
-        total_gap = vert_margin * h
-        gap = total_gap / (count + 1)
-        rect_h = (h - total_gap) / count
-
-        fn = _WIDTH_FNS[width_fn_key]
-
-        canvas = np.zeros((h, w, 3), dtype=np.uint8)
-
-        for i in range(count):
-            raw = fn(i, count)
-            v = (1.0 - raw) if invert_fn else raw
-            rect_w = available_w * _lerp(v, 1.0 / count, 1.0)
-            if align == "left":
-                x = inset
-            elif align == "right":
-                x = inset + available_w - rect_w
-            else:
-                x = inset + (available_w - rect_w) / 2
-            y = gap + i * (rect_h + gap)
-            cv2.rectangle(
-                canvas,
-                (int(x), int(y)),
-                (int(x + rect_w), int(y + rect_h)),
-                (255, 255, 255),
-                thickness=-1,
-            )
-
-        return Image(canvas)
-
-
-class DifferenceBlend(PipelineStep):
-    """Blend two images using the DIFFERENCE operation (absolute difference)."""
-
-    def setup(self) -> None:
-        """Declare image and mask inputs."""
-        self.add_input("image", Image)
-        self.add_input("mask", Image)
-
-    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
-        """Return the per-pixel absolute difference of image and mask."""
-        img = inputs["image"].data
-        mask = inputs["mask"].data
-        # Resize mask to match image if needed
-        if img.shape != mask.shape:
-            mask = cv2.resize(mask, (img.shape[1], img.shape[0]))
-        return Image(cv2.absdiff(img, mask))
-
-
-class Postprocess(PipelineStep):
-    """Apply output-time encoding settings to the final image."""
-
-    def __init__(self, compress_level: int) -> None:
-        self._compress_level = compress_level
-        super().__init__()
-
-    def setup(self) -> None:
-        """Declare image input."""
-        self.add_input("image", Image)
-
-    def process(self, inputs: dict[str, Any], params: dict[str, Any]) -> Image:
-        """Return the image with the configured compress level."""
-        return Image(inputs["image"].data, compress_level=self._compress_level)
+@step
+def difference_blend(image: Image, mask: Image) -> Image:
+    """Return the per-pixel absolute difference of image and mask."""
+    img = image.array
+    msk = mask.array
+    if img.shape != msk.shape:
+        msk = cv2.resize(msk, (img.shape[1], img.shape[0]))
+    return Image(cv2.absdiff(img, msk))
 
 
 def _lerp(t: float, a: float, b: float) -> float:

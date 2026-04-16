@@ -3,7 +3,7 @@
     "dirty": false,
     "based_on": "steps"
   },
-  "stripes_mask_0": {
+  "stripes_mask": {
     "count": 5,
     "vert_margin": 0.39,
     "horz_margin": 0.11,
