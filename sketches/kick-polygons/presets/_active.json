@@ -1,14 +1,14 @@
 {
   "_meta": {
     "dirty": false,
-    "based_on": "fist-pinwheel"
+    "based_on": "trefoil"
   },
-  "radial_arrange_0": {
-    "n": 32,
-    "offset": -88.0,
-    "s_rotation": 14.0,
-    "s_radial": -0.15,
-    "s_flip_h": true,
-    "s_flip_v": false
+  "radial_arrange": {
+    "n": 3,
+    "offset": 90.0,
+    "s_rotation": 90.0,
+    "s_radial": -0.040000000000000036,
+    "s_flip_h": false,
+    "s_flip_v": true
   }
 }
