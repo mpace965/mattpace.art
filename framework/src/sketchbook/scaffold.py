@@ -13,19 +13,14 @@ _INIT_TEMPLATE = '''\
 
 from __future__ import annotations
 
-from sketchbook import Sketch
+from sketchbook.core.building_dag import output, source
+from sketchbook.core.decorators import sketch, step
 
 
-class {class_name}(Sketch):
+@sketch(date="{date}")
+def {fn_name}() -> None:
     """TODO: add description."""
-
-    name = "{slug}"
-    description = ""
-    date = "{date}"
-
-    def build(self) -> None:
-        """Define the pipeline."""
-        pass
+    pass
 '''
 
 
@@ -69,9 +64,9 @@ def scaffold_sketch(
     presets_dir.mkdir()
     (presets_dir / "_active.json").write_text("{}\n")
 
-    class_name = slug_to_class_name(name)
+    fn_name = name.replace("-", "_")
     today = datetime.date.today().isoformat()
-    init_content = _INIT_TEMPLATE.format(slug=name, class_name=class_name, date=today)
+    init_content = _INIT_TEMPLATE.format(slug=name, fn_name=fn_name, date=today)
     (sketch_dir / "__init__.py").write_text(init_content)
 
     if assets:

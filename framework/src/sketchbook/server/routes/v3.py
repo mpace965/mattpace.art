@@ -39,7 +39,11 @@ async def v3_index(request: Request) -> HTMLResponse:
             "description": fn.__sketch_meta__.description,
             "date": fn.__sketch_meta__.date,
         }
-        for slug, fn in sorted(fn_registry.sketch_fns.items(), key=lambda kv: kv[1].__sketch_meta__.date, reverse=True)
+        for slug, fn in sorted(
+            fn_registry.sketch_fns.items(),
+            key=lambda kv: kv[1].__sketch_meta__.date,
+            reverse=True,
+        )
     ]
     return templates.TemplateResponse(
         request,

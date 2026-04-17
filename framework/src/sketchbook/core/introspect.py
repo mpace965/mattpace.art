@@ -138,6 +138,30 @@ def extract_params(fn: Callable) -> list[ParamSpec]:
     return specs
 
 
+_BOOL_TRUE_STRINGS: frozenset[str] = frozenset({"true", "1", "yes", "on"})
+_BOOL_FALSE_STRINGS: frozenset[str] = frozenset({"false", "0", "no", "off"})
+
+
+def _coerce_bool(value: Any) -> bool:
+    """Coerce a value to bool with explicit string handling."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int):
+        return bool(value)
+    if isinstance(value, str):
+        lowered = value.lower()
+        if lowered in _BOOL_TRUE_STRINGS:
+            return True
+        if lowered in _BOOL_FALSE_STRINGS:
+            return False
+        raise ValueError(
+            f"Cannot coerce string '{value}' to bool. "
+            f"Accepted true values: {sorted(_BOOL_TRUE_STRINGS)}. "
+            f"Accepted false values: {sorted(_BOOL_FALSE_STRINGS)}."
+        )
+    return bool(value)
+
+
 def coerce_param(spec: ParamSpec, raw: Any) -> Any:
     """Coerce *raw* to the type declared in *spec*.
 
@@ -145,8 +169,6 @@ def coerce_param(spec: ParamSpec, raw: Any) -> Any:
     For int, float, and str, calls the type constructor directly.
     Unknown types are returned unchanged.
     """
-    from sketchbook.core.params import _coerce_bool
-
     if spec.type is bool:
         return _coerce_bool(raw)
     if spec.type in (int, float, str):

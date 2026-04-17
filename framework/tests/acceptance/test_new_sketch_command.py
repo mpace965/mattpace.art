@@ -55,22 +55,19 @@ class TestNewSketchScaffold:
         mod = _load_module(tmp_path / "new-thing" / "__init__.py", "new_thing_scaffold_test")
         assert mod is not None
 
-    def test_generated_module_contains_sketch_subclass(self, tmp_path: Path) -> None:
-        """The generated module exports exactly one Sketch subclass."""
+    def test_generated_module_contains_sketch_fn(self, tmp_path: Path) -> None:
+        """The generated module exports a @sketch-decorated function."""
         import inspect
-
-        from sketchbook.core.sketch import Sketch
 
         scaffold_sketch("my-sketch", sketches_dir=tmp_path)
 
         mod = _load_module(tmp_path / "my-sketch" / "__init__.py", "my_sketch_scaffold_test")
-        sketch_classes = [
+        sketch_fns = [
             obj
-            for _, obj in inspect.getmembers(mod, inspect.isclass)
-            if issubclass(obj, Sketch) and obj is not Sketch
+            for _, obj in inspect.getmembers(mod)
+            if callable(obj) and not inspect.isclass(obj) and getattr(obj, "__is_sketch__", False)
         ]
-        assert len(sketch_classes) == 1
-        assert sketch_classes[0].name == "my-sketch"
+        assert len(sketch_fns) == 1
 
     def test_no_assets_symlinked_by_default(self, tmp_path: Path) -> None:
         """Default scaffold leaves assets/ empty even when the shared library exists."""

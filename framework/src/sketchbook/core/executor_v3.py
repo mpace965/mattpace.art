@@ -5,12 +5,26 @@ from __future__ import annotations
 import logging
 import typing
 from collections.abc import Callable
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
 from sketchbook.core.built_dag import BuiltDAG, BuiltNode
-from sketchbook.core.executor import ExecutionResult
 from sketchbook.core.protocol import SketchValueProtocol
+
+
+@dataclass
+class ExecutionResult:
+    """Result of running the full or partial DAG."""
+
+    errors: dict[str, Exception] = field(default_factory=dict)
+    executed: set[str] = field(default_factory=set)
+
+    @property
+    def ok(self) -> bool:
+        """Return True if no nodes failed."""
+        return not self.errors
+
 
 log = logging.getLogger("sketchbook.executor_v3")
 

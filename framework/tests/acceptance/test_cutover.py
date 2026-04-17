@@ -8,15 +8,14 @@ from pathlib import Path
 from sketchbook.bundle.builder import build_bundle_fns
 from sketchbook.discovery import discover_sketch_fns
 
-_FRAMEWORK_SRC = Path("framework/src/sketchbook")
-_SKETCHES_DIR = Path("sketches")
+_FRAMEWORK_SRC = Path(__file__).parent.parent.parent / "src" / "sketchbook"
+_SKETCHES_DIR = Path(__file__).parent.parent.parent.parent / "sketches"
 
 _FORBIDDEN_SYMBOLS = {
     "PipelineStep",
     "from sketchbook.core.sketch",
     "DAGNode",
-    "DAG(",
-    "class DAG",
+    "from sketchbook.core.dag",
 }
 
 

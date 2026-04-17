@@ -16,8 +16,7 @@ from fastapi import WebSocket
 
 from sketchbook.core.built_dag import BuiltDAG
 from sketchbook.core.decorators import SketchContext
-from sketchbook.core.executor import ExecutionResult
-from sketchbook.core.executor_v3 import execute_built, execute_partial_built
+from sketchbook.core.executor_v3 import ExecutionResult, execute_built, execute_partial_built
 from sketchbook.core.presets import load_active_into_built, save_active_from_built
 from sketchbook.core.protocol import SketchValueProtocol
 from sketchbook.core.watcher import Watcher
