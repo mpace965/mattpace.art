@@ -1,10 +1,10 @@
-"""Unit tests for tweakpane_v3 adapter."""
+"""Unit tests for tweakpane adapter."""
 
 from __future__ import annotations
 
 from sketchbook.core.built_dag import BuiltNode, ParamSpec
 from sketchbook.core.decorators import Param
-from sketchbook.server.tweakpane_v3 import built_node_to_tweakpane, param_spec_to_tweakpane
+from sketchbook.server.tweakpane import built_node_to_tweakpane, param_spec_to_tweakpane
 
 
 def test_int_param_schema() -> None:

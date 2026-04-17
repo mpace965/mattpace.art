@@ -1,4 +1,4 @@
-"""Userland value types for v3 sketches."""
+"""Userland value types for sketches."""
 
 from __future__ import annotations
 

@@ -68,7 +68,7 @@ def build() -> None:
     sketch_fns = discover_sketch_fns(_SKETCHES_DIR)
     n = len(sketch_fns)
     if n == 0:
-        log.warning("No @sketch functions discovered — is any sketch ported to the v3 API?")
+        log.warning("No @sketch functions discovered — is any sketch using the @sketch API?")
     log.info(f"Building bundle '{args.bundle}' for {n} sketch(es) -> {output_dir}")
     build_bundle_fns(sketch_fns, _SKETCHES_DIR, output_dir, args.bundle, workers=args.workers)
     print(f"Built bundle '{args.bundle}' with {n} sketch(es) -> {output_dir}")

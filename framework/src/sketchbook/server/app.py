@@ -12,7 +12,7 @@ from fastapi import FastAPI
 from fastapi.templating import Jinja2Templates
 
 from sketchbook.server.fn_registry import SketchFnRegistry
-from sketchbook.server.routes import v3 as v3_routes
+from sketchbook.server.routes import sketches as sketch_routes
 
 log = logging.getLogger("sketchbook.server")
 
@@ -20,7 +20,7 @@ _templates_dir = Path(__file__).parent / "templates"
 
 
 def create_app(fn_registry: SketchFnRegistry) -> FastAPI:
-    """Build and return the FastAPI app with v3 routes mounted.
+    """Build and return the FastAPI app with sketch routes mounted.
 
     Args:
         fn_registry: The SketchFnRegistry backing all routes.
@@ -38,6 +38,6 @@ def create_app(fn_registry: SketchFnRegistry) -> FastAPI:
     app = FastAPI(title="Sketchbook", lifespan=lifespan)
     app.state.fn_registry = fn_registry
     app.state.templates = Jinja2Templates(directory=str(_templates_dir))
-    app.include_router(v3_routes.router)
+    app.include_router(sketch_routes.router)
 
     return app

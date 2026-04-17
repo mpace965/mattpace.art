@@ -1,4 +1,4 @@
-"""v3 routes — serve @sketch-based pipelines at the root prefix."""
+"""Routes — serve @sketch-based pipelines at the root prefix."""
 
 from __future__ import annotations
 
@@ -19,16 +19,16 @@ from sketchbook.core.presets import (
     save_preset_from_built,
 )
 from sketchbook.core.protocol import SketchValueProtocol
-from sketchbook.server.tweakpane_v3 import built_node_to_tweakpane
+from sketchbook.server.tweakpane import built_node_to_tweakpane
 
-log = logging.getLogger("sketchbook.server.routes.v3")
+log = logging.getLogger("sketchbook.server.routes.sketches")
 
 router = APIRouter()
 
 
 @router.get("/", response_class=HTMLResponse)
-async def v3_index(request: Request) -> HTMLResponse:
-    """Render an index page listing all available v3 sketches."""
+async def sketch_index(request: Request) -> HTMLResponse:
+    """Render an index page listing all available sketches."""
     fn_registry = request.app.state.fn_registry
     templates = request.app.state.templates
     sketches = [
@@ -53,8 +53,8 @@ async def v3_index(request: Request) -> HTMLResponse:
 
 
 @router.get("/sketch/{sketch_id}", response_class=HTMLResponse)
-async def v3_sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
-    """Render the full sketch UI (DAG cards + Tweakpane) for a v3 @sketch."""
+async def sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
+    """Render the full sketch UI (DAG cards + Tweakpane) for a @sketch."""
     fn_registry = request.app.state.fn_registry
     templates = request.app.state.templates
     dag = fn_registry.get_dag(sketch_id)
@@ -86,7 +86,7 @@ async def v3_sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
     for n in nodes_data:
         n["depth"] = depths[n["id"]]
 
-    # v3 pipelines are a single linear chain — one group.
+    # Pipelines are a single linear chain — one group.
     groups = [nodes_data]
 
     return templates.TemplateResponse(
@@ -102,8 +102,8 @@ async def v3_sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
 
 
 @router.get("/sketch/{sketch_id}/step/{step_id}", response_class=HTMLResponse)
-async def v3_step_view(request: Request, sketch_id: str, step_id: str) -> HTMLResponse:
-    """Render the fullscreen step output view for a v3 @sketch step."""
+async def sketch_step_view(request: Request, sketch_id: str, step_id: str) -> HTMLResponse:
+    """Render the fullscreen step output view for a @sketch step."""
     fn_registry = request.app.state.fn_registry
     templates = request.app.state.templates
     dag = fn_registry.get_dag(sketch_id)
@@ -130,7 +130,7 @@ async def v3_step_view(request: Request, sketch_id: str, step_id: str) -> HTMLRe
 
 
 @router.get("/workdir/{sketch_id}/{filename}")
-async def v3_workdir_file(request: Request, sketch_id: str, filename: str) -> FileResponse:
+async def sketch_workdir_file(request: Request, sketch_id: str, filename: str) -> FileResponse:
     """Stream a workdir output file for the given sketch."""
     fn_registry = request.app.state.fn_registry
     file_path: Path = fn_registry.sketches_dir / sketch_id / ".workdir" / filename
@@ -140,13 +140,13 @@ async def v3_workdir_file(request: Request, sketch_id: str, filename: str) -> Fi
 
 
 @router.websocket("/ws/{sketch_id}")
-async def v3_ws_endpoint(websocket: WebSocket, sketch_id: str) -> None:
+async def sketch_ws_endpoint(websocket: WebSocket, sketch_id: str) -> None:
     """Accept a WebSocket connection and push step_updated events on file changes."""
     fn_registry = websocket.app.state.fn_registry
 
     await websocket.accept()
     fn_registry.connections[sketch_id].add(websocket)
-    log.info(f"v3 WebSocket connected for sketch '{sketch_id}'")
+    log.info(f"WebSocket connected for sketch '{sketch_id}'")
 
     # Push current output state so the browser is up-to-date after reconnect.
     dag = fn_registry.get_dag(sketch_id)
@@ -173,11 +173,11 @@ async def v3_ws_endpoint(websocket: WebSocket, sketch_id: str) -> None:
         pass
     finally:
         fn_registry.connections[sketch_id].discard(websocket)
-        log.info(f"v3 WebSocket disconnected for sketch '{sketch_id}'")
+        log.info(f"WebSocket disconnected for sketch '{sketch_id}'")
 
 
 @router.get("/api/sketches/{sketch_id}/params")
-async def v3_get_all_params(request: Request, sketch_id: str) -> dict[str, Any]:
+async def get_all_params(request: Request, sketch_id: str) -> dict[str, Any]:
     """Return Tweakpane schema for every step, keyed by step_id."""
     fn_registry = request.app.state.fn_registry
     dag = fn_registry.get_dag(sketch_id)
@@ -187,7 +187,7 @@ async def v3_get_all_params(request: Request, sketch_id: str) -> dict[str, Any]:
 
 
 @router.get("/api/sketches/{sketch_id}/params/{step_id}")
-async def v3_get_step_params(request: Request, sketch_id: str, step_id: str) -> dict[str, Any]:
+async def get_step_params(request: Request, sketch_id: str, step_id: str) -> dict[str, Any]:
     """Return Tweakpane schema for one step's params."""
     fn_registry = request.app.state.fn_registry
     dag = fn_registry.get_dag(sketch_id)
@@ -201,7 +201,7 @@ async def v3_get_step_params(request: Request, sketch_id: str, step_id: str) -> 
     return built_node_to_tweakpane(node)
 
 
-class ParamUpdateV3(BaseModel):
+class ParamUpdate(BaseModel):
     """Request body for a single param update."""
 
     step_id: str
@@ -210,7 +210,7 @@ class ParamUpdateV3(BaseModel):
 
 
 @router.patch("/api/sketches/{sketch_id}/params")
-async def v3_update_param(request: Request, sketch_id: str, body: ParamUpdateV3) -> dict[str, bool]:
+async def update_param(request: Request, sketch_id: str, body: ParamUpdate) -> dict[str, bool]:
     """Coerce, store, re-execute, and broadcast a param change."""
     fn_registry = request.app.state.fn_registry
     dag = fn_registry.get_dag(sketch_id)
@@ -254,7 +254,7 @@ def _list_preset_names(presets_dir: Path) -> list[str]:
 
 
 @router.get("/api/sketches/{sketch_id}/presets")
-async def v3_list_presets(request: Request, sketch_id: str) -> dict[str, Any]:
+async def list_presets(request: Request, sketch_id: str) -> dict[str, Any]:
     """Return named presets and current active state {dirty, based_on}."""
     fn_registry = request.app.state.fn_registry
     if sketch_id not in fn_registry.sketch_fns:
@@ -270,9 +270,7 @@ async def v3_list_presets(request: Request, sketch_id: str) -> dict[str, Any]:
 
 
 @router.post("/api/sketches/{sketch_id}/presets")
-async def v3_save_preset(
-    request: Request, sketch_id: str, body: SavePresetRequest
-) -> dict[str, Any]:
+async def save_preset(request: Request, sketch_id: str, body: SavePresetRequest) -> dict[str, Any]:
     """Save current param values as a named preset."""
     fn_registry = request.app.state.fn_registry
     dag = fn_registry.get_dag(sketch_id)
@@ -288,7 +286,7 @@ async def v3_save_preset(
 
 
 @router.post("/api/sketches/{sketch_id}/presets/new")
-async def v3_new_preset(request: Request, sketch_id: str) -> dict[str, Any]:
+async def new_preset(request: Request, sketch_id: str) -> dict[str, Any]:
     """Reset all params to defaults, re-execute, and broadcast."""
     fn_registry = request.app.state.fn_registry
     dag = fn_registry.get_dag(sketch_id)
@@ -310,7 +308,7 @@ async def v3_new_preset(request: Request, sketch_id: str) -> dict[str, Any]:
 
 
 @router.post("/api/sketches/{sketch_id}/presets/{name}/load")
-async def v3_load_preset(request: Request, sketch_id: str, name: str) -> dict[str, Any]:
+async def load_preset(request: Request, sketch_id: str, name: str) -> dict[str, Any]:
     """Load a named preset, re-execute, and broadcast step_updated."""
     fn_registry = request.app.state.fn_registry
     dag = fn_registry.get_dag(sketch_id)

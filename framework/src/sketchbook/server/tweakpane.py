@@ -1,4 +1,4 @@
-"""Adapter functions for converting v3 ParamSpec to Tweakpane-compatible UI schema."""
+"""Adapter functions for converting ParamSpec to Tweakpane-compatible UI schema."""
 
 from __future__ import annotations
 

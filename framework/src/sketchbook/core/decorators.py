@@ -1,4 +1,4 @@
-"""@step, @sketch, and supporting dataclasses for v3 functional pipeline API."""
+"""@step, @sketch, and supporting dataclasses for the functional pipeline API."""
 
 from __future__ import annotations
 
@@ -43,7 +43,7 @@ class SketchMeta:
 
 
 def sketch(date: str) -> Callable:
-    """Decorator factory that marks a function as a v3 sketch entry point.
+    """Decorator factory that marks a function as a sketch entry point.
 
     Stamps ``__is_sketch__ = True`` and ``__sketch_meta__`` on the function.
     Name is derived from ``fn.__name__``; description from the docstring.

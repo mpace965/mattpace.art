@@ -1,4 +1,4 @@
-"""SketchFnRegistry — owns BuiltDAGs, file watchers, and WebSocket state for v3 sketches."""
+"""SketchFnRegistry — owns BuiltDAGs, file watchers, and WebSocket state for sketches."""
 
 from __future__ import annotations
 
@@ -77,14 +77,14 @@ class SketchFnRegistry:
             )
             execute_built(dag, workdir, mode="dev")
             elapsed = time.perf_counter() - t0
-            log.info(f"Loaded v3 sketch '{sketch_id}' ({elapsed:.2f}s)")
+            log.info(f"Loaded sketch '{sketch_id}' ({elapsed:.2f}s)")
             self._dags[sketch_id] = dag
             if self._watcher is not None and self._loop is not None:
                 self._register_watch(sketch_id, dag)
             return dag
         except Exception as exc:
             elapsed = time.perf_counter() - t0
-            log.warning(f"Failed to load v3 sketch '{sketch_id}': {exc} ({elapsed:.2f}s)")
+            log.warning(f"Failed to load sketch '{sketch_id}': {exc} ({elapsed:.2f}s)")
             return None
 
     def evict(self, slug: str) -> None:
@@ -150,7 +150,7 @@ class SketchFnRegistry:
                 nid: str = source_step_id,
                 wd: Path = workdir,
             ) -> None:
-                log.info(f"Source '{nid}' changed for v3 sketch '{sid}', re-executing")
+                log.info(f"Source '{nid}' changed for sketch '{sid}', re-executing")
                 result = execute_partial_built(d, [nid], wd)
                 asyncio.run_coroutine_threadsafe(
                     self.broadcast_results(sid, d, result),

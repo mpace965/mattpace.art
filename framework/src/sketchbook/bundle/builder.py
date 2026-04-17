@@ -1,4 +1,4 @@
-"""Output bundle builder — build_bundle_fns for v3 @sketch functions.
+"""Output bundle builder — build_bundle_fns for @sketch functions.
 
 Building is split into three phases:
 
