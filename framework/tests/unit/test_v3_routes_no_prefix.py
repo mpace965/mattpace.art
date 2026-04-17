@@ -22,8 +22,8 @@ def pass_image(image: TestImage) -> TestImage:
 
 
 @sketch(date="2026-04-16")
-def cardboard_v3() -> None:
-    """Minimal v3 sketch for prefix-drop tests."""
+def minimal_sketch() -> None:
+    """Minimal sketch for prefix-drop tests."""
     img = source("assets/hello.png", TestImage.load)
     result = pass_image(img)
     output(result, "main")
@@ -31,7 +31,7 @@ def cardboard_v3() -> None:
 
 @pytest.fixture()
 def _sketch_dir(tmp_path: Path) -> Path:
-    d = tmp_path / "cardboard_v3" / "assets"
+    d = tmp_path / "minimal_sketch" / "assets"
     d.mkdir(parents=True)
     make_test_image(d / "hello.png")
     return tmp_path
@@ -40,7 +40,7 @@ def _sketch_dir(tmp_path: Path) -> Path:
 @pytest.fixture()
 def fn_registry_client(_sketch_dir: Path) -> Generator[TestClient]:
     fn_registry = SketchFnRegistry(
-        sketch_fns={"cardboard_v3": cardboard_v3},
+        sketch_fns={"minimal_sketch": minimal_sketch},
         sketches_dir=_sketch_dir,
     )
     app = create_app(fn_registry=fn_registry)
@@ -50,11 +50,11 @@ def fn_registry_client(_sketch_dir: Path) -> Generator[TestClient]:
 
 def test_sketch_route_at_root(fn_registry_client: TestClient) -> None:
     """After the prefix drop, /sketch/{id} hits the v3 route."""
-    response = fn_registry_client.get("/sketch/cardboard_v3")
+    response = fn_registry_client.get("/sketch/minimal_sketch")
     assert response.status_code == 200
 
 
 def test_no_v3_prefix_route(fn_registry_client: TestClient) -> None:
     """/v3/sketch/{id} returns 404 — the prefix is gone."""
-    response = fn_registry_client.get("/v3/sketch/cardboard_v3")
+    response = fn_registry_client.get("/v3/sketch/minimal_sketch")
     assert response.status_code == 404

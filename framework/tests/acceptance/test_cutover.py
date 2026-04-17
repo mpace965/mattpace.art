@@ -32,7 +32,7 @@ def test_no_old_framework_symbols():
 
 def test_all_sketches_load_in_dev_server(fn_registry_client_real):
     """All four real sketches wire and serve without error via the root-prefixed routes."""
-    for slug in ["cardboard", "cardboard-stripes", "fence-torn-paper", "kick-polygons"]:
+    for slug in ["cardboard", "cardboard_stripes", "fence-torn-paper", "kick-polygons"]:
         response = fn_registry_client_real.get(f"/sketch/{slug}")
         assert response.status_code == 200, f"Sketch '{slug}' failed: {response.text}"
 
