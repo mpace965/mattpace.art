@@ -62,7 +62,11 @@ def build() -> None:
         metavar="N",
         help="Number of parallel worker threads (default: auto)",
     )
+    parser.add_argument("--debug", action="store_true", help="Enable debug-level logging")
     args = parser.parse_args()
+
+    if args.debug:
+        logging.getLogger("sketchbook").setLevel(logging.DEBUG)
 
     output_dir = Path(args.output)
     sketch_fns = discover_sketch_fns(_SKETCHES_DIR)

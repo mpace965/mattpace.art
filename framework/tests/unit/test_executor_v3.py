@@ -278,8 +278,8 @@ def test_to_bytes_mode_distinguishes_dev_build() -> None:
     assert img.to_bytes("dev") != img.to_bytes("build")
 
 
-def test_execute_built_build_mode_calls_build_to_bytes(tmp_path: Path) -> None:
-    """mode='build' writes bytes produced by to_bytes('build'), not to_bytes('dev')."""
+def test_execute_built_build_mode_no_disk_writes(tmp_path: Path) -> None:
+    """mode='build' skips all disk writes — outputs are kept in memory only."""
     dag = BuiltDAG()
     dag.nodes["src"] = BuiltNode(
         step_id="src",
@@ -289,12 +289,9 @@ def test_execute_built_build_mode_calls_build_to_bytes(tmp_path: Path) -> None:
 
     execute_built(dag, tmp_path, mode="build")
 
-    out = tmp_path / "src.png"
-    assert out.exists()
-    build_bytes = out.read_bytes()
-    assert build_bytes.startswith(b"mode:build:"), (
-        f"Expected build-mode bytes, got: {build_bytes[:20]!r}"
-    )
+    assert not any(tmp_path.iterdir()), "build mode must not write any files to workdir"
+    assert dag.nodes["src"].output is not None, "output must be stored in memory"
+    assert dag.nodes["src"].output.to_bytes("build").startswith(b"mode:build:")
 
 
 def test_ctx_mode_is_build_during_build_execution(tmp_path: Path) -> None:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import time
 import typing
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -97,18 +98,22 @@ def _execute_nodes(
                 if ctx_param_name is not None:
                     kwargs[ctx_param_name] = node.ctx
             log.debug(f"Executing node '{node.step_id}'")
+            t0 = time.perf_counter()
             value = node.fn(**kwargs)
+            elapsed = time.perf_counter() - t0
+            log.debug(f"Node '{node.step_id}' took {elapsed:.3f}s")
             node.output = value
             result.executed.add(node.step_id)
 
-            if isinstance(value, SketchValueProtocol):
-                out_path = workdir / f"{node.step_id}.{value.extension}"
-                out_path.write_bytes(value.to_bytes(mode))
-                log.debug(f"Wrote '{node.step_id}' → {out_path}")
-            elif value is not None:
-                out_path = workdir / f"{node.step_id}.txt"
-                out_path.write_bytes(str(value).encode())
-                log.debug(f"Wrote '{node.step_id}' → {out_path}")
+            if mode == "dev":
+                if isinstance(value, SketchValueProtocol):
+                    out_path = workdir / f"{node.step_id}.{value.extension}"
+                    out_path.write_bytes(value.to_bytes(mode))
+                    log.debug(f"Wrote '{node.step_id}' → {out_path}")
+                elif value is not None:
+                    out_path = workdir / f"{node.step_id}.txt"
+                    out_path.write_bytes(str(value).encode())
+                    log.debug(f"Wrote '{node.step_id}' → {out_path}")
 
         except Exception as exc:
             result.errors[node.step_id] = exc

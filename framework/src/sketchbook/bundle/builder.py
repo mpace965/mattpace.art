@@ -13,6 +13,7 @@ import json
 import logging
 import shutil
 import tempfile
+import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -68,6 +69,7 @@ def _build_variant_fn(task: _VariantTaskFn) -> _VariantResultFn:
     from sketchbook.core.protocol import SketchValueProtocol
     from sketchbook.core.wiring import wire_sketch
 
+    t0 = time.perf_counter()
     ctx = SketchContext(mode="build")
     dag = wire_sketch(task.sketch_fn, ctx, task.sketch_dir)
     load_preset_into_built(dag, task.presets_dir, task.preset_name)
@@ -75,6 +77,7 @@ def _build_variant_fn(task: _VariantTaskFn) -> _VariantResultFn:
     with tempfile.TemporaryDirectory() as tmp:
         result = execute_built(dag, Path(tmp), mode="build")
 
+    elapsed = time.perf_counter() - t0
     if not result.ok:
         log.warning(f"  preset '{task.preset_name}' failed: {result.errors}")
         return _VariantResultFn(task.sketch_key, task.preset_name, ok=False)
@@ -88,7 +91,7 @@ def _build_variant_fn(task: _VariantTaskFn) -> _VariantResultFn:
     ext = val.extension if isinstance(val, SketchValueProtocol) else "bin"
     dest = task.sketch_output_dir / f"{task.preset_name}.{ext}"
     dest.write_bytes(val.to_bytes("build"))
-    log.info(f"  baked {task.preset_name} -> {dest}")
+    log.info(f"  baked {task.preset_name} -> {dest} ({elapsed:.2f}s)")
 
     return _VariantResultFn(task.sketch_key, task.preset_name, ok=True, extension=ext)
 
@@ -194,8 +197,10 @@ def build_bundle_fns(
     workers=1 gives sequential behaviour identical to a single-threaded loop.
     """
     output_dir.mkdir(parents=True, exist_ok=True)
+    build_t0 = time.perf_counter()
 
     # Phase 1: discovery (sequential)
+    phase1_t0 = time.perf_counter()
     tasks: list[_VariantTaskFn] = []
     sketch_meta: dict[str, dict[str, Any]] = {}
     preset_order: dict[str, list[str]] = {}
@@ -210,7 +215,11 @@ def build_bundle_fns(
         preset_order[sketch_key] = discovery.preset_order
         tasks.extend(discovery.tasks)
 
+    elapsed1 = time.perf_counter() - phase1_t0
+    log.info(f"Phase 1 (discovery): {len(tasks)} variant(s) in {elapsed1:.2f}s")
+
     # Phase 2: parallel execution
+    phase2_t0 = time.perf_counter()
     produced: dict[str, dict[str, str]] = {key: {} for key in sketch_meta}
 
     with ThreadPoolExecutor(max_workers=workers) as pool:
@@ -225,7 +234,10 @@ def build_bundle_fns(
             if result.ok:
                 produced[result.sketch_key][result.preset_name] = result.extension
 
+    log.info(f"Phase 2 (execution): {time.perf_counter() - phase2_t0:.2f}s")
+
     # Phase 3: manifest (sequential)
+    phase3_t0 = time.perf_counter()
     entries: list[dict[str, Any]] = []
     for sketch_key, meta in sketch_meta.items():
         preset_ext_map = produced[sketch_key]
@@ -246,4 +258,7 @@ def build_bundle_fns(
     entries.sort(key=lambda e: e["date"], reverse=True)
     bundle_path = output_dir / "manifest.json"
     bundle_path.write_text(json.dumps(entries, indent=2))
-    log.info(f"Wrote {len(entries)} sketch(es) to {bundle_path}")
+    elapsed3 = time.perf_counter() - phase3_t0
+    elapsed_total = time.perf_counter() - build_t0
+    log.info(f"Phase 3 (manifest): {elapsed3:.3f}s")
+    log.info(f"Build complete: {len(entries)} sketch(es) in {elapsed_total:.2f}s — {bundle_path}")
