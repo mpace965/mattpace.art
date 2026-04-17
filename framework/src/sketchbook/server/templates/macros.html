@@ -1,11 +1,12 @@
 {% macro breadcrumbs(sketch_id=None, step_id=None) %}<a href="/">sketchbook</a>{% if sketch_id %}<span class="sep">/</span><a href="/sketch/{{ sketch_id }}{% if step_id %}#card-{{ step_id }}{% endif %}">{{ sketch_id }}</a>{% endif %}{% if step_id %}<span class="sep">/</span><a href="/sketch/{{ sketch_id }}/step/{{ step_id }}">{{ step_id }}</a>{% endif %}{% endmacro %}
 
-{% macro step_body(step_id, image_url) %}
+{% macro step_body(step_id, image_url, kind="image") %}
 <div class="step-card-body">
   <div class="step-card-params" id="params-{{ step_id }}"></div>
   <div class="step-card-output">
     <div class="error-msg" id="err-msg-{{ step_id }}"></div>
-    <img id="img-{{ step_id }}" src="{{ image_url }}" alt="{{ step_id }} output">
+    <img id="img-{{ step_id }}" src="{{ image_url }}" alt="{{ step_id }} output"{% if kind != "image" %} style="display:none"{% endif %}>
+    <pre id="txt-{{ step_id }}" class="text-output"{% if kind == "image" %} style="display:none"{% endif %}></pre>
   </div>
 </div>
 {% endmacro %}

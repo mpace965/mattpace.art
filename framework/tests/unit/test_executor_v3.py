@@ -18,6 +18,7 @@ from tests.conftest import TestImage
 
 class _Img:
     extension = "png"
+    kind = "image"
 
     def __init__(self, data: bytes = b"\x89PNG") -> None:
         self._data = data

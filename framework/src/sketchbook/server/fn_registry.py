@@ -18,7 +18,7 @@ from sketchbook.core.built_dag import BuiltDAG
 from sketchbook.core.decorators import SketchContext
 from sketchbook.core.executor import ExecutionResult, execute_built, execute_partial_built
 from sketchbook.core.presets import load_active_into_built, save_active_from_built
-from sketchbook.core.protocol import SketchValueProtocol
+from sketchbook.core.protocol import SketchValueProtocol, output_kind
 from sketchbook.core.watcher import Watcher
 from sketchbook.core.wiring import wire_sketch
 
@@ -188,15 +188,15 @@ class SketchFnRegistry:
                     },
                 )
             elif node.step_id in result.executed:
-                if isinstance(node.output, SketchValueProtocol):
-                    ext = node.output.extension
-                else:
-                    ext = "txt"
+                kind = output_kind(node.output)
+                is_protocol = isinstance(node.output, SketchValueProtocol)
+                ext = node.output.extension if is_protocol else "txt"
                 await self.broadcast(
                     sketch_id,
                     {
                         "type": "step_updated",
                         "step_id": node.step_id,
                         "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
+                        "kind": kind,
                     },
                 )

@@ -24,6 +24,7 @@ class TestImage:
     """
 
     extension = "png"
+    kind = "image"
 
     def __init__(self, data: bytes) -> None:
         self._data = data

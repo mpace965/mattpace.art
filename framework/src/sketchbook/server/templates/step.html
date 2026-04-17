@@ -12,7 +12,7 @@
 
 {% block content %}
     <div id="step-view">
-      {{ step_body(step_id, image_url) }}
+      {{ step_body(step_id, image_url, kind) }}
     </div>
 {% endblock %}
 
@@ -50,17 +50,26 @@
     function connect() {
       const errMsg = document.getElementById(`err-msg-${STEP_ID}`);
       const img = document.getElementById(`img-${STEP_ID}`);
+      const txt = document.getElementById(`txt-${STEP_ID}`);
       const ws = new WebSocket(`ws://${location.host}${URL_PREFIX}/ws/${SKETCH_ID}`);
       ws.onmessage = (event) => {
         const msg = JSON.parse(event.data);
         if (msg.type === "step_updated" && msg.step_id === STEP_ID) {
           errMsg.style.display = "none";
-          img.style.display = "";
-          img.src = msg.image_url + "?t=" + Date.now();
+          if (msg.kind === "image") {
+            img.style.display = "";
+            txt.style.display = "none";
+            img.src = msg.image_url + "?t=" + Date.now();
+          } else {
+            img.style.display = "none";
+            txt.style.display = "";
+            fetch(msg.image_url).then(r => r.text()).then(t => { txt.textContent = t; });
+          }
         } else if (msg.type === "step_error" && msg.step_id === STEP_ID) {
           errMsg.style.display = "block";
           errMsg.textContent = msg.error;
           img.style.display = "none";
+          txt.style.display = "none";
         } else if (msg.type === "preset_state") {
           fetchAndRenderPresets();
           refreshPanes();

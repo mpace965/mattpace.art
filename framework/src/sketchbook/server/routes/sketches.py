@@ -18,7 +18,7 @@ from sketchbook.core.presets import (
     save_active_from_built,
     save_preset_from_built,
 )
-from sketchbook.core.protocol import SketchValueProtocol
+from sketchbook.core.protocol import SketchValueProtocol, output_kind
 from sketchbook.server.tweakpane import built_node_to_tweakpane
 
 log = logging.getLogger("sketchbook.server.routes.sketches")
@@ -65,6 +65,7 @@ async def sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
     nodes_data: list[dict] = []
     for node in dag.topo_sort():
         fn = getattr(node.fn, "__wrapped__", node.fn)
+        kind = output_kind(node.output)
         ext = node.output.extension if isinstance(node.output, SketchValueProtocol) else "txt"
         nodes_data.append(
             {
@@ -73,6 +74,7 @@ async def sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
                 "depth": 0,  # resolved below
                 "input_ids": list(node.source_ids.values()),
                 "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
+                "kind": kind,
             }
         )
 
@@ -115,6 +117,7 @@ async def sketch_step_view(request: Request, sketch_id: str, step_id: str) -> HT
             status_code=404,
             detail=f"Step '{step_id}' not found in sketch '{sketch_id}'",
         )
+    kind = output_kind(node.output)
     ext = node.output.extension if isinstance(node.output, SketchValueProtocol) else "txt"
     image_url = f"/workdir/{sketch_id}/{step_id}.{ext}"
     return templates.TemplateResponse(
@@ -124,6 +127,7 @@ async def sketch_step_view(request: Request, sketch_id: str, step_id: str) -> HT
             "sketch_id": sketch_id,
             "step_id": step_id,
             "image_url": image_url,
+            "kind": kind,
             "url_prefix": "",
         },
     )
@@ -151,11 +155,12 @@ async def sketch_ws_endpoint(websocket: WebSocket, sketch_id: str) -> None:
     # Push current output state so the browser is up-to-date after reconnect.
     dag = fn_registry.get_dag(sketch_id)
     if dag is not None:
+        workdir = fn_registry.sketches_dir / sketch_id / ".workdir"
         for node in dag.topo_sort():
-            if not isinstance(node.output, SketchValueProtocol):
+            if node.output is None:
                 continue
-            ext = node.output.extension
-            workdir = fn_registry.sketches_dir / sketch_id / ".workdir"
+            kind = output_kind(node.output)
+            ext = node.output.extension if isinstance(node.output, SketchValueProtocol) else "txt"
             if (workdir / f"{node.step_id}.{ext}").exists():
                 await websocket.send_text(
                     json.dumps(
@@ -163,6 +168,7 @@ async def sketch_ws_endpoint(websocket: WebSocket, sketch_id: str) -> None:
                             "type": "step_updated",
                             "step_id": node.step_id,
                             "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
+                            "kind": kind,
                         }
                     )
                 )

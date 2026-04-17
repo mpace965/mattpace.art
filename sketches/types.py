@@ -18,6 +18,7 @@ class Image:
     """
 
     extension = "png"
+    kind = "image"
 
     def __init__(self, array: np.ndarray) -> None:
         self._array = array
