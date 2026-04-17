@@ -1,7 +1,7 @@
 [
   {
     "slug": "kick-polygons",
-    "name": "kick-polygons",
+    "name": "kick_polygons",
     "description": "radial arrangement of image copies forming polygon patterns.",
     "date": "2026-04-11",
     "variants": [
@@ -25,7 +25,7 @@
   },
   {
     "slug": "fence-torn-paper",
-    "name": "fence-torn-paper",
+    "name": "fence_torn_paper",
     "description": "weathered fence with torn paper and emphasized edges.",
     "date": "2026-03-29",
     "variants": [
@@ -37,7 +37,7 @@
   },
   {
     "slug": "cardboard-stripes",
-    "name": "cardboard-stripes",
+    "name": "cardboard_stripes",
     "description": "greyscale cardboard texture with a stack of inverted horizontal bars.",
     "date": "2026-03-12",
     "variants": [
