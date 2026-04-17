@@ -41,6 +41,11 @@ class SketchFnRegistry:
         self.sketches_dir: Path = sketches_dir
         self._dags: dict[str, BuiltDAG] = {}
         self._locks: dict[str, threading.Lock] = {slug: threading.Lock() for slug in sketch_fns}
+        # Serialises all mutation+execution sequences per sketch across the asyncio
+        # thread (route handlers) and the watchdog observer thread (on_change).
+        self._exec_locks: dict[str, threading.Lock] = {
+            slug: threading.Lock() for slug in sketch_fns
+        }
         self._dirty: dict[str, bool] = {}
         self._based_on: dict[str, str | None] = {}
         self._watcher: Watcher | None = None
@@ -104,14 +109,15 @@ class SketchFnRegistry:
         if dag is None:
             raise KeyError(f"Sketch '{sketch_id}' not in cache — call get_dag first")
         node = dag.nodes[step_id]
-        node.param_values[param_name] = value
-        self._dirty[sketch_id] = True
-
         sketch_dir = self.sketches_dir / sketch_id
         presets_dir = sketch_dir / "presets"
         workdir = sketch_dir / ".workdir"
-        save_active_from_built(dag, presets_dir, dirty=True, based_on=self._based_on.get(sketch_id))
-        return execute_partial_built(dag, [step_id], workdir)
+        with self._exec_locks[sketch_id]:
+            node.param_values[param_name] = value
+            self._dirty[sketch_id] = True
+            based_on = self._based_on.get(sketch_id)
+            save_active_from_built(dag, presets_dir, dirty=True, based_on=based_on)
+            return execute_partial_built(dag, [step_id], workdir)
 
     # ------------------------------------------------------------------
     # Watcher lifecycle
@@ -151,7 +157,8 @@ class SketchFnRegistry:
                 wd: Path = workdir,
             ) -> None:
                 log.info(f"Source '{nid}' changed for sketch '{sid}', re-executing")
-                result = execute_partial_built(d, [nid], wd)
+                with self._exec_locks[sid]:
+                    result = execute_partial_built(d, [nid], wd)
                 asyncio.run_coroutine_threadsafe(
                     self.broadcast_results(sid, d, result),
                     self._loop,  # type: ignore[arg-type]

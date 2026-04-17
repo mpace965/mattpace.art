@@ -298,15 +298,16 @@ async def new_preset(request: Request, sketch_id: str) -> dict[str, Any]:
     dag = fn_registry.get_dag(sketch_id)
     if dag is None:
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
-    for node in dag.topo_sort():
-        for spec in node.param_schema:
-            node.param_values[spec.name] = spec.default
-    fn_registry._dirty[sketch_id] = False
-    fn_registry._based_on[sketch_id] = None
     presets_dir = fn_registry.sketches_dir / sketch_id / "presets"
-    save_active_from_built(dag, presets_dir, dirty=False, based_on=None)
     workdir = fn_registry.sketches_dir / sketch_id / ".workdir"
-    result = execute_built(dag, workdir)
+    with fn_registry._exec_locks[sketch_id]:
+        for node in dag.topo_sort():
+            for spec in node.param_schema:
+                node.param_values[spec.name] = spec.default
+        fn_registry._dirty[sketch_id] = False
+        fn_registry._based_on[sketch_id] = None
+        save_active_from_built(dag, presets_dir, dirty=False, based_on=None)
+        result = execute_built(dag, workdir)
     await fn_registry.broadcast_results(sketch_id, dag, result)
     await fn_registry.broadcast(sketch_id, {"type": "preset_state"})
     log.info(f"Reset to defaults for sketch '{sketch_id}'")
@@ -321,15 +322,16 @@ async def load_preset(request: Request, sketch_id: str, name: str) -> dict[str, 
     if dag is None:
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
     presets_dir = fn_registry.sketches_dir / sketch_id / "presets"
+    workdir = fn_registry.sketches_dir / sketch_id / ".workdir"
     try:
-        load_preset_into_built(dag, presets_dir, name)
+        with fn_registry._exec_locks[sketch_id]:
+            load_preset_into_built(dag, presets_dir, name)
+            fn_registry._dirty[sketch_id] = False
+            fn_registry._based_on[sketch_id] = name
+            save_active_from_built(dag, presets_dir, dirty=False, based_on=name)
+            result = execute_built(dag, workdir)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
-    fn_registry._dirty[sketch_id] = False
-    fn_registry._based_on[sketch_id] = name
-    save_active_from_built(dag, presets_dir, dirty=False, based_on=name)
-    workdir = fn_registry.sketches_dir / sketch_id / ".workdir"
-    result = execute_built(dag, workdir)
     await fn_registry.broadcast_results(sketch_id, dag, result)
     await fn_registry.broadcast(sketch_id, {"type": "preset_state"})
     log.info(f"Loaded preset '{name}' for sketch '{sketch_id}'")

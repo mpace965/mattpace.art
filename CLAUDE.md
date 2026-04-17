@@ -133,7 +133,7 @@ The rule: if an asset makes sense outside the context of a single sketch, it liv
 
 ## Git
 
-- **`mise run lint` must pass before every commit.** No exceptions. Fix all violations first.
+- **`mise fix` must exit 0 before every commit.** No exceptions. It auto-fixes what it can and reports anything it can't.
 - `.workdir/` directories are always gitignored.
 - `dist/` is gitignored on main. It gets force-pushed to `gh-pages` for deployment.
 - Source assets under `sketches/*/assets/` are **not** committed (too large). The repo works without them — you just can't build until you have the assets locally.
