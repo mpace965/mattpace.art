@@ -253,6 +253,27 @@ accept the Tweakpane wire form.
 
 ### Design clarity
 
+Tasks are grouped by what drives them. Complete Group A before Groups C and D,
+since the registry split settles questions that Groups C and D build on.
+
+```
+Group B (housekeeping, no deps)
+  ↓
+Group A (registry decomposition)
+  ↓
+Group C (build path — mode channel decision informed by A)
+  ↓
+Group D (documentation pass, everything settled)
+```
+
+---
+
+#### Group A — Registry decomposition
+
+`SketchFnRegistry` is the anchor for three follow-on tasks. Do #8 first;
+#9, #11, and #15 either become easier or resolve themselves once the split
+exists.
+
 **8. Decompose `SketchFnRegistry`**
 
 > `SketchFnRegistry` in `framework/src/sketchbook/server/fn_registry.py` owns
@@ -275,47 +296,48 @@ accept the Tweakpane wire form.
 > `node.param_values[name] = spec.default`. `sketch_view` contains an inline
 > DAG-depth computation. Encapsulate these properly: (1) add
 > `set_preset_state(sketch_id, dirty, based_on)` on `SketchFnRegistry`
-> (or its successor after follow-up #8); (2) extract
+> (or its successor after #8); (2) extract
 > `reset_to_defaults(dag: BuiltDAG) -> None` into `core/presets.py`;
 > (3) extract the DAG depth computation onto `BuiltDAG` or a server helper.
 > Replace all inline logic with calls to the new helpers and add unit tests
 > for each. Audit for any remaining direct `_`-prefixed attribute access
 > from route handlers.
 
-**10. `_build_variant_fn` concentrates too much logic**
-
-> In `framework/src/sketchbook/bundle/builder.py`, `_build_variant_fn`
-> performs five sequential steps: `wire_sketch`, `load_preset_into_built`,
-> `execute_built`, validate the output node, write the output bytes to disk.
-> This is the most concentrated responsibility in the build path. Evaluate
-> splitting into `prepare_variant(task) -> BuiltDAG` (wire + load preset)
-> and `materialise_output(dag, dest) -> VariantResult` (validate + write),
-> leaving `_build_variant_fn` as a coordinator. Also consider whether
-> `_discover_sketch_fn` should split off metadata extraction and task
-> construction. For each extracted function, write a unit test that exercises
-> it without the full build harness. Confirm no behaviour change.
-
 **11. `_load_dag_lazy` and `set_param` have long linear sequences**
 
 > `SketchFnRegistry._load_dag_lazy` does wire → load active preset → execute
 > → register watch. `SketchFnRegistry.set_param` does coerce → store →
 > persist → execute. Both are correct but long. After the decomposition in
-> follow-up #8 they may already be improved; if not, consider naming each
-> step as a helper method so the sequence reads at a higher level of
-> abstraction. This is a polish pass, not a structural change.
+> #8 they may already be improved; if not, consider naming each step as a
+> helper method so the sequence reads at a higher level of abstraction. This
+> is a polish pass, not a structural change.
 
-**12. Two mode channels (`SketchContext.mode` vs executor `mode=`)**
+**15. Extract initial-state dump from `sketch_ws_endpoint`**
 
-> `execute_built(dag, workdir, mode=...)` controls whether intermediate files
-> are written. `SketchContext(mode=...)` is created independently in
-> `_discover_sketch_fn` and `_build_variant_fn` and threaded into node
-> functions as `ctx`. Investigate: (1) do any sketches under `sketches/`
-> actually branch on `ctx.mode`? If not, the ctx channel is currently inert
-> in userland. (2) Should mode be owned exclusively by `SketchContext` (and
-> the executor read it from the DAG's context), or should the executor
-> argument remain canonical? (3) Is there any code path where the two can
-> disagree? Pick one canonical channel, remove or reduce the other, and
-> document the choice.
+> `sketch_ws_endpoint` in `framework/src/sketchbook/server/routes/sketches.py`
+> handles accept, initial-state dump (topo sort + file existence check +
+> message construction), connection tracking, and park-until-disconnect in
+> one flat function. Extract the initial-state dump into a helper
+> (`dump_initial_state(websocket, dag, workdir)` or similar), ideally owned
+> by the `ConnectionManager` from #8. Add a unit test.
+
+---
+
+#### Group B — Naming, location, and dead code
+
+All pure housekeeping with no behaviour change. Fully independent of Group A;
+can be done in any order or batched into a single small PR.
+
+**6. `topo_sort` does not sort**
+
+> `BuiltDAG.topo_sort` in `framework/src/sketchbook/core/built_dag.py` returns
+> `list(self.nodes.values())` and relies on `wire_sketch` inserting nodes in
+> topological order. The invariant is real but invisible at the call site.
+> Either rename the method to `nodes_in_order()` / `ordered_nodes()` and
+> update every call site, or add a runtime assertion on `BuiltDAG`
+> construction that verifies each node's `source_ids` precede it in insertion
+> order. Include a test that constructs a DAG out of order and asserts the
+> invariant is caught.
 
 **13. Move `_find_ctx_param` to `core/introspect.py`**
 
@@ -333,14 +355,74 @@ accept the Tweakpane wire form.
 > `list_preset_names` to the existing `sketchbook.core.presets` import, and
 > update the `list_presets` route to call the imported version.
 
-**15. Extract initial-state dump from `sketch_ws_endpoint`**
+**22. Remove dead code paths**
 
-> `sketch_ws_endpoint` in `framework/src/sketchbook/server/routes/sketches.py`
-> handles accept, initial-state dump (topo sort + file existence check +
-> message construction), connection tracking, and park-until-disconnect in
-> one flat function. Extract the initial-state dump into a helper
-> (`dump_initial_state(websocket, dag, workdir)` or similar), ideally owned
-> by the `ConnectionManager` from follow-up #8. Add a unit test.
+> Three small dead / misleading paths to clean up: (1) in
+> `SketchFnRegistry.start_watcher`, the `for sketch_id, dag in self._dags.items()`
+> loop is always empty at startup — either eagerly populate DAGs there or
+> remove the loop and clarify the contract; (2) in
+> `framework/src/sketchbook/server/templates/step.html`, the
+> `data.params ?? data` fallback is unreachable because the API returns a
+> flat dict — remove the fallback and add a comment documenting the expected
+> shape; (3) in `base.html`, Tweakpane and preset JS execute on the index
+> page where the preset bar is hidden — guard the preset / Tweakpane JS
+> behind a `{% block scripts %}` that `index.html` overrides to a no-op, or
+> stop extending `base.html` from `index.html`.
+
+---
+
+#### Group C — Build path clarity
+
+Both tasks are isolated to the build path and do not touch the server layer.
+Do after Group A so the server-side mode plumbing is settled before deciding
+which mode channel is canonical.
+
+**10. `_build_variant_fn` concentrates too much logic**
+
+> In `framework/src/sketchbook/bundle/builder.py`, `_build_variant_fn`
+> performs five sequential steps: `wire_sketch`, `load_preset_into_built`,
+> `execute_built`, validate the output node, write the output bytes to disk.
+> This is the most concentrated responsibility in the build path. Evaluate
+> splitting into `prepare_variant(task) -> BuiltDAG` (wire + load preset)
+> and `materialise_output(dag, dest) -> VariantResult` (validate + write),
+> leaving `_build_variant_fn` as a coordinator. Also consider whether
+> `_discover_sketch_fn` should split off metadata extraction and task
+> construction. For each extracted function, write a unit test that exercises
+> it without the full build harness. Confirm no behaviour change.
+
+**12. Two mode channels (`SketchContext.mode` vs executor `mode=`)**
+
+> `execute_built(dag, workdir, mode=...)` controls whether intermediate files
+> are written. `SketchContext(mode=...)` is created independently in
+> `_discover_sketch_fn` and `_build_variant_fn` and threaded into node
+> functions as `ctx`. Investigate: (1) do any sketches under `sketches/`
+> actually branch on `ctx.mode`? If not, the ctx channel is currently inert
+> in userland. (2) Should mode be owned exclusively by `SketchContext` (and
+> the executor read it from the DAG's context), or should the executor
+> argument remain canonical? (3) Is there any code path where the two can
+> disagree? Pick one canonical channel, remove or reduce the other, and
+> document the choice.
+
+---
+
+#### Group D — Documentation and light clarifications
+
+Low-risk documentation and small code changes. Can be done in any order after
+the structural work in Groups A and C is settled.
+
+**7. `_register_watch` closure pattern is fragile**
+
+> `SketchFnRegistry._register_watch` uses default-argument binding
+> (`sid: str = sketch_id`, `d: BuiltDAG = dag`, `nid: str = source_step_id`,
+> `wd: Path = workdir`) to avoid the classic Python late-binding closure bug.
+> The technique is correct but non-obvious, undocumented, and not covered by
+> any test. Additionally, `self._loop` is passed with `# type: ignore`.
+> Refactor to replace the default-arg trick with `functools.partial` or an
+> explicit factory function with a clear name; resolve the `self._loop`
+> type-ignore by restructuring the call site (likely related to correctness
+> fix #2). Add a unit test that constructs a DAG with two source paths and
+> verifies file-change callbacks fire with the correct `source_step_id` for
+> each path independently, so the late-binding bug cannot silently return.
 
 **16. Document `get_dag`'s double-checked locking**
 
@@ -361,6 +443,14 @@ accept the Tweakpane wire form.
 > in the browser that after a partial re-execution, ancestor images remain
 > current and no UI flicker or stale-state appears. Document the invariant
 > if confirmed.
+
+**21. Document that `save_preset` does not re-execute or broadcast**
+
+> `save_preset` is the only mutating preset route that does not call
+> `execute_built` or `broadcast_results`. This is intentional — saving a
+> preset is pure persistence on already-applied values — but nothing in the
+> code explains the omission. Add a docstring explaining the intent so a
+> future developer does not add a broadcast and silently double-execute.
 
 ### Nice-to-haves and edge cases
 
@@ -393,28 +483,6 @@ accept the Tweakpane wire form.
 > full execution. Investigate whether `save_preset` should be gated on a
 > warm DAG (return 409/412 if cold) or whether reading `_active.json`
 > directly is a better snapshot source for this endpoint.
-
-**21. Document that `save_preset` does not re-execute or broadcast**
-
-> `save_preset` is the only mutating preset route that does not call
-> `execute_built` or `broadcast_results`. This is intentional — saving a
-> preset is pure persistence on already-applied values — but nothing in the
-> code explains the omission. Add a docstring explaining the intent so a
-> future developer does not add a broadcast and silently double-execute.
-
-**22. Remove dead code paths**
-
-> Three small dead / misleading paths to clean up: (1) in
-> `SketchFnRegistry.start_watcher`, the `for sketch_id, dag in self._dags.items()`
-> loop is always empty at startup — either eagerly populate DAGs there or
-> remove the loop and clarify the contract; (2) in
-> `framework/src/sketchbook/server/templates/step.html`, the
-> `data.params ?? data` fallback is unreachable because the API returns a
-> flat dict — remove the fallback and add a comment documenting the expected
-> shape; (3) in `base.html`, Tweakpane and preset JS execute on the index
-> page where the preset bar is hidden — guard the preset / Tweakpane JS
-> behind a `{% block scripts %}` that `index.html` overrides to a no-op, or
-> stop extending `base.html` from `index.html`.
 
 **23. Scope WebSocket replay to the requested step**
 
