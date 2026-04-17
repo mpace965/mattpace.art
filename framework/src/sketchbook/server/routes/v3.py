@@ -11,7 +11,7 @@ from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisco
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
-from sketchbook.core.executor_v3 import execute_built
+from sketchbook.core.executor import execute_built
 from sketchbook.core.introspect import coerce_param
 from sketchbook.core.presets import (
     load_preset_into_built,

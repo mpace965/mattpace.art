@@ -63,7 +63,7 @@ class _DiscoveryResultFn:
 def _build_variant_fn(task: _VariantTaskFn) -> _VariantResultFn:
     """Execute the full pipeline for one (sketch, preset) pair and save the output image."""
     from sketchbook.core.decorators import SketchContext
-    from sketchbook.core.executor_v3 import execute_built
+    from sketchbook.core.executor import execute_built
     from sketchbook.core.presets import load_preset_into_built
     from sketchbook.core.protocol import SketchValueProtocol
     from sketchbook.core.wiring import wire_sketch

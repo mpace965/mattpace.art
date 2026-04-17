@@ -1,4 +1,4 @@
-"""execute_built / execute_partial_built — executor for v3 BuiltDAG pipelines."""
+"""execute_built / execute_partial_built — executor for BuiltDAG pipelines."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ class ExecutionResult:
         return not self.errors
 
 
-log = logging.getLogger("sketchbook.executor_v3")
+log = logging.getLogger("sketchbook.executor")
 
 
 def execute_built(

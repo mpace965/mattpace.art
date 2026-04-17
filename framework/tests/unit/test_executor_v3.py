@@ -7,7 +7,7 @@ from typing import Literal
 
 from sketchbook.core.built_dag import BuiltDAG, BuiltNode
 from sketchbook.core.decorators import SketchContext
-from sketchbook.core.executor_v3 import execute_built, execute_partial_built
+from sketchbook.core.executor import execute_built, execute_partial_built
 from sketchbook.core.protocol import SketchValueProtocol
 from tests.conftest import TestImage
 
