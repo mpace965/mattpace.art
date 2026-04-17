@@ -2,7 +2,7 @@
 
 A creative coding sketchbook powered by [Sketchbook](framework/), a reactive DAG-based pipeline framework.
 
-Sketches are Python classes that wire together image-processing steps into pipelines. In dev mode, a FastAPI server watches source files and propagates changes through the pipeline in real time, with every intermediate step inspectable in the browser. Finished work is published as a static site.
+Sketches are decorated Python functions. The framework builds the DAG implicitly as the sketch runs, then handles execution order, file watching, partial re-execution, preset persistence, and live browser updates via WebSocket. Finished work is published as a static site.
 
 The editing experience is just editing code — by hand or with an AI agent. The browser is for viewing outputs and tweaking parameters, not authoring.
 
@@ -51,41 +51,54 @@ mise run lint           # lint framework + sketches
 
 ## How it works
 
-Each sketch defines a pipeline of `PipelineStep` subclasses connected as a DAG:
+A sketch is a `@sketch`-decorated function that calls `source()`, decorated `@step` functions, and `output()`. The framework intercepts these calls, builds a DAG, and executes it:
 
 ```python
-from sketchbook import Sketch
-from .steps import MyBlur, MyBlend
+from sketchbook.core.building_dag import output, source
+from sketchbook.core.decorators import Param, sketch, step
+from typing import Annotated
+from sketches.types import Image
 
-class Portrait(Sketch):
-    name = "portrait"
-    description = "blurred portrait blend"
-    date = "2026-03-20"
+@sketch(date="2026-03-20")
+def portrait() -> None:
+    """blurred portrait blend."""
+    photo = source("assets/photo.jpg", Image.load)
+    blurred = gaussian_blur(photo)
+    output(blurred, "bundle")
 
-    def build(self):
-        photo = self.source("photo", "assets/photo.jpg")
-        blurred = photo.pipe(MyBlur)
-        blurred.pipe(MyBlend)
+@step
+def gaussian_blur(
+    image: Image,
+    *,
+    kernel: Annotated[int, Param(min=1, max=31, step=2)] = 5,
+) -> Image:
+    """Return the Gaussian-blurred image."""
+    ...
 ```
 
-Steps declare their inputs and parameters in `setup()`, and the framework handles execution order, file watching, partial re-execution, preset persistence, and live browser updates via WebSocket.
+`@step` functions return proxy objects when called from a sketch context. The proxies record DAG edges. On execution the framework unwraps them and passes real values to each step. Parameters annotated with `Param(...)` become live sliders and controls in the browser UI.
 
-The framework does not ship image-processing steps — those belong to the sketches that need them. This keeps the framework generic and the sketches self-contained.
+The framework does not ship image-processing steps — those belong to the sketches that need them. Value types (`Image`, `Color`) also live in userland; the framework duck-types them via a protocol (`to_bytes()`, `extension`).
 
 ## Project structure
 
 ```
 mattpace.art/
-├── framework/          # sketchbook engine (Python package)
-│   ├── src/sketchbook/ # core/, server/, steps/, site/
-│   └── tests/          # acceptance/ and unit/
-├── sketches/           # userland sketch modules
-│   ├── cardboard/      # circle grid on cardboard texture
-│   └── cardboard_stripes/  # horizontal stripes variant
-├── site/               # 11ty static site
-│   ├── _data/          # reads bundle manifest
-│   └── dist/           # built output (gitignored)
-└── docs/               # archived plans and design docs
+├── framework/              # sketchbook engine (Python package)
+│   ├── src/sketchbook/
+│   │   ├── core/           # DAG, executor, decorators, presets, watcher
+│   │   └── server/         # FastAPI dev server, WebSocket, Tweakpane wiring
+│   └── tests/              # acceptance/ and unit/
+├── sketches/               # userland sketch modules
+│   ├── types.py            # Image, Color — satisfy SketchValueProtocol
+│   ├── cardboard/          # circle grid on cardboard texture
+│   ├── cardboard_stripes/  # horizontal stripes variant
+│   ├── fence-torn-paper/   # Canny edge detection on a weathered fence
+│   └── kick-polygons/      # radially arranged polygon shapes
+├── site/                   # 11ty static site
+│   ├── _data/              # reads bundle manifest
+│   └── dist/               # built output (gitignored)
+└── docs/                   # design docs and implementation plans
 ```
 
 ## License
