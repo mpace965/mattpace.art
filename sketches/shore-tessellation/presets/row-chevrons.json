@@ -1,0 +1,11 @@
+{
+  "blur": {
+    "radius": 50
+  },
+  "render": {
+    "seed": 3400,
+    "grid_size": 6,
+    "tile_size": 0.18,
+    "tile_strategy": "row_chevrons"
+  }
+}

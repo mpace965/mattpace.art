@@ -90,7 +90,9 @@ Use `pytest`. Test the core engine (DAG construction, topo sort, execution, para
 
 ## Increment workflow (GOOS double-loop)
 
-Every increment follows this order. Do not skip steps.
+**This applies to framework code only.** Sketches under `sketches/` do not get unit tests or acceptance tests — they are creative userland modules, not framework infrastructure.
+
+Every framework increment follows this order. Do not skip steps.
 
 1. **Write the acceptance test first.** It will fail. That's correct. The acceptance test lives in `tests/acceptance/` and defines the end-to-end behaviour for the increment.
 2. **Pick the first failing unit.** What's the simplest class or function the acceptance test needs? Write a unit test for it in `tests/unit/` — just enough to fail.
@@ -98,7 +100,7 @@ Every increment follows this order. Do not skip steps.
 4. **Repeat the inner loop** (unit test → implementation) for each collaborator until the acceptance test goes green.
 5. **Refactor.** Both loops are green — now clean up.
 
-**Hard rules:**
+**Hard rules (framework only):**
 
 - If you are writing implementation code without a failing unit test, stop. Write the unit test first.
 - Every new class or non-trivial function introduced in an increment gets a unit test. No exceptions.
