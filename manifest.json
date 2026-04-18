@@ -1,5 +1,21 @@
 [
   {
+    "slug": "shore-tessellation",
+    "name": "shore_tessellation",
+    "description": "truchet tiles from a rocky shore and the sea and sky.",
+    "date": "2026-04-17",
+    "variants": [
+      {
+        "name": "3x3-checkerboard",
+        "image_path": "shore-tessellation/3x3-checkerboard.png"
+      },
+      {
+        "name": "row-chevrons",
+        "image_path": "shore-tessellation/row-chevrons.png"
+      }
+    ]
+  },
+  {
     "slug": "kick-polygons",
     "name": "kick_polygons",
     "description": "radial arrangement of image copies forming polygon patterns.",
