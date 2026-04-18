@@ -13,15 +13,15 @@
       overflow: auto; flex: 1;
     }
     .sketch-card {
-      border: 1px solid #2a2a2a; border-radius: 4px; background: #161616;
+      border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-surface);
       padding: 0.75rem 1rem; text-decoration: none; display: block;
       transition: border-color 0.1s;
     }
-    .sketch-card:hover { border-color: #555; }
-    .sketch-name { font-size: 0.95rem; color: #7af; margin: 0 0 0.25rem; }
-    .sketch-description { font-size: 0.8rem; color: #aaa; margin: 0 0 0.25rem; }
-    .sketch-date { font-size: 0.72rem; color: #555; margin: 0; }
-    .empty-state { color: #555; font-size: 0.85rem; padding: 1rem 0; }
+    .sketch-card:hover { border-color: var(--color-border-hover); }
+    .sketch-name { font-size: 0.95rem; color: var(--color-accent); margin: 0 0 0.25rem; }
+    .sketch-description { font-size: 0.8rem; color: var(--color-text-muted); margin: 0 0 0.25rem; }
+    .sketch-date { font-size: 0.72rem; color: var(--color-text-dim); margin: 0; }
+    .empty-state { color: var(--color-text-dim); font-size: 0.85rem; padding: 1rem 0; }
 {% endblock %}
 
 {% block content %}

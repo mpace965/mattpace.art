@@ -15,17 +15,17 @@
 
     .dag-arrows { display: flex; flex-direction: column; gap: 0.2rem; padding-top: 0.5rem; flex-shrink: 0; }
     .dag-arrow {
-      color: #444; text-decoration: none; font-size: 0.85rem; line-height: 1;
+      color: var(--color-text-dim); text-decoration: none; font-size: 0.85rem; line-height: 1;
       padding: 0.1rem 0.15rem; border-radius: 2px; transition: color 0.1s, background 0.1s;
       white-space: nowrap;
     }
-    .dag-arrow:hover { color: #7af; background: #1a2a3a; }
-    .dag-arrow .arrow-label { font-size: 0.65rem; color: #555; margin-left: 0.25rem; vertical-align: middle; }
-    .dag-arrow:hover .arrow-label { color: #7af; }
+    .dag-arrow:hover { color: var(--color-accent); background: var(--color-accent-hover-bg); }
+    .dag-arrow .arrow-label { font-size: 0.65rem; color: var(--color-text-dim); margin-left: 0.25rem; vertical-align: middle; }
+    .dag-arrow:hover .arrow-label { color: var(--color-accent); }
 
-    details.step-card { border: 1px solid #2a2a2a; border-radius: 4px; background: #161616; overflow: hidden; width: fit-content; min-width: 50vw; transition: border-color 0.1s; }
-    details.step-card:hover { border-color: #555; }
-    details.step-card[open] summary { border-bottom: 1px solid #2a2a2a; }
+    details.step-card { border: 1px solid var(--color-border); border-radius: 4px; background: var(--color-surface); overflow: hidden; width: fit-content; min-width: 50vw; transition: border-color 0.1s; }
+    details.step-card:hover { border-color: var(--color-border-hover); }
+    details.step-card[open] summary { border-bottom: 1px solid var(--color-border); }
 
     summary.step-card-header {
       display: flex; align-items: center; gap: 0.5rem;
@@ -33,20 +33,20 @@
       user-select: none;
     }
     summary.step-card-header::-webkit-details-marker { display: none; }
-    summary.step-card-header::before { content: "▶"; font-size: 0.6rem; color: #555; transition: transform 0.1s; }
+    summary.step-card-header::before { content: "▶"; font-size: 0.6rem; color: var(--color-text-dim); transition: transform 0.1s; }
     details[open] summary.step-card-header::before { transform: rotate(90deg); }
 
-    .card-step-id { font-size: 0.8rem; color: #7af; text-decoration: none; }
+    .card-step-id { font-size: 0.8rem; color: var(--color-accent); text-decoration: none; }
     .card-step-id:hover { text-decoration: underline; }
-    .card-step-type { font-size: 0.7rem; color: #555; margin-left: auto; padding-left: 1rem; }
-    .card-error-dot { width: 6px; height: 6px; border-radius: 50%; background: #c44; flex-shrink: 0; display: none; }
+    .card-step-type { font-size: 0.7rem; color: var(--color-text-dim); margin-left: auto; padding-left: 1rem; }
+    .card-error-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-error); flex-shrink: 0; display: none; }
     .card-error-dot.visible { display: block; }
 
     /* Cap image height in overview */
     .step-card-output img { max-height: 400px; }
 
     /* Chain separator */
-    hr.chain-sep { border: none; border-top: 1px solid #2a2a2a; margin: 1.25rem 0; }
+    hr.chain-sep { border: none; border-top: 1px solid var(--color-border); margin: 1.25rem 0; }
 
     /* Full-size hover preview */
     #img-preview { display: none; position: fixed; inset: 0; z-index: 1000; background: rgba(0,0,0,0.75); align-items: center; justify-content: center; pointer-events: none; }
