@@ -3,6 +3,9 @@ python = "3.14.3"
 uv = "latest"
 node = "lts"
 
+[env]
+MAGICK_HOME = "/opt/homebrew/opt/imagemagick"
+
 [tasks.test]
 run = "uv run --directory framework pytest"
 description = "Run framework tests"

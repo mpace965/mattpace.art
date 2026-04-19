@@ -1,0 +1,12 @@
+{
+  "_meta": {
+    "dirty": true,
+    "based_on": null
+  },
+  "unwrap": {
+    "scale": 0.7999999999999999
+  },
+  "mirror_tile": {
+    "segments": 10
+  }
+}

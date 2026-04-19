@@ -2,7 +2,7 @@
 name = "sketches"
 version = "0.1.0"
 requires-python = ">=3.14"
-dependencies = ["sketchbook"]
+dependencies = ["sketchbook", "wand", "opencv-python-headless"]
 
 [tool.uv.sources]
 sketchbook = { workspace = true }
