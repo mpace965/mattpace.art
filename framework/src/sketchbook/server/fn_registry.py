@@ -198,12 +198,17 @@ class SketchFnRegistry:
                 kind = output_kind(node.output)
                 is_protocol = isinstance(node.output, SketchValueProtocol)
                 ext = node.output.extension if is_protocol else "txt"
+                elapsed = result.timings.get(node.step_id)
+                msg: dict[str, Any] = {
+                    "type": "step_updated",
+                    "step_id": node.step_id,
+                    "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
+                    "kind": kind,
+                    "elapsed_ms": round(elapsed * 1000, 1) if elapsed is not None else None,
+                }
+                await self.broadcast(sketch_id, msg)
+            elif node.output is not None:
                 await self.broadcast(
                     sketch_id,
-                    {
-                        "type": "step_updated",
-                        "step_id": node.step_id,
-                        "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
-                        "kind": kind,
-                    },
+                    {"type": "step_cached", "step_id": node.step_id},
                 )

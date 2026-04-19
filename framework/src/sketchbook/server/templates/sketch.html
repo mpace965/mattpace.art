@@ -39,6 +39,8 @@
     .card-step-id { font-size: 0.8rem; color: var(--color-accent); text-decoration: none; }
     .card-step-id:hover { text-decoration: underline; }
     .card-step-type { font-size: 0.7rem; color: var(--color-text-dim); margin-left: auto; padding-left: 1rem; }
+    .card-timing { font-size: 0.7rem; color: var(--color-text-dim); padding-left: 0.5rem; flex-shrink: 0; }
+    .card-timing.cached { font-style: italic; }
     .card-error-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-error); flex-shrink: 0; display: none; }
     .card-error-dot.visible { display: block; }
 
@@ -77,6 +79,7 @@
           <summary class="step-card-header">
             <a class="card-step-id" href="{{ url_prefix }}/sketch/{{ sketch_id }}/step/{{ node.id }}">{{ node.id }}</a>
             <span class="card-step-type">{{ node.type }}</span>
+            <span class="card-timing" id="timing-{{ node.id }}"></span>
             <span class="card-error-dot" id="err-dot-{{ node.id }}"></span>
           </summary>
           {{ step_body(node.id, node.image_url, node.kind) }}
@@ -179,8 +182,17 @@
           const txt = document.getElementById(`txt-${msg.step_id}`);
           const errMsg = document.getElementById(`err-msg-${msg.step_id}`);
           const errDot = document.getElementById(`err-dot-${msg.step_id}`);
+          const timing = document.getElementById(`timing-${msg.step_id}`);
           if (errMsg) errMsg.style.display = "none";
           if (errDot) errDot.classList.remove("visible");
+          if (timing) {
+            timing.classList.remove("cached");
+            if (msg.elapsed_ms !== null && msg.elapsed_ms !== undefined) {
+              timing.textContent = msg.elapsed_ms >= 1000
+                ? `${(msg.elapsed_ms / 1000).toFixed(2)}s`
+                : `${msg.elapsed_ms}ms`;
+            }
+          }
           if (msg.kind === "image") {
             const newSrc = msg.image_url + "?t=" + Date.now();
             if (img) { img.style.display = ""; img.src = newSrc; }
@@ -195,6 +207,9 @@
               fetch(msg.image_url).then(r => r.text()).then(t => { txt.textContent = t; });
             }
           }
+        } else if (msg.type === "step_cached") {
+          const timing = document.getElementById(`timing-${msg.step_id}`);
+          if (timing) { timing.textContent = "cached"; timing.classList.add("cached"); }
         } else if (msg.type === "step_error") {
           const errMsg = document.getElementById(`err-msg-${msg.step_id}`);
           const errDot = document.getElementById(`err-dot-${msg.step_id}`);

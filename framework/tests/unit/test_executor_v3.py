@@ -341,6 +341,63 @@ def test_no_input_step_with_ctx_executes_correctly(tmp_path: Path) -> None:
     assert dag.nodes["scale_factor"].output == 1.0
 
 
+# ---------------------------------------------------------------------------
+# Timing
+# ---------------------------------------------------------------------------
+
+
+def test_executed_nodes_have_timings(tmp_path: Path) -> None:
+    """Every executed node has a non-negative float in result.timings."""
+    dag = _two_node_dag()
+    result = execute_built(dag, tmp_path)
+
+    assert "source_img" in result.timings
+    assert "pass_img" in result.timings
+    assert result.timings["source_img"] >= 0.0
+    assert result.timings["pass_img"] >= 0.0
+
+
+def test_failed_nodes_not_in_timings(tmp_path: Path) -> None:
+    """Nodes that raise do not appear in result.timings."""
+    dag = BuiltDAG()
+    dag.nodes["src"] = _source_node("src")
+    dag.nodes["bad"] = _failing_node("bad", "src")
+
+    result = execute_built(dag, tmp_path)
+
+    assert "src" in result.timings
+    assert "bad" not in result.timings
+
+
+def test_skipped_nodes_not_in_timings(tmp_path: Path) -> None:
+    """Nodes skipped due to upstream failure do not appear in result.timings."""
+    dag = BuiltDAG()
+    dag.nodes["src"] = _source_node("src")
+    dag.nodes["bad"] = _failing_node("bad", "src")
+    dag.nodes["down"] = _passthrough_node("down", "bad")
+
+    result = execute_built(dag, tmp_path)
+
+    assert "down" not in result.timings
+
+
+def test_partial_execution_timings_only_for_rerun_nodes(tmp_path: Path) -> None:
+    """execute_partial_built timings only cover re-executed nodes, not cached ones."""
+    dag = BuiltDAG()
+    dag.nodes["src_a"] = _source_node("src_a", b"a")
+    dag.nodes["src_b"] = _source_node("src_b", b"b")
+    dag.nodes["from_a"] = _passthrough_node("from_a", "src_a")
+    dag.nodes["from_b"] = _passthrough_node("from_b", "src_b")
+
+    execute_built(dag, tmp_path)
+    result = execute_partial_built(dag, ["src_b"], tmp_path)
+
+    assert "src_b" in result.timings
+    assert "from_b" in result.timings
+    assert "src_a" not in result.timings
+    assert "from_a" not in result.timings
+
+
 def test_updated_param_flows_through_reexecution(tmp_path: Path) -> None:
     """Mutating param_values before execute_partial_built uses the new value."""
     received: dict[str, object] = {}
