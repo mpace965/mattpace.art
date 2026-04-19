@@ -217,7 +217,20 @@
         } else if (msg.type === "step_error") {
           const errMsg = document.getElementById(`err-msg-${msg.step_id}`);
           const errDot = document.getElementById(`err-dot-${msg.step_id}`);
+          const img = document.getElementById(`img-${msg.step_id}`);
+          const txt = document.getElementById(`txt-${msg.step_id}`);
+          if (img) img.style.display = "none";
+          if (txt) txt.style.display = "none";
           if (errMsg) { errMsg.textContent = msg.error; errMsg.style.display = "block"; }
+          if (errDot) errDot.classList.add("visible");
+        } else if (msg.type === "step_blocked") {
+          const img = document.getElementById(`img-${msg.step_id}`);
+          const txt = document.getElementById(`txt-${msg.step_id}`);
+          const errMsg = document.getElementById(`err-msg-${msg.step_id}`);
+          const errDot = document.getElementById(`err-dot-${msg.step_id}`);
+          if (img) img.style.display = "none";
+          if (txt) txt.style.display = "none";
+          if (errMsg) errMsg.style.display = "none";
           if (errDot) errDot.classList.add("visible");
         } else if (msg.type === "preset_state") {
           fetchAndRenderPresets();

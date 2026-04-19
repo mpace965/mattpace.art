@@ -70,6 +70,10 @@
           errMsg.textContent = msg.error;
           img.style.display = "none";
           txt.style.display = "none";
+        } else if (msg.type === "step_blocked" && msg.step_id === STEP_ID) {
+          errMsg.style.display = "none";
+          img.style.display = "none";
+          txt.style.display = "none";
         } else if (msg.type === "preset_state") {
           fetchAndRenderPresets();
           refreshPanes();

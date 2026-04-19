@@ -25,6 +25,11 @@ from sketchbook.core.wiring import wire_sketch
 log = logging.getLogger("sketchbook.server.fn_registry")
 
 
+def _is_cascaded(exc: Exception) -> bool:
+    """Return True if exc is a downstream propagation of an upstream failure."""
+    return isinstance(exc, RuntimeError) and str(exc).startswith("No output — upstream failure")
+
+
 class SketchFnRegistry:
     """Owns loaded BuiltDAGs, lazy wiring, file watchers, and WebSocket connections.
 
@@ -48,6 +53,7 @@ class SketchFnRegistry:
         }
         self._dirty: dict[str, bool] = {}
         self._based_on: dict[str, str | None] = {}
+        self._last_results: dict[str, ExecutionResult] = {}
         self._watcher: Watcher | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self.connections: dict[str, set[WebSocket]] = defaultdict(set)
@@ -80,7 +86,7 @@ class SketchFnRegistry:
             self._dirty[sketch_id], self._based_on[sketch_id] = load_active_into_built(
                 dag, presets_dir
             )
-            execute_built(dag, workdir, mode="dev")
+            self._last_results[sketch_id] = execute_built(dag, workdir, mode="dev")
             elapsed = time.perf_counter() - t0
             log.info(f"Loaded sketch '{sketch_id}' ({elapsed:.2f}s)")
             self._dags[sketch_id] = dag
@@ -97,6 +103,7 @@ class SketchFnRegistry:
         self._dags.pop(slug, None)
         self._dirty.pop(slug, None)
         self._based_on.pop(slug, None)
+        self._last_results.pop(slug, None)
 
     def set_param(
         self, sketch_id: str, step_id: str, param_name: str, value: Any
@@ -117,7 +124,9 @@ class SketchFnRegistry:
             self._dirty[sketch_id] = True
             based_on = self._based_on.get(sketch_id)
             save_active_from_built(dag, presets_dir, dirty=True, based_on=based_on)
-            return execute_partial_built(dag, [step_id], workdir)
+            result = execute_partial_built(dag, [step_id], workdir)
+            self._last_results[sketch_id] = result
+            return result
 
     # ------------------------------------------------------------------
     # Watcher lifecycle
@@ -159,6 +168,7 @@ class SketchFnRegistry:
                 log.info(f"Source '{nid}' changed for sketch '{sid}', re-executing")
                 with self._exec_locks[sid]:
                     result = execute_partial_built(d, [nid], wd)
+                self._last_results[sid] = result
                 asyncio.run_coroutine_threadsafe(
                     self.broadcast_results(sid, d, result),
                     self._loop,  # type: ignore[arg-type]
@@ -183,17 +193,23 @@ class SketchFnRegistry:
     async def broadcast_results(
         self, sketch_id: str, dag: BuiltDAG, result: ExecutionResult
     ) -> None:
-        """Broadcast step_updated or step_error for every executed or failed node."""
+        """Broadcast step_updated, step_error, or step_blocked for every node."""
         for node in dag.topo_sort():
             if node.step_id in result.errors:
-                await self.broadcast(
-                    sketch_id,
-                    {
-                        "type": "step_error",
-                        "step_id": node.step_id,
-                        "error": str(result.errors[node.step_id]),
-                    },
-                )
+                exc = result.errors[node.step_id]
+                if _is_cascaded(exc):
+                    await self.broadcast(
+                        sketch_id, {"type": "step_blocked", "step_id": node.step_id}
+                    )
+                else:
+                    await self.broadcast(
+                        sketch_id,
+                        {
+                            "type": "step_error",
+                            "step_id": node.step_id,
+                            "error": str(exc),
+                        },
+                    )
             elif node.step_id in result.executed:
                 kind = output_kind(node.output)
                 is_protocol = isinstance(node.output, SketchValueProtocol)

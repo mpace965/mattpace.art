@@ -19,6 +19,7 @@ from sketchbook.core.presets import (
     save_preset_from_built,
 )
 from sketchbook.core.protocol import SketchValueProtocol, output_kind
+from sketchbook.server.fn_registry import _is_cascaded
 from sketchbook.server.tweakpane import built_node_to_tweakpane
 
 log = logging.getLogger("sketchbook.server.routes.sketches")
@@ -156,22 +157,39 @@ async def sketch_ws_endpoint(websocket: WebSocket, sketch_id: str) -> None:
     dag = fn_registry.get_dag(sketch_id)
     if dag is not None:
         workdir = fn_registry.sketches_dir / sketch_id / ".workdir"
+        last_result = fn_registry._last_results.get(sketch_id)
         for node in dag.topo_sort():
-            if node.output is None:
-                continue
-            kind = output_kind(node.output)
-            ext = node.output.extension if isinstance(node.output, SketchValueProtocol) else "txt"
-            if (workdir / f"{node.step_id}.{ext}").exists():
-                await websocket.send_text(
-                    json.dumps(
-                        {
-                            "type": "step_updated",
-                            "step_id": node.step_id,
-                            "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
-                            "kind": kind,
-                        }
+            if last_result is not None and node.step_id in last_result.errors:
+                exc = last_result.errors[node.step_id]
+                if _is_cascaded(exc):
+                    await websocket.send_text(
+                        json.dumps({"type": "step_blocked", "step_id": node.step_id})
                     )
-                )
+                else:
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "step_error",
+                                "step_id": node.step_id,
+                                "error": str(exc),
+                            }
+                        )
+                    )
+            elif node.output is not None:
+                kind = output_kind(node.output)
+                is_proto = isinstance(node.output, SketchValueProtocol)
+                ext = node.output.extension if is_proto else "txt"
+                if (workdir / f"{node.step_id}.{ext}").exists():
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "step_updated",
+                                "step_id": node.step_id,
+                                "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
+                                "kind": kind,
+                            }
+                        )
+                    )
 
     try:
         await websocket.receive()
