@@ -6,7 +6,7 @@ Sketchbook is a reactive, DAG-based creative coding framework designed for an ag
 
 The framework intentionally does not ship reusable image-processing steps. Steps belong in userland (sketches). The framework provides the DAG engine, executor, dev server, and build tooling — everything needed to run and publish pipelines, but none of the domain-specific transforms. This keeps the framework generic and eventually publishable as an independent package.
 
-There is currently an OpenCV dependency in the framework (for `Image` load/save in `core/types.py`). This should eventually be replaced with something lighter so the framework has no opinion on image libraries.
+Types are entirely userland-owned. The framework has no opinion on image types or image libraries — sketches declare and use whatever types they need.
 
 The initial implementation plan is archived at `docs/initial-implementation-plan.md`.
 
@@ -109,7 +109,7 @@ Every framework increment follows this order. Do not skip steps.
 
 ## Dependencies
 
-Be conservative. Every dependency is a liability. The core engine should only need `numpy` and `opencv-python-headless`. The server adds `fastapi`, `uvicorn`, `jinja2`, `watchdog`, `websockets`. That's it. Think hard before adding anything else.
+Be conservative. Every dependency is a liability. The core engine should only need `numpy`. The server adds `fastapi`, `uvicorn`, `jinja2`, `watchdog`, `websockets`. That's it. Think hard before adding anything else.
 
 If you need a utility function that exists in a library, consider whether it's shorter to just write it. If the answer is yes, write it.
 

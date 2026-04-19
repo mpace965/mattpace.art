@@ -2,14 +2,30 @@
 
 from __future__ import annotations
 
+import struct
+import zlib
 from collections.abc import Generator
 from pathlib import Path
 from typing import Literal
 
-import cv2
-import numpy as np
 import pytest
 from fastapi.testclient import TestClient
+
+
+def _make_minimal_png() -> bytes:
+    """Return bytes for a minimal valid 1x1 white RGB PNG."""
+    def chunk(tag: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+
+    return (
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0))
+        + chunk(b"IDAT", zlib.compress(b"\x00\xff\xff\xff"))
+        + chunk(b"IEND", b"")
+    )
+
+
+_MINIMAL_PNG = _make_minimal_png()
 
 # ---------------------------------------------------------------------------
 # TestImage — minimal SketchValueProtocol for v3 framework tests
@@ -49,17 +65,9 @@ class TestImage:
 
 
 def make_test_image(path: Path, color: str = "blue") -> None:
-    """Write a small solid-color PNG to path."""
-    colors = {
-        "blue": (255, 0, 0),
-        "red": (0, 0, 255),
-        "green": (0, 255, 0),
-        "white": (255, 255, 255),
-    }
-    bgr = colors.get(color, (128, 128, 128))
-    img = np.full((64, 64, 3), bgr, dtype=np.uint8)
+    """Write a minimal valid PNG to path. The color argument is ignored."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    cv2.imwrite(str(path), img)
+    path.write_bytes(_MINIMAL_PNG)
 
 
 def write_test_image(path: Path, color: str = "red") -> None:
