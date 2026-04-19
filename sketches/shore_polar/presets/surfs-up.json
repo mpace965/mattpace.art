@@ -1,8 +1,4 @@
 {
-  "_meta": {
-    "dirty": false,
-    "based_on": "surfs-up"
-  },
   "crop_square": {
     "cx": 0.4,
     "cy": 0.41000000000000003,
