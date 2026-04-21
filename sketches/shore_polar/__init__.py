@@ -20,7 +20,8 @@ def shore_polar() -> None:
     square = crop_square(photo)
     size = work_size()
     scaled = downscale(square, size)
-    strip = unwrap(scaled)
+    rotated = rotate(scaled)
+    strip = unwrap(rotated)
     tiled = mirror_tile(strip)
     result = rewrap(tiled)
 
@@ -77,6 +78,18 @@ def mirror_tile(
                 tile = mirror if i % 2 else seg
                 canvas.composite(tile, left=i * seg_w, top=0)
     return canvas
+
+
+@step
+def rotate(
+    image: WandImage,
+    *,
+    degrees: Annotated[float, Param(min=0.0, max=360.0, step=1.0, debounce=300)] = 0.0,
+) -> WandImage:
+    """Rotate the image by the given degrees."""
+    result = image.clone()
+    result.rotate(degrees)
+    return result
 
 
 @step
