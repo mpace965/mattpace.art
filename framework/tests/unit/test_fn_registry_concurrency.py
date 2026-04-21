@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
+import logging
 import threading
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
 
@@ -129,3 +133,49 @@ def test_exec_lock_blocks_on_change_during_set_param(
 
     # Final output must not be None — execution completed cleanly.
     assert dag.nodes["concurrent_threshold"].output is not None
+
+
+def test_broadcast_future_exception_is_logged(caplog: pytest.LogCaptureFixture) -> None:
+    """_log_broadcast_future logs exceptions with sketch and step context."""
+    future: concurrent.futures.Future[None] = concurrent.futures.Future()
+    future.set_exception(RuntimeError("broadcast boom"))
+
+    with caplog.at_level(logging.ERROR, logger="sketchbook.server.fn_registry"):
+        fn_registry_mod._log_broadcast_future(future, sid="my_sketch", nid="my_step")
+
+    assert any(
+        "broadcast_results failed for 'my_sketch' after 'my_step' changed" in r.message
+        for r in caplog.records
+    )
+
+
+def test_on_change_shutdown_race_does_not_raise(
+    tmp_concurrent_sketch: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """on_change fired after stop_watcher() (self._loop is None) does not raise."""
+    from sketchbook.core import watcher as watcher_mod
+
+    captured: list[Callable] = []
+    monkeypatch.setattr(
+        watcher_mod.Watcher, "watch", lambda self, path, cb: captured.append(cb)
+    )
+
+    loop = asyncio.new_event_loop()
+    registry = SketchFnRegistry(
+        sketch_fns={"concurrent_sketch": concurrent_sketch},
+        sketches_dir=tmp_concurrent_sketch.parent,
+    )
+    registry._loop = loop
+    registry._watcher = watcher_mod.Watcher()
+
+    dag = registry.get_dag("concurrent_sketch")
+    assert dag is not None
+    assert captured, "Expected at least one on_change callback to be captured"
+
+    # Simulate stop_watcher() clearing the loop reference mid-flight
+    registry._loop = None
+
+    # Must not raise even though self._loop is None
+    captured[0]()
+
+    loop.close()

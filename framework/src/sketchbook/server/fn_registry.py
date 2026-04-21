@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
+import functools
 import json
 import logging
 import threading
@@ -23,6 +25,21 @@ from sketchbook.core.watcher import Watcher
 from sketchbook.core.wiring import wire_sketch
 
 log = logging.getLogger("sketchbook.server.fn_registry")
+
+
+def _log_broadcast_future(
+    future: concurrent.futures.Future[None], sid: str, nid: str
+) -> None:
+    """Log any exception raised by a threadsafe broadcast future."""
+    try:
+        exc = future.exception()
+    except Exception:
+        return
+    if exc is not None:
+        log.error(
+            f"broadcast_results failed for '{sid}' after '{nid}' changed: {exc}",
+            exc_info=exc,
+        )
 
 
 def _is_cascaded(exc: Exception) -> bool:
@@ -169,9 +186,18 @@ class SketchFnRegistry:
                 with self._exec_locks[sid]:
                     result = execute_partial_built(d, [nid], wd)
                 self._last_results[sid] = result
-                asyncio.run_coroutine_threadsafe(
+                loop = self._loop
+                if loop is None:
+                    log.warning(
+                        f"Skipping broadcast for '{sid}': event loop gone during shutdown"
+                    )
+                    return
+                future = asyncio.run_coroutine_threadsafe(
                     self.broadcast_results(sid, d, result),
-                    self._loop,  # type: ignore[arg-type]
+                    loop,
+                )
+                future.add_done_callback(
+                    functools.partial(_log_broadcast_future, sid=sid, nid=nid)
                 )
 
             self._watcher.watch(path, on_change)
