@@ -50,7 +50,7 @@ class ConnectionManager:
         self, sketch_id: str, dag: BuiltDAG, result: ExecutionResult
     ) -> None:
         """Broadcast step_updated, step_error, or step_blocked for every node."""
-        for node in dag.topo_sort():
+        for node in dag.nodes_in_order():
             if node.step_id in result.errors:
                 exc = result.errors[node.step_id]
                 if _is_cascaded(exc):
@@ -87,7 +87,7 @@ class ConnectionManager:
         last_result: ExecutionResult | None,
     ) -> None:
         """Push current output state to a freshly connected WebSocket client."""
-        for node in dag.topo_sort():
+        for node in dag.nodes_in_order():
             if last_result is not None and node.step_id in last_result.errors:
                 exc = last_result.errors[node.step_id]
                 if _is_cascaded(exc):

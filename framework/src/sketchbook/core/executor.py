@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import logging
 import time
-import typing
-from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
 from sketchbook.core.built_dag import BuiltDAG, BuiltNode
+from sketchbook.core.introspect import find_ctx_param
 from sketchbook.core.protocol import SketchValueProtocol
 
 
@@ -75,7 +74,7 @@ def _execute_nodes(
     result = ExecutionResult()
     failed: set[str] = set()
 
-    for node in dag.topo_sort():
+    for node in dag.nodes_in_order():
         if subset is not None and node.step_id not in subset:
             continue
 
@@ -95,7 +94,7 @@ def _execute_nodes(
             inputs = {name: dag.nodes[sid].output for name, sid in node.source_ids.items()}
             kwargs = {**inputs, **node.param_values}
             if node.ctx is not None:
-                ctx_param_name = _find_ctx_param(node.fn)
+                ctx_param_name = find_ctx_param(node.fn)
                 if ctx_param_name is not None:
                     kwargs[ctx_param_name] = node.ctx
             log.debug(f"Executing node '{node.step_id}'")
@@ -132,20 +131,3 @@ def _delete_workdir_file(node: BuiltNode, workdir: Path) -> None:
     for path in workdir.glob(f"{node.step_id}.*"):
         path.unlink(missing_ok=True)
         log.debug(f"Deleted stale output for '{node.step_id}': {path}")
-
-
-def _find_ctx_param(fn: Callable) -> str | None:
-    """Return the parameter name annotated as SketchContext in *fn*, or None."""
-    from sketchbook.core.decorators import SketchContext
-
-    unwrapped = getattr(fn, "__wrapped__", fn)
-    try:
-        hints = typing.get_type_hints(unwrapped)
-    except Exception as exc:
-        name = getattr(unwrapped, "__name__", unwrapped)
-        log.warning(f"Could not resolve type hints for '{name}': {exc}")
-        return None
-    for name, annotation in hints.items():
-        if annotation is SketchContext:
-            return name
-    return None

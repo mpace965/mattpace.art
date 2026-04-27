@@ -14,6 +14,7 @@ from typing import Annotated
 import pytest
 
 import sketchbook.server.dag_cache as dag_cache_mod
+import sketchbook.server.watcher_coordinator as watcher_coordinator_mod
 from sketchbook.core.building_dag import output, source
 from sketchbook.core.decorators import Param, sketch, step
 from sketchbook.server.fn_registry import SketchFnRegistry
@@ -140,8 +141,8 @@ def test_broadcast_future_exception_is_logged(caplog: pytest.LogCaptureFixture) 
     future: concurrent.futures.Future[None] = concurrent.futures.Future()
     future.set_exception(RuntimeError("broadcast boom"))
 
-    with caplog.at_level(logging.ERROR, logger="sketchbook.server.fn_registry"):
-        fn_registry_mod._log_broadcast_future(future, sid="my_sketch", nid="my_step")
+    with caplog.at_level(logging.ERROR, logger="sketchbook.server.watcher_coordinator"):
+        watcher_coordinator_mod._log_broadcast_future(future, sid="my_sketch", nid="my_step")
 
     assert any(
         "broadcast_results failed for 'my_sketch' after 'my_step' changed" in r.message
@@ -163,15 +164,15 @@ def test_on_change_shutdown_race_does_not_raise(
         sketch_fns={"concurrent_sketch": concurrent_sketch},
         sketches_dir=tmp_concurrent_sketch.parent,
     )
-    registry._loop = loop
-    registry._watcher = watcher_mod.Watcher()
+    registry._watcher_coordinator._loop = loop
+    registry._watcher_coordinator._watcher = watcher_mod.Watcher()
 
     dag = registry.get_dag("concurrent_sketch")
     assert dag is not None
     assert captured, "Expected at least one on_change callback to be captured"
 
     # Simulate stop_watcher() clearing the loop reference mid-flight
-    registry._loop = None
+    registry._watcher_coordinator._loop = None
 
     # Must not raise even though self._loop is None
     captured[0]()

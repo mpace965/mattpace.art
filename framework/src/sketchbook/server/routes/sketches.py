@@ -57,7 +57,7 @@ async def sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
 
     depths = dag.node_depths()
     nodes_data: list[dict] = []
-    for node in dag.topo_sort():
+    for node in dag.nodes_in_order():
         fn = getattr(node.fn, "__wrapped__", node.fn)
         kind = output_kind(node.output)
         ext = node.output.extension if isinstance(node.output, SketchValueProtocol) else "txt"
@@ -158,7 +158,7 @@ async def get_all_params(request: Request, sketch_id: str) -> dict[str, Any]:
     dag = fn_registry.get_dag(sketch_id)
     if dag is None:
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
-    return {node.step_id: built_node_to_tweakpane(node) for node in dag.topo_sort()}
+    return {node.step_id: built_node_to_tweakpane(node) for node in dag.nodes_in_order()}
 
 
 @router.get("/api/sketches/{sketch_id}/params/{step_id}")

@@ -37,7 +37,7 @@ def _apply_values(node: BuiltNode, values: dict[str, Any]) -> None:
 def _snapshot_params_built(dag: BuiltDAG) -> dict[str, Any]:
     """Return a mapping of step_id -> param values for all nodes with params."""
     data: dict[str, Any] = {}
-    for node in dag.topo_sort():
+    for node in dag.nodes_in_order():
         if node.param_values:
             data[node.step_id] = dict(node.param_values)
     return data
@@ -126,7 +126,7 @@ def list_preset_names(presets_dir: str | Path) -> list[str]:
 
 def reset_to_defaults(dag: BuiltDAG) -> None:
     """Reset every node's param_values to the declared defaults."""
-    for node in dag.topo_sort():
+    for node in dag.nodes_in_order():
         for spec in node.param_schema:
             node.param_values[spec.name] = spec.default
 

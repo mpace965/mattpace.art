@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import logging
 from functools import partial
 from pathlib import Path
@@ -16,11 +17,11 @@ from sketchbook.server.dag_cache import DagCache
 log = logging.getLogger("sketchbook.server.watcher_coordinator")
 
 
-def _log_broadcast_error(future: asyncio.Future) -> None:  # type: ignore[type-arg]
-    """Log any exception that bubbled out of a broadcast_results coroutine."""
+def _log_broadcast_future(future: concurrent.futures.Future[None], *, sid: str, nid: str) -> None:
+    """Log any exception from a broadcast_results coroutine with sketch and step context."""
     exc = future.exception()
     if exc is not None:
-        log.error(f"Exception in broadcast_results: {exc}", exc_info=exc)
+        log.error(f"broadcast_results failed for '{sid}' after '{nid}' changed", exc_info=exc)
 
 
 class WatcherCoordinator:
@@ -97,4 +98,4 @@ class WatcherCoordinator:
             self._connection_manager.broadcast_results(sketch_id, dag, result),
             loop,
         )
-        future.add_done_callback(_log_broadcast_error)
+        future.add_done_callback(partial(_log_broadcast_future, sid=sketch_id, nid=source_step_id))

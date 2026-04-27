@@ -25,8 +25,7 @@
     async function init() {
       const res = await fetch(PARAMS_URL);
       if (!res.ok) { connect(); return; }
-      const data = await res.json();
-      const params = data.params ?? data;
+      const params = await res.json();
 
       if (params && Object.keys(params).length > 0) {
         paneEntry = buildPane(document.getElementById(`params-${STEP_ID}`), STEP_ID, params);
@@ -39,8 +38,7 @@
       if (!paneEntry) return;
       const res = await fetch(PARAMS_URL);
       if (!res.ok) return;
-      const data = await res.json();
-      const params = data.params ?? data;
+      const params = await res.json();
       for (const [name, spec] of Object.entries(params)) {
         paneEntry.state[name] = spec.value;
       }

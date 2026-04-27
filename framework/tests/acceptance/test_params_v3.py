@@ -103,10 +103,17 @@ def test_param_change_triggers_websocket_update(
         )
         assert response.status_code == 200
 
-        try:
-            msg = received.get(timeout=5.0)
-        except queue.Empty:
+        msgs: list[dict] = []
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            try:
+                msgs.append(received.get(timeout=0.1))
+            except queue.Empty:
+                if msgs:
+                    break
+        if not msgs:
             pytest.fail("No WebSocket message received after param change within 5 seconds")
 
-    assert msg["type"] == "step_updated"
-    assert msg["step_id"] == "threshold_image"
+    assert any(
+        m["type"] == "step_updated" and m["step_id"] == "threshold_image" for m in msgs
+    ), f"No step_updated for threshold_image in {msgs}"

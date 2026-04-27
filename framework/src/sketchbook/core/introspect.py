@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import inspect
+import logging
 import typing
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Annotated, Any
 
 from sketchbook.core.built_dag import ParamSpec
+
+log = logging.getLogger("sketchbook.core.introspect")
 
 
 @dataclass
@@ -136,6 +139,23 @@ def extract_params(fn: Callable) -> list[ParamSpec]:
         specs.append(ParamSpec(name=name, type=base_type, default=default, param=param_meta))
 
     return specs
+
+
+def find_ctx_param(fn: Callable) -> str | None:
+    """Return the parameter name annotated as SketchContext in *fn*, or None."""
+    from sketchbook.core.decorators import SketchContext
+
+    unwrapped = getattr(fn, "__wrapped__", fn)
+    try:
+        hints = typing.get_type_hints(unwrapped)
+    except Exception as exc:
+        name = getattr(unwrapped, "__name__", unwrapped)
+        log.warning(f"Could not resolve type hints for '{name}': {exc}")
+        return None
+    for name, annotation in hints.items():
+        if annotation is SketchContext:
+            return name
+    return None
 
 
 _BOOL_TRUE_STRINGS: frozenset[str] = frozenset({"true", "1", "yes", "on"})

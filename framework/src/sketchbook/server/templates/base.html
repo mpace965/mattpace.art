@@ -105,6 +105,7 @@
     {% block content %}{% endblock %}
   </div>
 
+  {% block page_scripts %}
   <script type="module">
     import { Pane } from "https://cdn.jsdelivr.net/npm/tweakpane@4/+esm";
 
@@ -234,5 +235,6 @@
     fetchAndRenderPresets();
     init();
   </script>
+  {% endblock %}
 </body>
 </html>

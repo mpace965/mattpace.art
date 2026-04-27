@@ -50,14 +50,18 @@ class BuiltDAG:
     source_paths: list[tuple[Path, str]] = field(default_factory=list)
     output_nodes: list[tuple[str, str, list[str] | None]] = field(default_factory=list)
 
-    def topo_sort(self) -> list[BuiltNode]:
-        """Return nodes in topological order (insertion order after wiring)."""
+    def nodes_in_order(self) -> list[BuiltNode]:
+        """Return nodes in topological order.
+
+        Order is guaranteed by wire_sketch, which inserts each node only after
+        all its sources have already been inserted.
+        """
         return list(self.nodes.values())
 
     def node_depths(self) -> dict[str, int]:
         """Return step_id → depth (longest path from a root node) for every node."""
         depths: dict[str, int] = {}
-        for node in self.topo_sort():
+        for node in self.nodes_in_order():
             if not node.source_ids:
                 depths[node.step_id] = 0
             else:

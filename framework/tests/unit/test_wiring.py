@@ -68,7 +68,7 @@ def test_single_step_sketch_node_order(tmp_path: Path) -> None:
         output(result, "main")
 
     dag = wire_sketch(hello, _CTX)
-    nodes = dag.topo_sort()
+    nodes = dag.nodes_in_order()
     assert len(nodes) == 2
     assert nodes[0].step_id == "source_hello"
     assert nodes[1].step_id == "passthrough"

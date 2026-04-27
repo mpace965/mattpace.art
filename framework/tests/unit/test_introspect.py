@@ -1,11 +1,11 @@
-"""Unit tests for extract_inputs() and extract_params()."""
+"""Unit tests for extract_inputs(), extract_params(), and find_ctx_param()."""
 
 from __future__ import annotations
 
 from typing import Annotated
 
 from sketchbook.core.decorators import Param, SketchContext, step
-from sketchbook.core.introspect import extract_inputs, extract_params
+from sketchbook.core.introspect import extract_inputs, extract_params, find_ctx_param
 
 
 class _FakeImage:
@@ -162,3 +162,45 @@ def test_works_with_step_decorated_fn_params() -> None:
 
     specs = extract_params(proc)
     assert len(specs) == 1
+
+
+# ---------------------------------------------------------------------------
+# find_ctx_param tests
+# ---------------------------------------------------------------------------
+
+
+def test_find_ctx_param_positional() -> None:
+    """find_ctx_param returns the name of a positional SketchContext parameter."""
+
+    def f(ctx: SketchContext, image: _FakeImage) -> _FakeImage:
+        return image
+
+    assert find_ctx_param(f) == "ctx"
+
+
+def test_find_ctx_param_keyword_only() -> None:
+    """find_ctx_param returns the name of a keyword-only SketchContext parameter."""
+
+    def f(image: _FakeImage, *, ctx: SketchContext) -> _FakeImage:
+        return image
+
+    assert find_ctx_param(f) == "ctx"
+
+
+def test_find_ctx_param_absent() -> None:
+    """find_ctx_param returns None when no SketchContext parameter exists."""
+
+    def f(image: _FakeImage) -> _FakeImage:
+        return image
+
+    assert find_ctx_param(f) is None
+
+
+def test_find_ctx_param_unwraps_step() -> None:
+    """find_ctx_param unwraps @step and reads the original signature."""
+
+    @step
+    def proc(image: _FakeImage, ctx: SketchContext) -> _FakeImage:
+        return image
+
+    assert find_ctx_param(proc) == "ctx"

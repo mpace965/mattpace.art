@@ -143,9 +143,7 @@ def test_set_and_get_preset_state(cache: DagCache) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_set_param_updates_value_and_writes_active_json(
-    cache: DagCache, sketch_dir: Path
-) -> None:
+def test_set_param_updates_value_and_writes_active_json(cache: DagCache, sketch_dir: Path) -> None:
     """set_param stores the new value and persists _active.json with dirty=True."""
     cache.get_dag("threshold_hello")
     cache.set_param("threshold_hello", "threshold_image", "level", 99)
@@ -168,9 +166,7 @@ def test_set_param_raises_if_sketch_not_cached(cache: DagCache) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_save_preset_writes_file_and_updates_state(
-    cache: DagCache, sketch_dir: Path
-) -> None:
+def test_save_preset_writes_file_and_updates_state(cache: DagCache, sketch_dir: Path) -> None:
     """save_preset writes <name>.json and clears dirty / sets based_on."""
     cache.get_dag("threshold_hello")
     cache._dirty["threshold_hello"] = True
@@ -194,9 +190,7 @@ def test_save_preset_raises_if_sketch_not_cached(cache: DagCache) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_reset_to_defaults_and_execute_restores_defaults(
-    cache: DagCache, sketch_dir: Path
-) -> None:
+def test_reset_to_defaults_and_execute_restores_defaults(cache: DagCache, sketch_dir: Path) -> None:
     """reset_to_defaults_and_execute resets param_values and clears dirty state."""
     cache.get_dag("threshold_hello")
     cache.set_param("threshold_hello", "threshold_image", "level", 200)
@@ -215,9 +209,7 @@ def test_reset_to_defaults_and_execute_restores_defaults(
 # ---------------------------------------------------------------------------
 
 
-def test_load_preset_and_execute_applies_preset_values(
-    cache: DagCache, sketch_dir: Path
-) -> None:
+def test_load_preset_and_execute_applies_preset_values(cache: DagCache, sketch_dir: Path) -> None:
     """load_preset_and_execute restores param values from a saved preset."""
     cache.get_dag("threshold_hello")
     cache.set_param("threshold_hello", "threshold_image", "level", 42)
