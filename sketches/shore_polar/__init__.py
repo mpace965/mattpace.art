@@ -13,8 +13,8 @@ from sketches import SITE_BUNDLE
 
 
 @sketch(date="2026-04-19")
-def shore_polar() -> None:
-    """polar/depolar kaleidoscope over the rocky shore."""
+def surfs_up() -> None:
+    """kaleidoscope over a rocky shore."""
     photo = source("assets/shore.png", lambda p: WandImage(filename=str(p)))
     square = crop_square(photo)
     size = work_size()
@@ -23,6 +23,7 @@ def shore_polar() -> None:
     strip = unwrap(rotated)
     tiled = mirror_tile(strip)
     result = rewrap(tiled)
+    output(result, SITE_BUNDLE)
 
 
 @step
