@@ -156,9 +156,7 @@ def test_on_change_shutdown_race_does_not_raise(
     from sketchbook.core import watcher as watcher_mod
 
     captured: list[Callable] = []
-    monkeypatch.setattr(
-        watcher_mod.Watcher, "watch", lambda self, path, cb: captured.append(cb)
-    )
+    monkeypatch.setattr(watcher_mod.Watcher, "watch", lambda self, path, cb: captured.append(cb))
 
     loop = asyncio.new_event_loop()
     registry = SketchFnRegistry(

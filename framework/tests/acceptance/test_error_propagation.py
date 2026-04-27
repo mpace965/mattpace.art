@@ -79,7 +79,9 @@ def failing_client(tmp_path: Path) -> Generator[TestClient]:
 # ---------------------------------------------------------------------------
 
 
-def _collect_initial_ws_messages(client: TestClient, sketch_id: str, drain_s: float = 0.5) -> list[dict]:
+def _collect_initial_ws_messages(
+    client: TestClient, sketch_id: str, drain_s: float = 0.5
+) -> list[dict]:
     """Connect, collect the burst of initial-state messages, then disconnect."""
     received: queue.Queue[dict] = queue.Queue()
 
@@ -113,7 +115,9 @@ def test_failing_source_broadcasts_step_error(failing_client: TestClient) -> Non
 
     error_msgs = [m for m in msgs if m.get("type") == "step_error"]
     assert error_msgs, f"Expected at least one step_error, got: {msgs}"
-    assert any(m.get("error") for m in error_msgs), "step_error should carry a non-empty error string"
+    assert any(m.get("error") for m in error_msgs), (
+        "step_error should carry a non-empty error string"
+    )
 
 
 def test_blocked_downstream_nodes_broadcast_step_blocked(failing_client: TestClient) -> None:

@@ -90,10 +90,14 @@ TileStrategy = Any  # (rng, row, col, grid_size) -> TileVariant
 def _checkerboard_strategy(rng: Any, row: int, col: int, n: int) -> TileVariant:
     """Return the tile variant that places minority corners at alternating intersections."""
     match (row % 2, col % 2):
-        case (0, 0): return ("/", True)
-        case (0, 1): return ("\\", True)
-        case (1, 0): return ("\\", False)
-        case (1, 1): return ("/", False)
+        case (0, 0):
+            return ("/", True)
+        case (0, 1):
+            return ("\\", True)
+        case (1, 0):
+            return ("\\", False)
+        case (1, 1):
+            return ("/", False)
 
 
 _TILE_STRATEGIES: dict[str, TileStrategy] = {

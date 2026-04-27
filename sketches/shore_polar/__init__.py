@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from typing import Annotated
 
+from sketchbook.core.building_dag import output, source
+from sketchbook.core.decorators import Param, SketchContext, sketch, step
 from wand.image import Image as WandImage
 
 import sketches.wand_compat  # noqa: F401 — patches WandImage for SketchValueProtocol
-from sketchbook.core.building_dag import output, source
-from sketchbook.core.decorators import Param, SketchContext, sketch, step
-
 from sketches import SITE_BUNDLE
 
 

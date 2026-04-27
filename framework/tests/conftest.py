@@ -14,8 +14,14 @@ from fastapi.testclient import TestClient
 
 def _make_minimal_png() -> bytes:
     """Return bytes for a minimal valid 1x1 white RGB PNG."""
+
     def chunk(tag: bytes, data: bytes) -> bytes:
-        return struct.pack(">I", len(data)) + tag + data + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+        return (
+            struct.pack(">I", len(data))
+            + tag
+            + data
+            + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+        )
 
     return (
         b"\x89PNG\r\n\x1a\n"
