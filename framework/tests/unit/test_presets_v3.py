@@ -12,6 +12,7 @@ from sketchbook.core.decorators import Param
 from sketchbook.core.presets import (
     load_active_into_built,
     load_preset_into_built,
+    reset_to_defaults,
     save_active_from_built,
     save_preset_from_built,
 )
@@ -107,3 +108,19 @@ def test_active_json_based_on_survives_round_trip(tmp_path: Path, simple_dag: Bu
     save_active_from_built(simple_dag, presets_dir, dirty=False, based_on="mypreset")
     _, based_on = load_active_into_built(simple_dag, presets_dir)
     assert based_on == "mypreset"
+
+
+def test_reset_to_defaults_restores_all_param_values(simple_dag: BuiltDAG) -> None:
+    """reset_to_defaults sets every param_value back to its declared default."""
+    simple_dag.nodes["threshold_image"].param_values["level"] = 200
+    reset_to_defaults(simple_dag)
+    assert simple_dag.nodes["threshold_image"].param_values["level"] == 128
+
+
+def test_reset_to_defaults_no_op_on_dag_with_no_params() -> None:
+    """reset_to_defaults on a node with no params does not raise."""
+    from sketchbook.core.built_dag import BuiltNode
+
+    dag = BuiltDAG()
+    dag.nodes["source"] = BuiltNode(step_id="source", fn=lambda: None)
+    reset_to_defaults(dag)  # must not raise

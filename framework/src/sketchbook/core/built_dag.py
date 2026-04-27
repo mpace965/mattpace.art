@@ -54,6 +54,16 @@ class BuiltDAG:
         """Return nodes in topological order (insertion order after wiring)."""
         return list(self.nodes.values())
 
+    def node_depths(self) -> dict[str, int]:
+        """Return step_id → depth (longest path from a root node) for every node."""
+        depths: dict[str, int] = {}
+        for node in self.topo_sort():
+            if not node.source_ids:
+                depths[node.step_id] = 0
+            else:
+                depths[node.step_id] = max(depths[sid] for sid in node.source_ids.values()) + 1
+        return depths
+
     def descendants(self, node_id: str) -> list[str]:
         """Return all step IDs that (transitively) depend on *node_id* via BFS."""
         result: list[str] = []

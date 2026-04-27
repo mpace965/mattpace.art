@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -11,15 +10,9 @@ from fastapi import APIRouter, HTTPException, Request, WebSocket, WebSocketDisco
 from fastapi.responses import FileResponse, HTMLResponse
 from pydantic import BaseModel
 
-from sketchbook.core.executor import execute_built
 from sketchbook.core.introspect import coerce_param
-from sketchbook.core.presets import (
-    load_preset_into_built,
-    save_active_from_built,
-    save_preset_from_built,
-)
+from sketchbook.core.presets import list_preset_names
 from sketchbook.core.protocol import SketchValueProtocol, output_kind
-from sketchbook.server.fn_registry import _is_cascaded
 from sketchbook.server.tweakpane import built_node_to_tweakpane
 
 log = logging.getLogger("sketchbook.server.routes.sketches")
@@ -62,7 +55,7 @@ async def sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
     if dag is None:
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
 
-    # Build the groups/nodes context that sketch.html expects.
+    depths = dag.node_depths()
     nodes_data: list[dict] = []
     for node in dag.topo_sort():
         fn = getattr(node.fn, "__wrapped__", node.fn)
@@ -72,22 +65,12 @@ async def sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
             {
                 "id": node.step_id,
                 "type": fn.__name__,
-                "depth": 0,  # resolved below
+                "depth": depths[node.step_id],
                 "input_ids": list(node.source_ids.values()),
                 "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
                 "kind": kind,
             }
         )
-
-    # Compute DAG depth per node (longest path from a root).
-    depths: dict[str, int] = {}
-    for n in nodes_data:
-        if not n["input_ids"]:
-            depths[n["id"]] = 0
-        else:
-            depths[n["id"]] = max(depths[iid] for iid in n["input_ids"]) + 1
-    for n in nodes_data:
-        n["depth"] = depths[n["id"]]
 
     # Pipelines are a single linear chain — one group.
     groups = [nodes_data]
@@ -153,43 +136,11 @@ async def sketch_ws_endpoint(websocket: WebSocket, sketch_id: str) -> None:
     fn_registry.connections[sketch_id].add(websocket)
     log.info(f"WebSocket connected for sketch '{sketch_id}'")
 
-    # Push current output state so the browser is up-to-date after reconnect.
     dag = fn_registry.get_dag(sketch_id)
     if dag is not None:
         workdir = fn_registry.sketches_dir / sketch_id / ".workdir"
-        last_result = fn_registry._last_results.get(sketch_id)
-        for node in dag.topo_sort():
-            if last_result is not None and node.step_id in last_result.errors:
-                exc = last_result.errors[node.step_id]
-                if _is_cascaded(exc):
-                    await websocket.send_text(
-                        json.dumps({"type": "step_blocked", "step_id": node.step_id})
-                    )
-                else:
-                    await websocket.send_text(
-                        json.dumps(
-                            {
-                                "type": "step_error",
-                                "step_id": node.step_id,
-                                "error": str(exc),
-                            }
-                        )
-                    )
-            elif node.output is not None:
-                kind = output_kind(node.output)
-                is_proto = isinstance(node.output, SketchValueProtocol)
-                ext = node.output.extension if is_proto else "txt"
-                if (workdir / f"{node.step_id}.{ext}").exists():
-                    await websocket.send_text(
-                        json.dumps(
-                            {
-                                "type": "step_updated",
-                                "step_id": node.step_id,
-                                "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
-                                "kind": kind,
-                            }
-                        )
-                    )
+        last_result = fn_registry.get_last_result(sketch_id)
+        await fn_registry.dump_initial_state(websocket, sketch_id, dag, workdir, last_result)
 
     try:
         await websocket.receive()
@@ -270,13 +221,6 @@ class SavePresetRequest(BaseModel):
     name: str
 
 
-def _list_preset_names(presets_dir: Path) -> list[str]:
-    """Return sorted named preset names from presets_dir (excluding _active)."""
-    if not presets_dir.exists():
-        return []
-    return sorted(p.stem for p in presets_dir.glob("*.json") if p.stem != "_active")
-
-
 @router.get("/api/sketches/{sketch_id}/presets")
 async def list_presets(request: Request, sketch_id: str) -> dict[str, Any]:
     """Return named presets and current active state {dirty, based_on}."""
@@ -284,27 +228,23 @@ async def list_presets(request: Request, sketch_id: str) -> dict[str, Any]:
     if sketch_id not in fn_registry.sketch_fns:
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
     presets_dir = fn_registry.sketches_dir / sketch_id / "presets"
+    dirty, based_on = fn_registry.get_preset_state(sketch_id)
     return {
-        "presets": _list_preset_names(presets_dir),
-        "active": {
-            "dirty": fn_registry._dirty.get(sketch_id, False),
-            "based_on": fn_registry._based_on.get(sketch_id),
-        },
+        "presets": list_preset_names(presets_dir),
+        "active": {"dirty": dirty, "based_on": based_on},
     }
 
 
 @router.post("/api/sketches/{sketch_id}/presets")
 async def save_preset(request: Request, sketch_id: str, body: SavePresetRequest) -> dict[str, Any]:
-    """Save current param values as a named preset."""
+    """Save current param values as a named preset.
+
+    Does not re-execute or broadcast — saving is pure persistence on already-applied values.
+    """
     fn_registry = request.app.state.fn_registry
-    dag = fn_registry.get_dag(sketch_id)
-    if dag is None:
+    if fn_registry.get_dag(sketch_id) is None:
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
-    presets_dir = fn_registry.sketches_dir / sketch_id / "presets"
-    save_preset_from_built(dag, presets_dir, body.name)
-    fn_registry._dirty[sketch_id] = False
-    fn_registry._based_on[sketch_id] = body.name
-    save_active_from_built(dag, presets_dir, dirty=False, based_on=body.name)
+    fn_registry.save_preset(sketch_id, body.name)
     log.info(f"Saved preset '{body.name}' for sketch '{sketch_id}'")
     return {"ok": True, "name": body.name}
 
@@ -316,16 +256,7 @@ async def new_preset(request: Request, sketch_id: str) -> dict[str, Any]:
     dag = fn_registry.get_dag(sketch_id)
     if dag is None:
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
-    presets_dir = fn_registry.sketches_dir / sketch_id / "presets"
-    workdir = fn_registry.sketches_dir / sketch_id / ".workdir"
-    with fn_registry._exec_locks[sketch_id]:
-        for node in dag.topo_sort():
-            for spec in node.param_schema:
-                node.param_values[spec.name] = spec.default
-        fn_registry._dirty[sketch_id] = False
-        fn_registry._based_on[sketch_id] = None
-        save_active_from_built(dag, presets_dir, dirty=False, based_on=None)
-        result = execute_built(dag, workdir)
+    result = fn_registry.reset_to_defaults_and_execute(sketch_id)
     await fn_registry.broadcast_results(sketch_id, dag, result)
     await fn_registry.broadcast(sketch_id, {"type": "preset_state"})
     log.info(f"Reset to defaults for sketch '{sketch_id}'")
@@ -339,15 +270,8 @@ async def load_preset(request: Request, sketch_id: str, name: str) -> dict[str, 
     dag = fn_registry.get_dag(sketch_id)
     if dag is None:
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
-    presets_dir = fn_registry.sketches_dir / sketch_id / "presets"
-    workdir = fn_registry.sketches_dir / sketch_id / ".workdir"
     try:
-        with fn_registry._exec_locks[sketch_id]:
-            load_preset_into_built(dag, presets_dir, name)
-            fn_registry._dirty[sketch_id] = False
-            fn_registry._based_on[sketch_id] = name
-            save_active_from_built(dag, presets_dir, dirty=False, based_on=name)
-            result = execute_built(dag, workdir)
+        result = fn_registry.load_preset_and_execute(sketch_id, name)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc))
     await fn_registry.broadcast_results(sketch_id, dag, result)

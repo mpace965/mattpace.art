@@ -124,6 +124,13 @@ def list_preset_names(presets_dir: str | Path) -> list[str]:
     return sorted(p.stem for p in d.glob("*.json") if p.stem != "_active")
 
 
+def reset_to_defaults(dag: BuiltDAG) -> None:
+    """Reset every node's param_values to the declared defaults."""
+    for node in dag.topo_sort():
+        for spec in node.param_schema:
+            node.param_values[spec.name] = spec.default
+
+
 def save_preset_from_built(dag: BuiltDAG, presets_dir: str | Path, name: str) -> None:
     """Snapshot current BuiltNode.param_values to <name>.json."""
     presets_dir = Path(presets_dir)

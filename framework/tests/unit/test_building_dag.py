@@ -215,3 +215,47 @@ def test_output_inside_context_records() -> None:
 
     assert len(dag.outputs) == 1
     assert dag.outputs[0].bundle_name == "main"
+
+
+# ---------------------------------------------------------------------------
+# BuiltDAG.node_depths
+# ---------------------------------------------------------------------------
+
+
+def test_node_depths_single_root() -> None:
+    """A root node (no source_ids) has depth 0."""
+    from sketchbook.core.built_dag import BuiltDAG, BuiltNode
+
+    dag = BuiltDAG()
+    dag.nodes["a"] = BuiltNode(step_id="a", fn=lambda: None)
+    assert dag.node_depths() == {"a": 0}
+
+
+def test_node_depths_linear_chain() -> None:
+    """Each node in a linear chain is one deeper than its predecessor."""
+    from sketchbook.core.built_dag import BuiltDAG, BuiltNode
+
+    dag = BuiltDAG()
+    dag.nodes["a"] = BuiltNode(step_id="a", fn=lambda: None)
+    dag.nodes["b"] = BuiltNode(step_id="b", fn=lambda: None, source_ids={"image": "a"})
+    dag.nodes["c"] = BuiltNode(step_id="c", fn=lambda: None, source_ids={"image": "b"})
+    depths = dag.node_depths()
+    assert depths == {"a": 0, "b": 1, "c": 2}
+
+
+def test_node_depths_diamond() -> None:
+    """A node with two inputs gets the max depth of its parents plus one."""
+    from sketchbook.core.built_dag import BuiltDAG, BuiltNode
+
+    dag = BuiltDAG()
+    dag.nodes["root"] = BuiltNode(step_id="root", fn=lambda: None)
+    dag.nodes["left"] = BuiltNode(step_id="left", fn=lambda: None, source_ids={"x": "root"})
+    dag.nodes["right"] = BuiltNode(step_id="right", fn=lambda: None, source_ids={"x": "root"})
+    dag.nodes["merge"] = BuiltNode(
+        step_id="merge", fn=lambda: None, source_ids={"a": "left", "b": "right"}
+    )
+    depths = dag.node_depths()
+    assert depths["root"] == 0
+    assert depths["left"] == 1
+    assert depths["right"] == 1
+    assert depths["merge"] == 2

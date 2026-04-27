@@ -1,15 +1,10 @@
-"""SketchFnRegistry — owns BuiltDAGs, file watchers, and WebSocket state for sketches."""
+"""SketchFnRegistry — thin facade over DagCache, WatcherCoordinator, and ConnectionManager."""
 
 from __future__ import annotations
 
 import asyncio
-import concurrent.futures
-import functools
-import json
 import logging
 import threading
-import time
-from collections import defaultdict
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -17,131 +12,68 @@ from typing import Any
 from fastapi import WebSocket
 
 from sketchbook.core.built_dag import BuiltDAG
-from sketchbook.core.decorators import SketchContext
-from sketchbook.core.executor import ExecutionResult, execute_built, execute_partial_built
-from sketchbook.core.presets import load_active_into_built, save_active_from_built
-from sketchbook.core.protocol import SketchValueProtocol, output_kind
+from sketchbook.core.executor import ExecutionResult
 from sketchbook.core.watcher import Watcher
-from sketchbook.core.wiring import wire_sketch
+from sketchbook.server.connection_manager import ConnectionManager, _is_cascaded  # noqa: F401
+from sketchbook.server.dag_cache import DagCache
+from sketchbook.server.watcher_coordinator import WatcherCoordinator
 
 log = logging.getLogger("sketchbook.server.fn_registry")
 
 
-def _log_broadcast_future(future: concurrent.futures.Future[None], sid: str, nid: str) -> None:
-    """Log any exception raised by a threadsafe broadcast future."""
-    try:
-        exc = future.exception()
-    except Exception:
-        return
-    if exc is not None:
-        log.error(
-            f"broadcast_results failed for '{sid}' after '{nid}' changed: {exc}",
-            exc_info=exc,
-        )
-
-
-def _is_cascaded(exc: Exception) -> bool:
-    """Return True if exc is a downstream propagation of an upstream failure."""
-    return isinstance(exc, RuntimeError) and str(exc).startswith("No output — upstream failure")
-
-
 class SketchFnRegistry:
-    """Owns loaded BuiltDAGs, lazy wiring, file watchers, and WebSocket connections.
+    """Facade that coordinates DagCache, WatcherCoordinator, and ConnectionManager.
 
-    Mirrors SketchRegistry but works with @sketch-decorated functions instead of
-    Sketch subclasses.
+    Keeps a stable public surface so route handlers and tests need minimal changes.
     """
 
-    def __init__(
-        self,
-        sketch_fns: dict[str, Callable],
-        sketches_dir: Path,
-    ) -> None:
-        self.sketch_fns: dict[str, Callable] = sketch_fns
-        self.sketches_dir: Path = sketches_dir
-        self._dags: dict[str, BuiltDAG] = {}
-        self._locks: dict[str, threading.Lock] = {slug: threading.Lock() for slug in sketch_fns}
-        # Serialises all mutation+execution sequences per sketch across the asyncio
-        # thread (route handlers) and the watchdog observer thread (on_change).
-        self._exec_locks: dict[str, threading.Lock] = {
-            slug: threading.Lock() for slug in sketch_fns
-        }
-        self._dirty: dict[str, bool] = {}
-        self._based_on: dict[str, str | None] = {}
-        self._last_results: dict[str, ExecutionResult] = {}
-        self._watcher: Watcher | None = None
-        self._loop: asyncio.AbstractEventLoop | None = None
-        self.connections: dict[str, set[WebSocket]] = defaultdict(set)
+    def __init__(self, sketch_fns: dict[str, Callable], sketches_dir: Path) -> None:
+        self.sketch_fns = sketch_fns
+        self.sketches_dir = sketches_dir
+        self._dag_cache = DagCache(sketch_fns, sketches_dir)
+        self._connection_manager = ConnectionManager()
+        self._watcher_coordinator = WatcherCoordinator(self._dag_cache, self._connection_manager)
 
     # ------------------------------------------------------------------
-    # DAG access (lazy load on first request)
+    # DAG access
     # ------------------------------------------------------------------
 
     def get_dag(self, sketch_id: str) -> BuiltDAG | None:
-        """Return the BuiltDAG for *sketch_id*, wiring and executing on first access."""
-        if sketch_id in self._dags:
-            return self._dags[sketch_id]
-        if sketch_id not in self.sketch_fns:
-            return None
-        with self._locks[sketch_id]:
-            if sketch_id in self._dags:
-                return self._dags[sketch_id]
-            return self._load_dag_lazy(sketch_id)
-
-    def _load_dag_lazy(self, sketch_id: str) -> BuiltDAG | None:
-        """Wire and execute a sketch on first access, then register its file watcher."""
-        fn = self.sketch_fns[sketch_id]
-        sketch_dir = self.sketches_dir / sketch_id
-        workdir = sketch_dir / ".workdir"
-        ctx = SketchContext(mode="dev")
-        t0 = time.perf_counter()
-        try:
-            dag = wire_sketch(fn, ctx, sketch_dir=sketch_dir)
-            presets_dir = sketch_dir / "presets"
-            self._dirty[sketch_id], self._based_on[sketch_id] = load_active_into_built(
-                dag, presets_dir
-            )
-            self._last_results[sketch_id] = execute_built(dag, workdir, mode="dev")
-            elapsed = time.perf_counter() - t0
-            log.info(f"Loaded sketch '{sketch_id}' ({elapsed:.2f}s)")
-            self._dags[sketch_id] = dag
-            if self._watcher is not None and self._loop is not None:
-                self._register_watch(sketch_id, dag)
-            return dag
-        except Exception as exc:
-            elapsed = time.perf_counter() - t0
-            log.warning(f"Failed to load sketch '{sketch_id}': {exc} ({elapsed:.2f}s)")
-            return None
+        """Return the BuiltDAG for sketch_id, wiring and executing on first access."""
+        dag = self._dag_cache.get_dag(sketch_id)
+        if dag is not None:
+            self._watcher_coordinator.register_watch_if_active(sketch_id, dag)
+        return dag
 
     def evict(self, slug: str) -> None:
         """Remove a cached BuiltDAG so the next get_dag call re-wires and re-executes."""
-        self._dags.pop(slug, None)
-        self._dirty.pop(slug, None)
-        self._based_on.pop(slug, None)
-        self._last_results.pop(slug, None)
+        self._dag_cache.evict(slug)
 
     def set_param(
         self, sketch_id: str, step_id: str, param_name: str, value: Any
     ) -> ExecutionResult:
-        """Store coerced value in BuiltNode.param_values, persist to _active.json, re-execute.
+        """Store coerced value in param_values, persist _active.json, and re-execute."""
+        return self._dag_cache.set_param(sketch_id, step_id, param_name, value)
 
-        Coercion is expected to be done by the caller before passing value.
-        """
-        dag = self._dags.get(sketch_id)
-        if dag is None:
-            raise KeyError(f"Sketch '{sketch_id}' not in cache — call get_dag first")
-        node = dag.nodes[step_id]
-        sketch_dir = self.sketches_dir / sketch_id
-        presets_dir = sketch_dir / "presets"
-        workdir = sketch_dir / ".workdir"
-        with self._exec_locks[sketch_id]:
-            node.param_values[param_name] = value
-            self._dirty[sketch_id] = True
-            based_on = self._based_on.get(sketch_id)
-            save_active_from_built(dag, presets_dir, dirty=True, based_on=based_on)
-            result = execute_partial_built(dag, [step_id], workdir)
-            self._last_results[sketch_id] = result
-            return result
+    def save_preset(self, sketch_id: str, name: str) -> None:
+        """Snapshot current param values as a named preset and update active state."""
+        self._dag_cache.save_preset(sketch_id, name)
+
+    def reset_to_defaults_and_execute(self, sketch_id: str) -> ExecutionResult:
+        """Reset all params to declared defaults, persist _active.json, and re-execute."""
+        return self._dag_cache.reset_to_defaults_and_execute(sketch_id)
+
+    def load_preset_and_execute(self, sketch_id: str, name: str) -> ExecutionResult:
+        """Load a named preset into the DAG, persist _active.json, and re-execute."""
+        return self._dag_cache.load_preset_and_execute(sketch_id, name)
+
+    def get_preset_state(self, sketch_id: str) -> tuple[bool, str | None]:
+        """Return (dirty, based_on) for sketch_id."""
+        return self._dag_cache.get_preset_state(sketch_id)
+
+    def get_last_result(self, sketch_id: str) -> ExecutionResult | None:
+        """Return the most recent ExecutionResult for sketch_id, or None."""
+        return self._dag_cache.get_last_result(sketch_id)
 
     # ------------------------------------------------------------------
     # Watcher lifecycle
@@ -149,102 +81,49 @@ class SketchFnRegistry:
 
     def start_watcher(self, loop: asyncio.AbstractEventLoop) -> Watcher:
         """Create, populate, and start the file watcher. Return the Watcher."""
-        self._loop = loop
-        watcher = Watcher()
-        self._watcher = watcher
-        for sketch_id, dag in self._dags.items():
-            self._register_watch(sketch_id, dag)
-        watcher.start()
-        return watcher
+        return self._watcher_coordinator.start(loop)
 
     def stop_watcher(self) -> None:
-        """Stop the file watcher and clear references."""
-        if self._watcher is not None:
-            self._watcher.stop()
-        self._watcher = None
-        self._loop = None
-
-    def _register_watch(self, sketch_id: str, dag: BuiltDAG) -> None:
-        """Watch all source paths in the DAG and re-execute on change."""
-        assert self._watcher is not None
-        assert self._loop is not None
-
-        sketch_dir = self.sketches_dir / sketch_id
-        workdir = sketch_dir / ".workdir"
-
-        for path, source_step_id in dag.source_paths:
-
-            def on_change(
-                sid: str = sketch_id,
-                d: BuiltDAG = dag,
-                nid: str = source_step_id,
-                wd: Path = workdir,
-            ) -> None:
-                log.info(f"Source '{nid}' changed for sketch '{sid}', re-executing")
-                with self._exec_locks[sid]:
-                    result = execute_partial_built(d, [nid], wd)
-                self._last_results[sid] = result
-                loop = self._loop
-                if loop is None:
-                    log.warning(f"Skipping broadcast for '{sid}': event loop gone during shutdown")
-                    return
-                future = asyncio.run_coroutine_threadsafe(
-                    self.broadcast_results(sid, d, result),
-                    loop,
-                )
-                future.add_done_callback(functools.partial(_log_broadcast_future, sid=sid, nid=nid))
-
-            self._watcher.watch(path, on_change)
+        """Stop the file watcher and clear all references."""
+        self._watcher_coordinator.stop()
 
     # ------------------------------------------------------------------
-    # WebSocket broadcasts
+    # WebSocket management
     # ------------------------------------------------------------------
+
+    @property
+    def connections(self) -> dict[str, set[WebSocket]]:
+        """Active WebSocket connections keyed by sketch_id."""
+        return self._connection_manager.connections
 
     async def broadcast(self, sketch_id: str, message: dict[str, Any]) -> None:
-        """Push a JSON message to all clients watching *sketch_id*."""
-        dead: set[WebSocket] = set()
-        for ws in list(self.connections.get(sketch_id, [])):
-            try:
-                await ws.send_text(json.dumps(message))
-            except Exception:
-                dead.add(ws)
-        self.connections[sketch_id] -= dead
+        """Push a JSON message to all clients watching sketch_id."""
+        await self._connection_manager.broadcast(sketch_id, message)
 
     async def broadcast_results(
         self, sketch_id: str, dag: BuiltDAG, result: ExecutionResult
     ) -> None:
         """Broadcast step_updated, step_error, or step_blocked for every node."""
-        for node in dag.topo_sort():
-            if node.step_id in result.errors:
-                exc = result.errors[node.step_id]
-                if _is_cascaded(exc):
-                    await self.broadcast(
-                        sketch_id, {"type": "step_blocked", "step_id": node.step_id}
-                    )
-                else:
-                    await self.broadcast(
-                        sketch_id,
-                        {
-                            "type": "step_error",
-                            "step_id": node.step_id,
-                            "error": str(exc),
-                        },
-                    )
-            elif node.step_id in result.executed:
-                kind = output_kind(node.output)
-                is_protocol = isinstance(node.output, SketchValueProtocol)
-                ext = node.output.extension if is_protocol else "txt"
-                elapsed = result.timings.get(node.step_id)
-                msg: dict[str, Any] = {
-                    "type": "step_updated",
-                    "step_id": node.step_id,
-                    "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
-                    "kind": kind,
-                    "elapsed_ms": round(elapsed * 1000, 1) if elapsed is not None else None,
-                }
-                await self.broadcast(sketch_id, msg)
-            elif node.output is not None:
-                await self.broadcast(
-                    sketch_id,
-                    {"type": "step_cached", "step_id": node.step_id},
-                )
+        await self._connection_manager.broadcast_results(sketch_id, dag, result)
+
+    async def dump_initial_state(
+        self,
+        websocket: WebSocket,
+        sketch_id: str,
+        dag: BuiltDAG,
+        workdir: Path,
+        last_result: ExecutionResult | None,
+    ) -> None:
+        """Push current output state to a freshly connected WebSocket client."""
+        await self._connection_manager.dump_initial_state(
+            websocket, sketch_id, dag, workdir, last_result
+        )
+
+    # ------------------------------------------------------------------
+    # Internal access for tests and backward compat
+    # ------------------------------------------------------------------
+
+    @property
+    def _exec_locks(self) -> dict[str, threading.Lock]:
+        """Per-sketch execution locks (exposed for concurrency tests)."""
+        return self._dag_cache._exec_locks

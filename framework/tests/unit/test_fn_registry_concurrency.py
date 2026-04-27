@@ -13,7 +13,7 @@ from typing import Annotated
 
 import pytest
 
-import sketchbook.server.fn_registry as fn_registry_mod
+import sketchbook.server.dag_cache as dag_cache_mod
 from sketchbook.core.building_dag import output, source
 from sketchbook.core.decorators import Param, sketch, step
 from sketchbook.server.fn_registry import SketchFnRegistry
@@ -57,7 +57,7 @@ def test_exec_lock_blocks_on_change_during_set_param(
     call_log: list[str] = []
     call_log_mu = threading.Lock()
 
-    original_execute_partial = fn_registry_mod.execute_partial_built
+    original_execute_partial = dag_cache_mod.execute_partial_built
 
     def slow_execute_partial(dag, start_ids, workdir, mode="dev"):
         with call_log_mu:
@@ -69,7 +69,7 @@ def test_exec_lock_blocks_on_change_during_set_param(
             call_log.append("execute_end")
         return result
 
-    monkeypatch.setattr(fn_registry_mod, "execute_partial_built", slow_execute_partial)
+    monkeypatch.setattr(dag_cache_mod, "execute_partial_built", slow_execute_partial)
 
     registry = SketchFnRegistry(
         sketch_fns={"concurrent_sketch": concurrent_sketch},
