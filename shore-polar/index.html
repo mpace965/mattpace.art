@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>surfs_up — matt's pixel library</title>
+    <link rel="icon" href="/favicon.png" type="image/png" />
+    <style>
+      :root {
+        --color-bg: #fff;
+        --color-text: #000;
+        --color-muted: #888;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --color-bg: #111;
+          --color-text: #d8d8d8;
+          --color-muted: #777;
+        }
+      }
+
+      body {
+        font-family: monospace;
+        max-width: 900px;
+        margin: 4rem auto;
+        padding: 0 1.5rem;
+        background-color: var(--color-bg);
+        color: var(--color-text);
+      }
+
+      header {
+        margin-bottom: 2rem;
+      }
+
+      h1 {
+        font-size: 1.25rem;
+        margin: 0 0 0.4rem;
+      }
+
+      .meta {
+        font-size: 0.85rem;
+        color: var(--color-muted);
+        margin: 0;
+      }
+
+      nav {
+        font-size: 0.85rem;
+        margin-bottom: 2.5rem;
+      }
+
+      nav a {
+        color: var(--color-muted);
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        text-decoration: underline;
+      }
+
+      .variants {
+        display: flex;
+        flex-direction: column;
+        gap: 3rem;
+      }
+
+      .variant {
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+      }
+
+      .variant-name {
+        font-size: 0.85rem;
+        color: var(--color-muted);
+      }
+
+      .variant-name a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .variant-name a:hover {
+        text-decoration: underline;
+      }
+
+      .variant img {
+        max-width: 100%;
+        display: block;
+      }
+
+      .empty {
+        color: var(--color-muted);
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <nav><a href="/">← matt's pixel library</a></nav>
+    <header>
+      <h1>surfs_up</h1>
+      <p class="meta">kaleidoscope over a rocky shore.</p>
+      <p class="meta">2026-04-19</p>
+    </header>
+    <div class="variants">
+      <div class="variant" id="surfs-up">
+        <a href="surfs-up.png" target="_blank" rel="noopener">
+          <img src="surfs-up.png" alt="surfs-up" loading="lazy" />
+        </a>
+      </div>
+    </div>
+  </body>
+</html>

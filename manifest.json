@@ -1,5 +1,17 @@
 [
   {
+    "slug": "shore-polar",
+    "name": "surfs_up",
+    "description": "kaleidoscope over a rocky shore.",
+    "date": "2026-04-19",
+    "variants": [
+      {
+        "name": "surfs-up",
+        "image_path": "shore-polar/surfs-up.png"
+      }
+    ]
+  },
+  {
     "slug": "shore-tessellation",
     "name": "shore_tessellation",
     "description": "truchet tiles from a rocky shore and the sea and sky.",
