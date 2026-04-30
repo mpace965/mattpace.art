@@ -398,6 +398,63 @@ def test_partial_execution_timings_only_for_rerun_nodes(tmp_path: Path) -> None:
     assert "from_a" not in result.timings
 
 
+# ---------------------------------------------------------------------------
+# outputs dict on ExecutionResult
+# ---------------------------------------------------------------------------
+
+
+def test_full_execution_outputs_all_successful_nodes(tmp_path: Path) -> None:
+    """execute_built populates result.outputs for every successfully-executed node."""
+    dag = _two_node_dag()
+    result = execute_built(dag, tmp_path)
+
+    assert "source_img" in result.outputs
+    assert "pass_img" in result.outputs
+    assert isinstance(result.outputs["source_img"], _Img)
+    assert isinstance(result.outputs["pass_img"], _Img)
+
+
+def test_failed_node_absent_from_outputs(tmp_path: Path) -> None:
+    """A node that raises must not appear in result.outputs."""
+    dag = BuiltDAG()
+    dag.nodes["src"] = _source_node("src")
+    dag.nodes["bad"] = _failing_node("bad", "src")
+
+    result = execute_built(dag, tmp_path)
+
+    assert "src" in result.outputs
+    assert "bad" not in result.outputs
+
+
+def test_blocked_downstream_node_absent_from_outputs(tmp_path: Path) -> None:
+    """Downstream nodes blocked by upstream failure must not appear in result.outputs."""
+    dag = BuiltDAG()
+    dag.nodes["src"] = _source_node("src")
+    dag.nodes["bad"] = _failing_node("bad", "src")
+    dag.nodes["down"] = _passthrough_node("down", "bad")
+
+    result = execute_built(dag, tmp_path)
+
+    assert "down" not in result.outputs
+
+
+def test_partial_execution_outputs_only_rerun_subset(tmp_path: Path) -> None:
+    """execute_partial_built outputs contains only re-executed nodes, not cached ones."""
+    dag = BuiltDAG()
+    dag.nodes["src_a"] = _source_node("src_a", b"a")
+    dag.nodes["src_b"] = _source_node("src_b", b"b")
+    dag.nodes["from_a"] = _passthrough_node("from_a", "src_a")
+    dag.nodes["from_b"] = _passthrough_node("from_b", "src_b")
+
+    execute_built(dag, tmp_path)
+    result = execute_partial_built(dag, ["src_b"], tmp_path)
+
+    assert "src_b" in result.outputs
+    assert "from_b" in result.outputs
+    assert "src_a" not in result.outputs
+    assert "from_a" not in result.outputs
+
+
 def test_updated_param_flows_through_reexecution(tmp_path: Path) -> None:
     """Mutating param_values before execute_partial_built uses the new value."""
     received: dict[str, object] = {}

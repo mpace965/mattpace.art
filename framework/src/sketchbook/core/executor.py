@@ -6,7 +6,7 @@ import logging
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from sketchbook.core.built_dag import BuiltDAG, BuiltNode
 from sketchbook.core.introspect import find_ctx_param
@@ -20,6 +20,7 @@ class ExecutionResult:
     errors: dict[str, Exception] = field(default_factory=dict)
     executed: set[str] = field(default_factory=set)
     timings: dict[str, float] = field(default_factory=dict)
+    outputs: dict[str, Any] = field(default_factory=dict)
 
     @property
     def ok(self) -> bool:
@@ -103,6 +104,7 @@ def _execute_nodes(
             elapsed = time.perf_counter() - t0
             log.debug(f"Node '{node.step_id}' took {elapsed:.3f}s")
             node.output = value
+            result.outputs[node.step_id] = value
             result.executed.add(node.step_id)
             result.timings[node.step_id] = elapsed
 
