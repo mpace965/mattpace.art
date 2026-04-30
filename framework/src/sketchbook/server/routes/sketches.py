@@ -55,12 +55,15 @@ async def sketch_view(request: Request, sketch_id: str) -> HTMLResponse:
     if dag is None:
         raise HTTPException(status_code=404, detail=f"Sketch '{sketch_id}' not found")
 
+    last_result = fn_registry.get_last_result(sketch_id)
+    last_outputs = last_result.outputs if last_result is not None else {}
     depths = dag.node_depths()
     nodes_data: list[dict] = []
     for node in dag.nodes_in_order():
         fn = getattr(node.fn, "__wrapped__", node.fn)
-        kind = output_kind(node.output)
-        ext = node.output.extension if isinstance(node.output, SketchValueProtocol) else "txt"
+        output = last_outputs.get(node.step_id)
+        kind = output_kind(output)
+        ext = output.extension if isinstance(output, SketchValueProtocol) else "txt"
         nodes_data.append(
             {
                 "id": node.step_id,
@@ -101,8 +104,10 @@ async def sketch_step_view(request: Request, sketch_id: str, step_id: str) -> HT
             status_code=404,
             detail=f"Step '{step_id}' not found in sketch '{sketch_id}'",
         )
-    kind = output_kind(node.output)
-    ext = node.output.extension if isinstance(node.output, SketchValueProtocol) else "txt"
+    last_result = fn_registry.get_last_result(sketch_id)
+    output = last_result.outputs.get(step_id) if last_result is not None else None
+    kind = output_kind(output)
+    ext = output.extension if isinstance(output, SketchValueProtocol) else "txt"
     image_url = f"/workdir/{sketch_id}/{step_id}.{ext}"
     return templates.TemplateResponse(
         request,

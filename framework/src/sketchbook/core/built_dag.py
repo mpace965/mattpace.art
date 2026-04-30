@@ -25,7 +25,7 @@ class BuiltNode:
     """One resolved node in a BuiltDAG.
 
     ``source_ids`` maps input names to upstream step IDs.
-    ``output`` is set by the executor after the node runs.
+    Execution outputs are stored in ``ExecutionResult.outputs``, not here.
     """
 
     step_id: str
@@ -34,7 +34,6 @@ class BuiltNode:
     param_schema: list[ParamSpec] = field(default_factory=list)
     param_values: dict[str, Any] = field(default_factory=dict)
     ctx: SketchContext | None = None
-    output: Any = None
 
 
 @dataclass

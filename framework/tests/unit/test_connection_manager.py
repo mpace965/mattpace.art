@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import json
 from pathlib import Path
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 from sketchbook.core.built_dag import BuiltDAG, BuiltNode
@@ -17,9 +16,9 @@ from sketchbook.server.connection_manager import ConnectionManager, _is_cascaded
 # ---------------------------------------------------------------------------
 
 
-def _make_dag(step_id: str = "step_a", output: Any = None) -> BuiltDAG:
+def _make_dag(step_id: str = "step_a") -> BuiltDAG:
     dag = BuiltDAG()
-    node = BuiltNode(step_id=step_id, fn=lambda: None, output=output)
+    node = BuiltNode(step_id=step_id, fn=lambda: None)
     dag.nodes[step_id] = node
     return dag
 
@@ -119,7 +118,7 @@ def test_broadcast_results_sends_step_updated_for_executed_node() -> None:
     finally:
         os.unlink(tmp)
 
-    dag = _make_dag("step_a", output=None)
+    dag = _make_dag("step_a")
     result = ExecutionResult(
         executed={"step_a"},
         errors={},
@@ -150,7 +149,7 @@ def test_broadcast_results_sends_step_cached_for_node_in_result_outputs() -> Non
     finally:
         os.unlink(tmp)
 
-    dag = _make_dag("step_a", output=None)
+    dag = _make_dag("step_a")
     result = ExecutionResult(
         executed=set(),
         errors={},
@@ -215,7 +214,7 @@ def test_dump_initial_state_sends_step_updated_for_existing_output_file(
     make_test_image(workdir / "step_a.png")
 
     output_val = TestImage.load(workdir / "step_a.png")
-    dag = _make_dag("step_a", output=None)
+    dag = _make_dag("step_a")
     last_result = ExecutionResult(
         executed={"step_a"},
         errors={},
@@ -250,7 +249,7 @@ def test_dump_initial_state_skips_step_updated_when_file_missing(
     workdir.mkdir()
     # File is NOT in workdir
 
-    dag = _make_dag("step_a", output=None)
+    dag = _make_dag("step_a")
     last_result = ExecutionResult(
         executed={"step_a"},
         errors={},
@@ -274,7 +273,7 @@ def test_dump_initial_state_sends_nothing_when_last_result_is_none(
     workdir.mkdir()
     make_test_image(workdir / "step_a.png")
 
-    dag = _make_dag("step_a", output=None)
+    dag = _make_dag("step_a")
     ws = _make_ws()
     mgr = ConnectionManager()
     _run(mgr.dump_initial_state(ws, "s", dag, workdir, last_result=None))
@@ -286,7 +285,7 @@ def test_dump_initial_state_sends_step_error_for_last_result_error(
     tmp_path: Path,
 ) -> None:
     """dump_initial_state sends step_error when last_result has an error for that node."""
-    dag = _make_dag("step_a", output=None)
+    dag = _make_dag("step_a")
     last_result = ExecutionResult(
         executed=set(),
         errors={"step_a": ValueError("bad step")},

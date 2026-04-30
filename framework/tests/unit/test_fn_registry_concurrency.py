@@ -133,7 +133,9 @@ def test_exec_lock_blocks_on_change_during_set_param(
         )
 
     # Final output must not be None — execution completed cleanly.
-    assert dag.nodes["concurrent_threshold"].output is not None
+    last_result = registry.get_last_result("concurrent_sketch")
+    assert last_result is not None
+    assert last_result.outputs.get("concurrent_threshold") is not None
 
 
 def test_broadcast_future_exception_is_logged(caplog: pytest.LogCaptureFixture) -> None:

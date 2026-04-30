@@ -103,7 +103,6 @@ def _execute_nodes(
             exc = RuntimeError(f"No output — upstream failure: {causes}")
             result.errors[node.step_id] = exc
             failed.add(node.step_id)
-            node.output = None
             _delete_workdir_file(node, workdir)
             log.warning(f"Node '{node.step_id}' skipped due to upstream failure")
             continue
@@ -111,11 +110,11 @@ def _execute_nodes(
         try:
             if subset is not None and prior is not None:
                 inputs = {
-                    name: (prior.outputs[sid] if sid not in subset else dag.nodes[sid].output)
+                    name: (prior.outputs[sid] if sid not in subset else result.outputs[sid])
                     for name, sid in node.source_ids.items()
                 }
             else:
-                inputs = {name: dag.nodes[sid].output for name, sid in node.source_ids.items()}
+                inputs = {name: result.outputs[sid] for name, sid in node.source_ids.items()}
             kwargs = {**inputs, **node.param_values}
             if node.ctx is not None:
                 ctx_param_name = find_ctx_param(node.fn)
@@ -126,7 +125,6 @@ def _execute_nodes(
             value = node.fn(**kwargs)
             elapsed = time.perf_counter() - t0
             log.debug(f"Node '{node.step_id}' took {elapsed:.3f}s")
-            node.output = value
             result.outputs[node.step_id] = value
             result.executed.add(node.step_id)
             result.timings[node.step_id] = elapsed
@@ -144,7 +142,6 @@ def _execute_nodes(
         except Exception as exc:
             result.errors[node.step_id] = exc
             failed.add(node.step_id)
-            node.output = None
             _delete_workdir_file(node, workdir)
             log.warning(f"Node '{node.step_id}' failed: {exc}")
 

@@ -76,6 +76,17 @@ def _two_node_dag() -> BuiltDAG:
 
 
 # ---------------------------------------------------------------------------
+# BuiltNode structure
+# ---------------------------------------------------------------------------
+
+
+def test_built_node_has_no_output_field() -> None:
+    """BuiltNode must not carry a mutable output field — all outputs live in ExecutionResult."""
+    node = BuiltNode(step_id="x", fn=lambda: None)
+    assert not hasattr(node, "output"), "BuiltNode.output must be deleted"
+
+
+# ---------------------------------------------------------------------------
 # execute_built — basic
 # ---------------------------------------------------------------------------
 
@@ -284,11 +295,11 @@ def test_execute_built_build_mode_no_disk_writes(tmp_path: Path) -> None:
         source_ids={},
     )
 
-    execute_built(dag, tmp_path, mode="build")
+    result = execute_built(dag, tmp_path, mode="build")
 
     assert not any(tmp_path.iterdir()), "build mode must not write any files to workdir"
-    assert dag.nodes["src"].output is not None, "output must be stored in memory"
-    assert dag.nodes["src"].output.to_bytes("build").startswith(b"mode:build:")
+    assert "src" in result.outputs, "output must be stored in result.outputs"
+    assert result.outputs["src"].to_bytes("build").startswith(b"mode:build:")
 
 
 def test_ctx_mode_is_build_during_build_execution(tmp_path: Path) -> None:
@@ -334,7 +345,7 @@ def test_no_input_step_with_ctx_executes_correctly(tmp_path: Path) -> None:
     result = execute_built(dag, tmp_path)
     assert result.ok
     assert received["mode"] == "build"
-    assert dag.nodes["scale_factor"].output == 1.0
+    assert result.outputs["scale_factor"] == 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -483,18 +494,19 @@ def test_updated_param_flows_through_reexecution(tmp_path: Path) -> None:
 
 
 def test_partial_upstream_reads_from_prior_not_node_output(tmp_path: Path) -> None:
-    """Upstream values for non-reexecuted nodes come from prior.outputs, not node.output."""
-    dag = _two_node_dag()
-    prior = execute_built(dag, tmp_path)
+    """Upstream values for non-reexecuted nodes come from prior.outputs."""
+    from sketchbook.core.executor import ExecutionResult
 
-    # Poison node.output to prove partial execution doesn't read it
-    dag.nodes["source_img"].output = None
+    sentinel = _Img(b"sentinel-value")
+    dag = _two_node_dag()
+    # Build a prior where source_img holds a known sentinel — never produced by execute_built.
+    prior = ExecutionResult(outputs={"source_img": sentinel})
 
     result = execute_partial_built(dag, ["pass_img"], tmp_path, prior=prior)
 
     assert result.ok
     assert "pass_img" in result.executed
-    assert isinstance(result.outputs["pass_img"], _Img)
+    assert result.outputs["pass_img"] is sentinel
 
 
 def test_partial_missing_prior_output_triggers_upstream_failure(tmp_path: Path) -> None:
