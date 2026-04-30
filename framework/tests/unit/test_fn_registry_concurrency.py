@@ -60,12 +60,12 @@ def test_exec_lock_blocks_on_change_during_set_param(
 
     original_execute_partial = dag_cache_mod.execute_partial_built
 
-    def slow_execute_partial(dag, start_ids, workdir, mode="dev"):
+    def slow_execute_partial(dag, start_ids, workdir, mode="dev", *, prior):
         with call_log_mu:
             call_log.append("execute_start")
         execution_started.set()
         execution_may_proceed.wait(timeout=5)
-        result = original_execute_partial(dag, start_ids, workdir, mode)
+        result = original_execute_partial(dag, start_ids, workdir, mode, prior=prior)
         with call_log_mu:
             call_log.append("execute_end")
         return result

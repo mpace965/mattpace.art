@@ -168,13 +168,9 @@ def test_partial_only_reruns_start_and_descendants(tmp_path: Path) -> None:
     """execute_partial_built re-executes only the start node and descendants."""
     dag = _two_node_dag()
 
-    # Full execution first to populate outputs.
-    execute_built(dag, tmp_path)
+    prior = execute_built(dag, tmp_path)
 
-    # Modify source node's output to something distinguishable.
-    dag.nodes["source_img"].output = _Img(b"changed")
-
-    result = execute_partial_built(dag, ["source_img"], tmp_path)
+    result = execute_partial_built(dag, ["source_img"], tmp_path, prior=prior)
 
     assert "source_img" in result.executed
     assert "pass_img" in result.executed
@@ -188,10 +184,10 @@ def test_partial_skips_unrelated_nodes(tmp_path: Path) -> None:
     dag.nodes["from_a"] = _passthrough_node("from_a", "src_a")
     dag.nodes["from_b"] = _passthrough_node("from_b", "src_b")
 
-    execute_built(dag, tmp_path)
+    prior = execute_built(dag, tmp_path)
 
     # Only re-execute from src_b.
-    result = execute_partial_built(dag, ["src_b"], tmp_path)
+    result = execute_partial_built(dag, ["src_b"], tmp_path, prior=prior)
 
     assert "src_b" in result.executed
     assert "from_b" in result.executed
@@ -389,8 +385,8 @@ def test_partial_execution_timings_only_for_rerun_nodes(tmp_path: Path) -> None:
     dag.nodes["from_a"] = _passthrough_node("from_a", "src_a")
     dag.nodes["from_b"] = _passthrough_node("from_b", "src_b")
 
-    execute_built(dag, tmp_path)
-    result = execute_partial_built(dag, ["src_b"], tmp_path)
+    prior = execute_built(dag, tmp_path)
+    result = execute_partial_built(dag, ["src_b"], tmp_path, prior=prior)
 
     assert "src_b" in result.timings
     assert "from_b" in result.timings
@@ -438,21 +434,24 @@ def test_blocked_downstream_node_absent_from_outputs(tmp_path: Path) -> None:
     assert "down" not in result.outputs
 
 
-def test_partial_execution_outputs_only_rerun_subset(tmp_path: Path) -> None:
-    """execute_partial_built outputs contains only re-executed nodes, not cached ones."""
+def test_partial_execution_outputs_rerun_nodes_win_over_prior(tmp_path: Path) -> None:
+    """Newly-executed outputs win over prior values on collision."""
+    call_count = [0]
+
+    def counting_source() -> _Img:
+        call_count[0] += 1
+        return _Img(f"call-{call_count[0]}".encode())
+
     dag = BuiltDAG()
-    dag.nodes["src_a"] = _source_node("src_a", b"a")
-    dag.nodes["src_b"] = _source_node("src_b", b"b")
-    dag.nodes["from_a"] = _passthrough_node("from_a", "src_a")
-    dag.nodes["from_b"] = _passthrough_node("from_b", "src_b")
+    dag.nodes["src"] = BuiltNode(step_id="src", fn=counting_source, source_ids={})
 
-    execute_built(dag, tmp_path)
-    result = execute_partial_built(dag, ["src_b"], tmp_path)
+    prior = execute_built(dag, tmp_path)
+    assert prior.outputs["src"].to_bytes("dev") == b"call-1"
 
-    assert "src_b" in result.outputs
-    assert "from_b" in result.outputs
-    assert "src_a" not in result.outputs
-    assert "from_a" not in result.outputs
+    result = execute_partial_built(dag, ["src"], tmp_path, prior=prior)
+
+    # Re-executed node produces a new value that wins over the prior snapshot
+    assert result.outputs["src"].to_bytes("dev") == b"call-2"
 
 
 def test_updated_param_flows_through_reexecution(tmp_path: Path) -> None:
@@ -472,7 +471,61 @@ def test_updated_param_flows_through_reexecution(tmp_path: Path) -> None:
         param_values={"level": 128},
     )
 
-    execute_built(dag, tmp_path)
+    prior = execute_built(dag, tmp_path)
     dag.nodes["proc"].param_values["level"] = 42
-    execute_partial_built(dag, ["proc"], tmp_path)
+    execute_partial_built(dag, ["proc"], tmp_path, prior=prior)
     assert received["level"] == 42
+
+
+# ---------------------------------------------------------------------------
+# execute_partial_built — prior: ExecutionResult
+# ---------------------------------------------------------------------------
+
+
+def test_partial_upstream_reads_from_prior_not_node_output(tmp_path: Path) -> None:
+    """Upstream values for non-reexecuted nodes come from prior.outputs, not node.output."""
+    dag = _two_node_dag()
+    prior = execute_built(dag, tmp_path)
+
+    # Poison node.output to prove partial execution doesn't read it
+    dag.nodes["source_img"].output = None
+
+    result = execute_partial_built(dag, ["pass_img"], tmp_path, prior=prior)
+
+    assert result.ok
+    assert "pass_img" in result.executed
+    assert isinstance(result.outputs["pass_img"], _Img)
+
+
+def test_partial_missing_prior_output_triggers_upstream_failure(tmp_path: Path) -> None:
+    """Missing prior.outputs entry for an upstream node triggers the failure path."""
+    from sketchbook.core.executor import ExecutionResult
+
+    dag = _two_node_dag()
+    # Build a prior where source_img previously failed (absent from outputs)
+    empty_prior = ExecutionResult()
+
+    result = execute_partial_built(dag, ["pass_img"], tmp_path, prior=empty_prior)
+
+    assert not result.ok
+    assert "pass_img" in result.errors
+    assert "pass_img" not in result.executed
+
+
+def test_partial_outputs_is_full_snapshot(tmp_path: Path) -> None:
+    """Returned outputs is a full snapshot: prior.outputs merged with newly-executed."""
+    dag = BuiltDAG()
+    dag.nodes["src_a"] = _source_node("src_a", b"a")
+    dag.nodes["src_b"] = _source_node("src_b", b"b")
+    dag.nodes["from_a"] = _passthrough_node("from_a", "src_a")
+    dag.nodes["from_b"] = _passthrough_node("from_b", "src_b")
+
+    prior = execute_built(dag, tmp_path)
+    result = execute_partial_built(dag, ["src_b"], tmp_path, prior=prior)
+
+    # Newly-executed nodes are present
+    assert "src_b" in result.outputs
+    assert "from_b" in result.outputs
+    # Prior values for non-reexecuted nodes are also present
+    assert "src_a" in result.outputs
+    assert "from_a" in result.outputs

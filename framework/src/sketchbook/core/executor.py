@@ -54,16 +54,23 @@ def execute_partial_built(
     start_ids: list[str],
     workdir: Path,
     mode: Literal["dev", "build"] = "dev",
+    *,
+    prior: ExecutionResult,
 ) -> ExecutionResult:
     """Re-execute *start_ids* and all their descendants.
 
-    Nodes outside the computed subset keep their cached outputs.
+    Nodes outside the computed subset resolve their cached values from
+    *prior.outputs* rather than reading mutable BuiltNode state.
+    The returned ExecutionResult.outputs is a full snapshot: prior.outputs
+    merged with newly-executed outputs (new values win).
     """
     subset: set[str] = set(start_ids)
     for sid in start_ids:
         subset.update(dag.descendants(sid))
     workdir.mkdir(parents=True, exist_ok=True)
-    return _execute_nodes(dag, workdir, mode, subset=subset)
+    result = _execute_nodes(dag, workdir, mode, subset=subset, prior=prior)
+    result.outputs = {**prior.outputs, **result.outputs}
+    return result
 
 
 def _execute_nodes(
@@ -71,9 +78,16 @@ def _execute_nodes(
     workdir: Path,
     mode: Literal["dev", "build"],
     subset: set[str] | None,
+    prior: ExecutionResult | None = None,
 ) -> ExecutionResult:
     result = ExecutionResult()
     failed: set[str] = set()
+
+    # For partial runs: out-of-subset nodes missing from prior.outputs previously failed.
+    if subset is not None and prior is not None:
+        for node_id in dag.nodes:
+            if node_id not in subset and node_id not in prior.outputs:
+                failed.add(node_id)
 
     for node in dag.nodes_in_order():
         if subset is not None and node.step_id not in subset:
@@ -82,7 +96,10 @@ def _execute_nodes(
         # Check whether any upstream node failed.
         upstream_failures = [sid for sid in node.source_ids.values() if sid in failed]
         if upstream_failures:
-            causes = "; ".join(f"{sid}: {result.errors[sid]}" for sid in upstream_failures)
+            causes = "; ".join(
+                f"{sid}: {result.errors[sid]}" if sid in result.errors else f"{sid}: prior failure"
+                for sid in upstream_failures
+            )
             exc = RuntimeError(f"No output — upstream failure: {causes}")
             result.errors[node.step_id] = exc
             failed.add(node.step_id)
@@ -92,7 +109,13 @@ def _execute_nodes(
             continue
 
         try:
-            inputs = {name: dag.nodes[sid].output for name, sid in node.source_ids.items()}
+            if subset is not None and prior is not None:
+                inputs = {
+                    name: (prior.outputs[sid] if sid not in subset else dag.nodes[sid].output)
+                    for name, sid in node.source_ids.items()
+                }
+            else:
+                inputs = {name: dag.nodes[sid].output for name, sid in node.source_ids.items()}
             kwargs = {**inputs, **node.param_values}
             if node.ctx is not None:
                 ctx_param_name = find_ctx_param(node.fn)

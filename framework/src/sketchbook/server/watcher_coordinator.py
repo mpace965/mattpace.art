@@ -92,7 +92,8 @@ class WatcherCoordinator:
             log.warning(f"File-change for '{sketch_id}' arrived after watcher stopped; skipping")
             return
         with self._dag_cache._exec_locks[sketch_id]:
-            result = execute_partial_built(dag, [source_step_id], workdir)
+            prior = self._dag_cache._last_results[sketch_id]
+            result = execute_partial_built(dag, [source_step_id], workdir, prior=prior)
         self._dag_cache._last_results[sketch_id] = result
         future = asyncio.run_coroutine_threadsafe(
             self._connection_manager.broadcast_results(sketch_id, dag, result),

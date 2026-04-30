@@ -161,6 +161,18 @@ def test_set_param_raises_if_sketch_not_cached(cache: DagCache) -> None:
         cache.set_param("threshold_hello", "threshold_image", "level", 99)
 
 
+def test_set_param_stores_full_snapshot_in_last_results(cache: DagCache) -> None:
+    """After set_param, _last_results holds a full-snapshot result for all nodes."""
+    cache.get_dag("threshold_hello")
+    cache.set_param("threshold_hello", "threshold_image", "level", 99)
+
+    result = cache.get_last_result("threshold_hello")
+    assert result is not None
+    # Full snapshot includes both the source node and the reexecuted step
+    assert "source_hello" in result.outputs
+    assert "threshold_image" in result.outputs
+
+
 # ---------------------------------------------------------------------------
 # save_preset
 # ---------------------------------------------------------------------------

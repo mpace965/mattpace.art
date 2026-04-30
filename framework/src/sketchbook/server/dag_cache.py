@@ -114,7 +114,8 @@ class DagCache:
             node.param_values[param_name] = value
             self._dirty[sketch_id] = True
             based_on = self._based_on.get(sketch_id)
-            result = execute_partial_built(dag, [step_id], workdir)
+            prior = self._last_results[sketch_id]
+            result = execute_partial_built(dag, [step_id], workdir, prior=prior)
             save_active_from_built(dag, presets_dir, dirty=True, based_on=based_on)
             self._last_results[sketch_id] = result
             return result
