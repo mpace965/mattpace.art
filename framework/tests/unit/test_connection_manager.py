@@ -111,9 +111,6 @@ def test_broadcast_results_sends_step_updated_for_executed_node() -> None:
 
     from tests.conftest import TestImage, make_test_image
 
-    # Use a minimal TestImage-like output that satisfies SketchValueProtocol.
-    # TestImage implements the protocol; we just need a real instance.
-    # Create a temp file for the make_test_image helper.
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
         tmp = Path(f.name)
     try:
@@ -122,11 +119,12 @@ def test_broadcast_results_sends_step_updated_for_executed_node() -> None:
     finally:
         os.unlink(tmp)
 
-    dag = _make_dag("step_a", output=output)
+    dag = _make_dag("step_a", output=None)
     result = ExecutionResult(
         executed={"step_a"},
         errors={},
         timings={"step_a": 0.1},
+        outputs={"step_a": output},
     )
     mgr = ConnectionManager()
     ws = _make_ws()
@@ -135,6 +133,37 @@ def test_broadcast_results_sends_step_updated_for_executed_node() -> None:
 
     calls = [json.loads(c.args[0]) for c in ws.send_text.await_args_list]
     assert any(m["type"] == "step_updated" and m["step_id"] == "step_a" for m in calls)
+
+
+def test_broadcast_results_sends_step_cached_for_node_in_result_outputs() -> None:
+    """broadcast_results emits step_cached for a node present in result.outputs but not executed."""
+    import os
+    import tempfile
+
+    from tests.conftest import TestImage, make_test_image
+
+    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
+        tmp = Path(f.name)
+    try:
+        make_test_image(tmp)
+        output = TestImage.load(tmp)
+    finally:
+        os.unlink(tmp)
+
+    dag = _make_dag("step_a", output=None)
+    result = ExecutionResult(
+        executed=set(),
+        errors={},
+        timings={},
+        outputs={"step_a": output},
+    )
+    mgr = ConnectionManager()
+    ws = _make_ws()
+    mgr.add("s", ws)
+    _run(mgr.broadcast_results("s", dag, result))
+
+    calls = [json.loads(c.args[0]) for c in ws.send_text.await_args_list]
+    assert any(m["type"] == "step_cached" and m["step_id"] == "step_a" for m in calls)
 
 
 def test_broadcast_results_sends_step_error_for_non_cascaded_error() -> None:
@@ -178,7 +207,7 @@ def test_broadcast_results_sends_step_blocked_for_cascaded_error() -> None:
 def test_dump_initial_state_sends_step_updated_for_existing_output_file(
     tmp_path: Path,
 ) -> None:
-    """dump_initial_state sends step_updated only when the workdir file exists."""
+    """dump_initial_state sends step_updated when last_result.outputs has value and file exists."""
     from tests.conftest import TestImage, make_test_image
 
     workdir = tmp_path / "workdir"
@@ -186,11 +215,17 @@ def test_dump_initial_state_sends_step_updated_for_existing_output_file(
     make_test_image(workdir / "step_a.png")
 
     output_val = TestImage.load(workdir / "step_a.png")
-    dag = _make_dag("step_a", output=output_val)
+    dag = _make_dag("step_a", output=None)
+    last_result = ExecutionResult(
+        executed={"step_a"},
+        errors={},
+        timings={},
+        outputs={"step_a": output_val},
+    )
 
     ws = _make_ws()
     mgr = ConnectionManager()
-    _run(mgr.dump_initial_state(ws, "s", dag, workdir, last_result=None))
+    _run(mgr.dump_initial_state(ws, "s", dag, workdir, last_result=last_result))
 
     calls = [json.loads(c.args[0]) for c in ws.send_text.await_args_list]
     assert any(m["type"] == "step_updated" and m["step_id"] == "step_a" for m in calls)
@@ -215,7 +250,31 @@ def test_dump_initial_state_skips_step_updated_when_file_missing(
     workdir.mkdir()
     # File is NOT in workdir
 
-    dag = _make_dag("step_a", output=output_val)
+    dag = _make_dag("step_a", output=None)
+    last_result = ExecutionResult(
+        executed={"step_a"},
+        errors={},
+        timings={},
+        outputs={"step_a": output_val},
+    )
+    ws = _make_ws()
+    mgr = ConnectionManager()
+    _run(mgr.dump_initial_state(ws, "s", dag, workdir, last_result=last_result))
+
+    ws.send_text.assert_not_awaited()
+
+
+def test_dump_initial_state_sends_nothing_when_last_result_is_none(
+    tmp_path: Path,
+) -> None:
+    """dump_initial_state sends no step_updated when last_result is None."""
+    from tests.conftest import make_test_image
+
+    workdir = tmp_path / "workdir"
+    workdir.mkdir()
+    make_test_image(workdir / "step_a.png")
+
+    dag = _make_dag("step_a", output=None)
     ws = _make_ws()
     mgr = ConnectionManager()
     _run(mgr.dump_initial_state(ws, "s", dag, workdir, last_result=None))

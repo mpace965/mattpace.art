@@ -63,9 +63,10 @@ class ConnectionManager:
                         {"type": "step_error", "step_id": node.step_id, "error": str(exc)},
                     )
             elif node.step_id in result.executed:
-                kind = output_kind(node.output)
-                is_protocol = isinstance(node.output, SketchValueProtocol)
-                ext = node.output.extension if is_protocol else "txt"
+                output = result.outputs.get(node.step_id)
+                kind = output_kind(output)
+                is_protocol = isinstance(output, SketchValueProtocol)
+                ext = output.extension if is_protocol else "txt"
                 elapsed = result.timings.get(node.step_id)
                 msg: dict[str, Any] = {
                     "type": "step_updated",
@@ -75,7 +76,7 @@ class ConnectionManager:
                     "elapsed_ms": round(elapsed * 1000, 1) if elapsed is not None else None,
                 }
                 await self.broadcast(sketch_id, msg)
-            elif node.output is not None:
+            elif result.outputs.get(node.step_id) is not None:
                 await self.broadcast(sketch_id, {"type": "step_cached", "step_id": node.step_id})
 
     async def dump_initial_state(
@@ -104,18 +105,20 @@ class ConnectionManager:
                             }
                         )
                     )
-            elif node.output is not None:
-                kind = output_kind(node.output)
-                is_proto = isinstance(node.output, SketchValueProtocol)
-                ext = node.output.extension if is_proto else "txt"
-                if (workdir / f"{node.step_id}.{ext}").exists():
-                    await websocket.send_text(
-                        json.dumps(
-                            {
-                                "type": "step_updated",
-                                "step_id": node.step_id,
-                                "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
-                                "kind": kind,
-                            }
+            elif last_result is not None:
+                output = last_result.outputs.get(node.step_id)
+                if output is not None:
+                    kind = output_kind(output)
+                    is_proto = isinstance(output, SketchValueProtocol)
+                    ext = output.extension if is_proto else "txt"
+                    if (workdir / f"{node.step_id}.{ext}").exists():
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "step_updated",
+                                    "step_id": node.step_id,
+                                    "image_url": f"/workdir/{sketch_id}/{node.step_id}.{ext}",
+                                    "kind": kind,
+                                }
+                            )
                         )
-                    )

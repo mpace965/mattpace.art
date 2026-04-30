@@ -82,12 +82,10 @@ def _build_variant_fn(task: _VariantTaskFn) -> _VariantResultFn:
         log.warning(f"  preset '{task.preset_name}' failed: {result.errors}")
         return _VariantResultFn(task.sketch_key, task.preset_name, ok=False)
 
-    output_node = dag.nodes.get(task.output_node_step_id)
-    if output_node is None or output_node.output is None:
+    val = result.outputs.get(task.output_node_step_id)
+    if val is None:
         log.warning(f"  output node '{task.output_node_step_id}' has no output after execution")
         return _VariantResultFn(task.sketch_key, task.preset_name, ok=False)
-
-    val = output_node.output
     ext = val.extension if isinstance(val, SketchValueProtocol) else "bin"
     dest = task.sketch_output_dir / f"{task.preset_name}.{ext}"
     dest.write_bytes(val.to_bytes("build"))

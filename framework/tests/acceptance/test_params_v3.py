@@ -114,6 +114,6 @@ def test_param_change_triggers_websocket_update(
         if not msgs:
             pytest.fail("No WebSocket message received after param change within 5 seconds")
 
-    assert any(
-        m["type"] == "step_updated" and m["step_id"] == "threshold_image" for m in msgs
-    ), f"No step_updated for threshold_image in {msgs}"
+    assert any(m["type"] == "step_updated" and m["step_id"] == "threshold_image" for m in msgs), (
+        f"No step_updated for threshold_image in {msgs}"
+    )
