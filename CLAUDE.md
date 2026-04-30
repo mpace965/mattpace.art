@@ -140,3 +140,17 @@ The rule: if an asset makes sense outside the context of a single sketch, it liv
 - `dist/` is gitignored on main. It gets force-pushed to `gh-pages` for deployment.
 - Source assets under `sketches/*/assets/` are **not** committed (too large). The repo works without them — you just can't build until you have the assets locally.
 - Presets **are** committed. They're small JSON files and they represent creative decisions worth versioning.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live as local markdown files under `.scratch/`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default canonical label strings (needs-triage, needs-info, ready-for-agent, ready-for-human, wontfix). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Multi-context repo: `framework/CONTEXT.md`, `sketches/CONTEXT.md`, `site/CONTEXT.md` + shared `docs/adr/`. See `docs/agents/domain.md`.
