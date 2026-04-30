@@ -233,3 +233,70 @@ def test_load_preset_and_execute_raises_for_missing_preset(
     cache.get_dag("threshold_hello")
     with pytest.raises(FileNotFoundError):
         cache.load_preset_and_execute("threshold_hello", "nonexistent")
+
+
+# ---------------------------------------------------------------------------
+# Ordering: _active.json must not be written before execution completes
+# ---------------------------------------------------------------------------
+
+
+def test_set_param_does_not_write_active_json_when_execution_fails(
+    cache: DagCache, sketch_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """set_param does not persist _active.json when execution raises."""
+    cache.get_dag("threshold_hello")
+    active_path = sketch_dir / "threshold_hello" / "presets" / "_active.json"
+    active_path.parent.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(
+        "sketchbook.server.dag_cache.execute_partial_built",
+        lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+
+    with pytest.raises(RuntimeError, match="boom"):
+        cache.set_param("threshold_hello", "threshold_image", "level", 99)
+
+    assert not active_path.exists()
+
+
+def test_reset_to_defaults_does_not_write_active_json_when_execution_fails(
+    cache: DagCache, sketch_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """reset_to_defaults_and_execute does not persist _active.json when execution raises."""
+    cache.get_dag("threshold_hello")
+    active_path = sketch_dir / "threshold_hello" / "presets" / "_active.json"
+    # Remove any _active.json written during initial load so the assertion is clean.
+    active_path.unlink(missing_ok=True)
+
+    monkeypatch.setattr(
+        "sketchbook.server.dag_cache.execute_built",
+        lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+
+    with pytest.raises(RuntimeError, match="boom"):
+        cache.reset_to_defaults_and_execute("threshold_hello")
+
+    assert not active_path.exists()
+
+
+def test_load_preset_does_not_write_active_json_when_execution_fails(
+    cache: DagCache, sketch_dir: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """load_preset_and_execute does not update _active.json when execution raises."""
+    cache.get_dag("threshold_hello")
+    # Save a preset so load_preset_and_execute has something to load.
+    cache.set_param("threshold_hello", "threshold_image", "level", 42)
+    cache.save_preset("threshold_hello", "snap")
+
+    active_path = sketch_dir / "threshold_hello" / "presets" / "_active.json"
+    original_content = active_path.read_text()
+
+    monkeypatch.setattr(
+        "sketchbook.server.dag_cache.execute_built",
+        lambda *a, **kw: (_ for _ in ()).throw(RuntimeError("boom")),
+    )
+
+    with pytest.raises(RuntimeError, match="boom"):
+        cache.load_preset_and_execute("threshold_hello", "snap")
+
+    assert active_path.read_text() == original_content

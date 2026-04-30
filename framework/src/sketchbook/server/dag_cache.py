@@ -114,8 +114,8 @@ class DagCache:
             node.param_values[param_name] = value
             self._dirty[sketch_id] = True
             based_on = self._based_on.get(sketch_id)
-            save_active_from_built(dag, presets_dir, dirty=True, based_on=based_on)
             result = execute_partial_built(dag, [step_id], workdir)
+            save_active_from_built(dag, presets_dir, dirty=True, based_on=based_on)
             self._last_results[sketch_id] = result
             return result
 
@@ -146,8 +146,8 @@ class DagCache:
             reset_to_defaults(dag)
             self._dirty[sketch_id] = False
             self._based_on[sketch_id] = None
-            save_active_from_built(dag, presets_dir, dirty=False, based_on=None)
             result = execute_built(dag, workdir)
+            save_active_from_built(dag, presets_dir, dirty=False, based_on=None)
             self._last_results[sketch_id] = result
             return result
 
@@ -163,7 +163,7 @@ class DagCache:
             load_preset_into_built(dag, presets_dir, name)
             self._dirty[sketch_id] = False
             self._based_on[sketch_id] = name
-            save_active_from_built(dag, presets_dir, dirty=False, based_on=name)
             result = execute_built(dag, workdir)
+            save_active_from_built(dag, presets_dir, dirty=False, based_on=name)
             self._last_results[sketch_id] = result
             return result
